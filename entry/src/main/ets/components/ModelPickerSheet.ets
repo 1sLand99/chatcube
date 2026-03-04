@@ -1,5 +1,6 @@
 import { ModelInfo } from '../models/ChatModels'
 import { buildIconResourcePath, getModelIconPath, isNetworkIconPath, isSandboxIconPath } from '../utils/ProviderIconUtils'
+import { PickerModelGroup, buildPickerModelGroups } from '../config/ProviderDetailShared'
 
 /**
  * 模型选择器弹窗组件
@@ -16,12 +17,14 @@ export struct ModelPickerSheet {
   @State searchKeywords: string = ''
   @State selectedIds: Set<string> = new Set()
   @State isInitialized: boolean = false
+  @State pickerGroups: PickerModelGroup[] = []
 
   onConfirm: (selectedIds: string[]) => void = () => {}
   onCancel: () => void = () => {}
 
   aboutToAppear(): void {
     this.initializeSelection()
+    this.rebuildGroups()
   }
 
   // 初始化选中状态：已有模型默认选中
@@ -36,6 +39,12 @@ export struct ModelPickerSheet {
     }
     this.selectedIds = selected
     this.isInitialized = true
+  }
+
+  // 根据当前过滤结果重建分组
+  private rebuildGroups(): void {
+    const filtered = this.getFilteredModels()
+    this.pickerGroups = buildPickerModelGroups(filtered)
   }
 
   // 获取过滤后的模型列表
@@ -107,6 +116,65 @@ export struct ModelPickerSheet {
       // 全选当前过滤结果
       for (let i = 0; i < filtered.length; i++) {
         newSet.add(filtered[i])
+      }
+    }
+    this.selectedIds = newSet
+  }
+
+  // 折叠/展开分组
+  private toggleGroupExpansion(groupIndex: number): void {
+    animateTo({ duration: 200 }, () => {
+      const newGroups: PickerModelGroup[] = []
+      for (let i = 0; i < this.pickerGroups.length; i++) {
+        const g = this.pickerGroups[i]
+        if (i === groupIndex) {
+          newGroups.push({ name: g.name, modelIds: g.modelIds, isExpanded: !g.isExpanded })
+        } else {
+          newGroups.push(g)
+        }
+      }
+      this.pickerGroups = newGroups
+    })
+  }
+
+  // 判断分组是否全选
+  private isGroupAllSelected(group: PickerModelGroup): boolean {
+    if (group.modelIds.length === 0) {
+      return false
+    }
+    for (let i = 0; i < group.modelIds.length; i++) {
+      if (!this.selectedIds.has(group.modelIds[i])) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // 统计分组内已选数量
+  private getGroupSelectedCount(group: PickerModelGroup): number {
+    let count = 0
+    for (let i = 0; i < group.modelIds.length; i++) {
+      if (this.selectedIds.has(group.modelIds[i])) {
+        count++
+      }
+    }
+    return count
+  }
+
+  // 分组级全选/取消
+  private toggleGroupSelectAll(group: PickerModelGroup): void {
+    const newSet = new Set<string>()
+    this.selectedIds.forEach((id: string) => {
+      newSet.add(id)
+    })
+
+    if (this.isGroupAllSelected(group)) {
+      for (let i = 0; i < group.modelIds.length; i++) {
+        newSet.delete(group.modelIds[i])
+      }
+    } else {
+      for (let i = 0; i < group.modelIds.length; i++) {
+        newSet.add(group.modelIds[i])
       }
     }
     this.selectedIds = newSet
@@ -231,6 +299,7 @@ export struct ModelPickerSheet {
       .padding({ left: 16, right: 16 })
       .onChange((value: string) => {
         this.searchKeywords = value
+        this.rebuildGroups()
       })
   }
 
@@ -264,13 +333,64 @@ export struct ModelPickerSheet {
   }
 
   @Builder
+  GroupHeader(group: PickerModelGroup, groupIndex: number) {
+    Row() {
+      Row() {
+        SymbolGlyph($r('sys.symbol.chevron_right'))
+          .fontSize(14)
+          .fontColor([$r('app.color.text_tertiary')])
+          .rotate({ angle: group.isExpanded ? 90 : 0 })
+          .animation({ duration: 200 })
+
+        Text(group.name)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.text_secondary'))
+          .margin({ left: 8 })
+
+        Text(` (${this.getGroupSelectedCount(group)}/${group.modelIds.length})`)
+          .fontSize(12)
+          .fontColor($r('app.color.text_secondary'))
+      }
+      .layoutWeight(1)
+      .onClick(() => {
+        this.toggleGroupExpansion(groupIndex)
+      })
+
+      // 分组级 Checkbox
+      Checkbox()
+        .select(this.isGroupAllSelected(group))
+        .selectedColor($r('app.color.primary'))
+        .width(20)
+        .height(20)
+        .margin({ right: 8 })
+        .onClick(() => {
+          this.toggleGroupSelectAll(group)
+        })
+    }
+    .width('100%')
+    .height(44)
+    .padding({ left: 16, right: 8 })
+  }
+
+  @Builder
   ModelList() {
     List() {
-      ForEach(this.getFilteredModels(), (modelId: string, index: number) => {
+      ForEach(this.pickerGroups, (group: PickerModelGroup, groupIndex: number) => {
         ListItem() {
-          this.ModelRow(modelId, index < this.getFilteredModels().length - 1)
+          Column() {
+            // 分组标题
+            this.GroupHeader(group, groupIndex)
+
+            // 分组内模型列表
+            if (group.isExpanded) {
+              ForEach(group.modelIds, (modelId: string, modelIndex: number) => {
+                this.ModelRow(modelId, modelIndex < group.modelIds.length - 1)
+              }, (modelId: string) => `${modelId}_${this.isSelected(modelId)}`)
+            }
+          }
         }
-      }, (modelId: string) => `${modelId}_${this.isSelected(modelId)}`)
+      }, (group: PickerModelGroup, groupIndex: number) => `group_${group.name}_${groupIndex}_${group.isExpanded}`)
     }
     .width('100%')
     .layoutWeight(1)

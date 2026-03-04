@@ -68,6 +68,15 @@ export class ChatScrollUiFlow {
     this.deps = deps
   }
 
+  private scrollEdgeAfterLayout(edge: Edge): void {
+    setTimeout(() => {
+      this.deps.scroller.scrollEdge(edge)
+    }, 0)
+    setTimeout(() => {
+      this.deps.scroller.scrollEdge(edge)
+    }, 50)
+  }
+
   setIsAtTop(value: boolean): void {
     if (this.deps.getIsAtTop() === value) {
       return
@@ -136,14 +145,8 @@ export class ChatScrollUiFlow {
     this.setIsAtBottom(true)
     this.setIsAtTop(false)
     this.setInputBarVisible(true)
-    this.deps.scroller.scrollTo({
-      xOffset: 0,
-      yOffset: 999999,
-      animation: {
-        duration: 300,
-        curve: Curve.EaseOut
-      }
-    })
+    this.deps.scroller.scrollEdge(Edge.Bottom)
+    this.scrollEdgeAfterLayout(Edge.Bottom)
   }
 
   scrollToTopWithAnimation(): void {

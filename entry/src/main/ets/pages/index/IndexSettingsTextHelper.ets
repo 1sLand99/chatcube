@@ -17,6 +17,9 @@ export function getSettingsSheetTitleText(sheetType: SettingsSheetType): Resourc
   if (sheetType === SettingsSheetType.NOTIFICATION) {
     return $r('app.string.settings_notifications')
   }
+  if (sheetType === SettingsSheetType.FONT_SIZE) {
+    return $r('app.string.settings_font_size')
+  }
   return $r('app.string.tab_settings')
 }
 

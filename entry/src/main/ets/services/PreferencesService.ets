@@ -69,6 +69,9 @@ export class PreferenceKeys {
   static readonly MODELS_DEV_BASE_URL: string = 'models_dev_base_url'
   static readonly MODELS_DEV_ENABLED: string = 'models_dev_enabled'
   static readonly MODEL_LOGO_INDEX_JSON: string = 'model_logo_index_json'
+
+  // 聊天字体大小
+  static readonly CHAT_FONT_SIZE: string = 'chat_font_size'
 }
 
 // 主题模式枚举
@@ -376,9 +379,19 @@ export class PreferencesService {
     return await this.getBoolean(PreferenceKeys.NOTIFY_ON_FAILED, true)
   }
 
-  // 设置“失败时通知”开关
+  // 设置”失败时通知”开关
   async setNotifyOnFailed(enabled: boolean): Promise<void> {
     await this.setBoolean(PreferenceKeys.NOTIFY_ON_FAILED, enabled)
+  }
+
+  // 获取聊天字体大小
+  async getChatFontSize(): Promise<number> {
+    return await this.getNumber(PreferenceKeys.CHAT_FONT_SIZE, 15)
+  }
+
+  // 设置聊天字体大小
+  async setChatFontSize(size: number): Promise<void> {
+    await this.setNumber(PreferenceKeys.CHAT_FONT_SIZE, size)
   }
 }
 

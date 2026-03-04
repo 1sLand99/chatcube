@@ -111,3 +111,38 @@ function getBrandDisplayName(brand: string): string {
   return '其他模型'
 }
 
+export interface PickerModelGroup {
+  name: string
+  modelIds: string[]
+  isExpanded: boolean
+}
+
+export function buildPickerModelGroups(modelIds: string[]): PickerModelGroup[] {
+  const groups: Map<string, string[]> = new Map()
+
+  for (let i = 0; i < modelIds.length; i++) {
+    const id = modelIds[i]
+    const brand = getModelBrand(id)
+    const existing = groups.get(brand)
+    if (existing !== undefined) {
+      existing.push(id)
+    } else {
+      groups.set(brand, [id])
+    }
+  }
+
+  const result: PickerModelGroup[] = []
+  for (let i = 0; i < BRAND_ORDER.length; i++) {
+    const brand = BRAND_ORDER[i]
+    const brandModelIds = groups.get(brand)
+    if (brandModelIds !== undefined && brandModelIds.length > 0) {
+      result.push({
+        name: getBrandDisplayName(brand),
+        modelIds: brandModelIds,
+        isExpanded: true
+      })
+    }
+  }
+  return result
+}
+

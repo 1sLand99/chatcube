@@ -480,6 +480,7 @@ export struct ProviderDetailSheet {
             .scrollBar(BarState.Off)
             .edgeEffect(EdgeEffect.Spring)
             .align(Alignment.Top)
+            .expandSafeArea([SafeAreaType.KEYBOARD], [SafeAreaEdge.BOTTOM])
           }
           .tabBar(this.ConfigTabBuilder())
 
@@ -496,6 +497,7 @@ export struct ProviderDetailSheet {
             .scrollBar(BarState.Off)
             .edgeEffect(EdgeEffect.Spring)
             .align(Alignment.Top)
+            .expandSafeArea([SafeAreaType.KEYBOARD], [SafeAreaEdge.BOTTOM])
           }
           .tabBar(this.ModelsTabBuilder())
         }

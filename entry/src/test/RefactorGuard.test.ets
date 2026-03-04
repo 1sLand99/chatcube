@@ -1,9 +1,11 @@
 import { describe, it, expect } from '@ohos/hypium'
-import { ModelInfo } from '../main/ets/models/ChatModels'
+import { ModelInfo, ChatSession } from '../main/ets/models/ChatModels'
 import {
   buildProviderModelGroups,
   filterProviderModelsByKeyword
 } from '../main/ets/config/ProviderDetailShared'
+import { SessionFilterType, SessionGroupData } from '../main/ets/pages/index/IndexPageTypes'
+import { buildSessionGroupRenderKey, buildSessionRenderKeyForIndex } from '../main/ets/pages/index/IndexSessionGroupHelper'
 import { AppError, AppErrorCode, Result } from '../main/ets/models/AppError'
 import {
   setAllModelsEnabled,
@@ -138,6 +140,29 @@ export default function refactorGuardTest() {
       expect(ServiceRegistry.share() === share).assertEqual(true)
       expect(ServiceRegistry.appState() === appState).assertEqual(true)
       expect(ServiceRegistry.provider() === provider).assertEqual(true)
+    })
+
+    it('indexSessionRenderKey_should_change_on_title_update', 0, () => {
+      const session = new ChatSession('s1', '旧标题', 'm1', 'p1')
+      session.updatedAt = 1710000000000
+      session.messageCount = 12
+      session.lastMessagePreview = 'preview'
+      const keyBefore = buildSessionRenderKeyForIndex(session)
+      session.title = '新标题'
+      const keyAfter = buildSessionRenderKeyForIndex(session)
+      expect(keyBefore === keyAfter).assertEqual(false)
+    })
+
+    it('indexSessionGroupRenderKey_should_change_on_title_update', 0, () => {
+      const session = new ChatSession('s1', '旧标题', 'm1', 'p1')
+      session.updatedAt = 1710000000000
+      session.messageCount = 1
+      session.lastMessagePreview = 'preview'
+      const group = new SessionGroupData('today', [session])
+      const keyBefore = buildSessionGroupRenderKey(group, SessionFilterType.ALL, '')
+      session.title = '新标题'
+      const keyAfter = buildSessionGroupRenderKey(group, SessionFilterType.ALL, '')
+      expect(keyBefore === keyAfter).assertEqual(false)
     })
   })
 }

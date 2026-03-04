@@ -6,6 +6,7 @@ export struct DraftPreviewBubble {
   @Prop pendingAttachments: MessageAttachment[] = []
   @StorageProp('theme_user_bubble') themeUserBubble: string = '#0A59F7'
   @StorageProp('theme_user_bubble_text') themeUserBubbleText: string = '#FFFFFF'
+  @StorageProp('chat_font_size') chatFontSize: number = 15
   @Prop previewTimeText: string = ''
   draftPreviewImageMaxHeight: number = 120
   draftPreviewImageContainerWidth: number = 180
@@ -111,15 +112,15 @@ export struct DraftPreviewBubble {
 
           if (this.inputText.trim().length > 0) {
             Text(this.inputText.trim())
-              .fontSize(15)
+              .fontSize(this.chatFontSize)
               .fontColor(this.themeUserBubbleText)
-              .lineHeight(22)
+              .lineHeight(this.chatFontSize + 7)
           } else {
             Text($r('app.string.input_placeholder'))
-              .fontSize(15)
+              .fontSize(this.chatFontSize)
               .fontColor(this.themeUserBubbleText)
               .opacity(0.45)
-              .lineHeight(22)
+              .lineHeight(this.chatFontSize + 7)
           }
         }
         .padding(this.pendingAttachments.length > 0 ?

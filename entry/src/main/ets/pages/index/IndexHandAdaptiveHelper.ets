@@ -19,11 +19,11 @@ export function getFabOffsetXForIndex(placeOnLeft: boolean): number {
   if (placeOnLeft) {
     return 20
   }
-  return -64
+  return -68
 }
 
 export function getFabOffsetYForIndex(bottomAvoidHeightVp: number): number {
-  const fabHeight = 44
+  const fabHeight = 48
   const tabBarHeight = 56
   const bottomSpacing = 20
   return -(fabHeight + tabBarHeight + bottomAvoidHeightVp + bottomSpacing)

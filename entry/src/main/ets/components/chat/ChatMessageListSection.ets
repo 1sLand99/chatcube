@@ -156,6 +156,7 @@ export struct ChatMessageListSection {
         .height('100%')
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
+        .cachedCount(5)
         .backdropBlur(this.isEditingMessage ? 8 : 0)
         .animation({ duration: 200 })
         .onAppear(() => {

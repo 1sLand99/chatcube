@@ -92,6 +92,47 @@ export class HttpService {
     return HttpService.instance
   }
 
+  // 将 HTTP 错误对象格式化为用户友好的中文提示
+  static formatHttpError(error: object): string {
+    let code = 0
+    let message = ''
+    try {
+      const errorStr = JSON.stringify(error)
+      const parsed = JSON.parse(errorStr) as Record<string, Object>
+      if (parsed.code !== undefined) {
+        code = parsed.code as number
+      }
+      if (parsed.message !== undefined) {
+        message = parsed.message as string
+      }
+    } catch (_e) {
+      return `请求失败: ${JSON.stringify(error)}`
+    }
+
+    if (code === 2300028) {
+      return '连接超时，请检查网络或服务地址是否正确'
+    } else if (code === 2300007) {
+      return '无法连接到服务器，请检查网络连接'
+    } else if (code === 2300006) {
+      return '域名解析失败，请检查服务地址是否正确'
+    } else if (code === 2300056) {
+      return '接收数据失败，请检查网络连接后重试'
+    } else if (code === 2300023) {
+      return '数据写入失败，请检查网络连接后重试'
+    } else if (code === 2300005) {
+      return '无法解析代理，请检查网络设置'
+    } else if (code === 2300035) {
+      return 'SSL 连接失败，请检查服务地址是否支持 HTTPS'
+    } else if (code === 2300060) {
+      return 'SSL 证书验证失败，请检查服务地址配置'
+    } else if (message !== '') {
+      return `请求失败: ${message} (${code})`
+    } else if (code !== 0) {
+      return `请求失败 (错误码: ${code})`
+    }
+    return `请求失败: ${JSON.stringify(error)}`
+  }
+
   private buildCancelledResponse(): HttpResponse {
     return {
       success: false,
@@ -165,7 +206,7 @@ export class HttpService {
         success: false,
         statusCode: 0,
         data: '',
-        errorMessage: `Request failed: ${JSON.stringify(error)}`
+        errorMessage: HttpService.formatHttpError(error)
       }
       return errorResponse
     } finally {
@@ -323,7 +364,7 @@ export class HttpService {
     }).catch((error: Error) => {
       console.error('HttpService', `[streamPost] Error: ${JSON.stringify(error)}`)
       if (onError) {
-        onError(JSON.stringify(error))
+        onError(HttpService.formatHttpError(error))
       }
     })
 

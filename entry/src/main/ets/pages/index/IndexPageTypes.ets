@@ -6,7 +6,8 @@ export enum SettingsSheetType {
   LANGUAGE = 2,
   COLOR_THEME = 3,
   NOTIFICATION = 4,
-  HAND_ADAPTIVE = 5
+  HAND_ADAPTIVE = 5,
+  FONT_SIZE = 6
 }
 
 export enum SessionFilterType {
@@ -14,6 +15,7 @@ export enum SessionFilterType {
   FAVORITE = 1
 }
 
+@Observed
 export class SessionGroupData {
   key: string
   sessions: ChatSession[]

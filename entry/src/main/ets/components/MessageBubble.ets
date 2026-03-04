@@ -50,6 +50,9 @@ export struct MessageBubble {
   @StorageProp('theme_ai_bubble') @Watch('onThemeColorChange') themeAiBubble: string = '#FFFFFF'
   @StorageProp('theme_primary') @Watch('onThemeColorChange') themePrimary: string = '#0A59F7'
 
+  // 聊天字体大小
+  @StorageProp('chat_font_size') @Watch('onFontSizeChange') chatFontSize: number = 15
+
   // Markdown 链接：统一用半模态 Web Sheet 打开
   @State showWebSheet: boolean = false
   @State webSheetUrl: string = ''
@@ -194,9 +197,10 @@ export struct MessageBubble {
     this.markdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(14)
-      .setTextLineHeight(22)
-      .setTitleSize([22, 20, 18, 16, 15, 14])
+      .setTextSize(this.chatFontSize - 1)
+      .setTextLineHeight(this.chatFontSize + 7)
+      .setTitleSize([this.chatFontSize + 7, this.chatFontSize + 5, this.chatFontSize + 3,
+        this.chatFontSize + 1, this.chatFontSize, this.chatFontSize - 1])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -224,9 +228,10 @@ export struct MessageBubble {
     this.reasoningMarkdownController
       .setTitleColor(reasoningTextColor)
       .setTextColor(reasoningTextColor)
-      .setTextSize(13)
-      .setTextLineHeight(20)
-      .setTitleSize([18, 16, 15, 14, 13, 13])
+      .setTextSize(this.chatFontSize - 2)
+      .setTextLineHeight(this.chatFontSize + 5)
+      .setTitleSize([this.chatFontSize + 3, this.chatFontSize + 1, this.chatFontSize,
+        this.chatFontSize - 1, this.chatFontSize - 2, this.chatFontSize - 2])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -254,9 +259,10 @@ export struct MessageBubble {
     this.translationMarkdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(13)
-      .setTextLineHeight(20)
-      .setTitleSize([20, 18, 16, 15, 14, 13])
+      .setTextSize(this.chatFontSize - 2)
+      .setTextLineHeight(this.chatFontSize + 5)
+      .setTitleSize([this.chatFontSize + 5, this.chatFontSize + 3, this.chatFontSize + 1,
+        this.chatFontSize, this.chatFontSize - 1, this.chatFontSize - 2])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -296,6 +302,12 @@ export struct MessageBubble {
   onThemeColorChange(): void {
     hilog.info(DOMAIN, TAG, '🎨 主题颜色变化 (消息ID: %{public}s)', this.message.id)
     // 主题颜色变化时重新配置 Markdown 样式
+    this.configureMarkdownStyles()
+  }
+
+  // 字体大小变化监听
+  onFontSizeChange(): void {
+    hilog.info(DOMAIN, TAG, '🔤 字体大小变化: %{public}d (消息ID: %{public}s)', this.chatFontSize, this.message.id)
     this.configureMarkdownStyles()
   }
 
@@ -599,9 +611,9 @@ export struct MessageBubble {
             // 文本内容
             if (this.getDisplayContent().length > 0) {
               Text(this.getDisplayContent())
-                .fontSize(15)
+                .fontSize(this.chatFontSize)
                 .fontColor(this.themeUserBubbleText)
-                .lineHeight(22)
+                .lineHeight(this.chatFontSize + 7)
             }
           }
           .padding(this.hasDisplayAttachments() ? { left: 8, right: 8, top: 8, bottom: 8 } : { left: 14, right: 14, top: 10, bottom: 10 })

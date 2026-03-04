@@ -154,6 +154,17 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     textIconBgColor: '#000000'
   },
   {
+    id: 'aiping',
+    name: 'AIPing',
+    type: ProviderType.CUSTOM,
+    apiStyle: ApiStyle.OPENAI,
+    baseUrl: 'https://aiping.cn/api/v1',
+    iconPath: '',
+    brandColorHex: '#6C5CE7',
+    textIcon: 'AP',
+    textIconBgColor: '#6C5CE7'
+  },
+  {
     id: 'ollama',
     name: 'Ollama',
     type: ProviderType.OLLAMA,

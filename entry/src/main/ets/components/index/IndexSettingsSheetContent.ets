@@ -16,7 +16,140 @@ export struct IndexSettingsSheetContent {
   @Prop handAdaptiveEnabled: boolean = false
   @Prop handAdaptiveNewChat: boolean = false
   @Prop handAdaptiveUnsupported: boolean = false
+  @Prop chatFontSize: number = 15
+  @State previewFontSize: number = 15
+  @StorageProp('theme_user_bubble') themeUserBubble: string = '#0A59F7'
+  @StorageProp('theme_user_bubble_text') themeUserBubbleText: string = '#FFFFFF'
+  @StorageProp('theme_ai_bubble') themeAiBubble: string = '#FFFFFF'
   callbacks: IndexSettingsSheetActionCallbacks = new IndexSettingsSheetActionCallbacks()
+
+  aboutToAppear(): void {
+    if (this.settingsSheetType === SettingsSheetType.FONT_SIZE) {
+      this.previewFontSize = this.chatFontSize
+    }
+  }
+
+  private applyFontSize(size: number): void {
+    this.previewFontSize = size
+    this.callbacks.onFontSizeChanged(size)
+  }
+
+  @Builder
+  private FontSizePresetButton(label: Resource, size: number) {
+    Button(label)
+      .height(36)
+      .fontSize(13)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.previewFontSize === size ? '#FFFFFF' : this.themePrimary)
+      .backgroundColor(this.previewFontSize === size ? this.themePrimary : this.themePrimary + '1A')
+      .borderRadius(18)
+      .layoutWeight(1)
+      .onClick(() => {
+        this.applyFontSize(size)
+      })
+  }
+
+  @Builder
+  private FontSizeSheetContent() {
+    Column({ space: 16 }) {
+      // 预览框
+      Column({ space: 12 }) {
+        // AI 消息预览
+        Row() {
+          Column() {
+            Text($r('app.string.font_preview_ai_message'))
+              .fontSize(this.previewFontSize - 1)
+              .fontColor($r('app.color.text_primary'))
+              .lineHeight(this.previewFontSize + 7)
+          }
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .backgroundColor(this.themeAiBubble)
+          .borderRadius({
+            topLeft: 20,
+            topRight: 20,
+            bottomLeft: 6,
+            bottomRight: 20
+          })
+          .constraintSize({ maxWidth: '75%' })
+
+          Blank()
+        }
+        .width('100%')
+
+        // 用户消息预览
+        Row() {
+          Blank()
+
+          Column() {
+            Text($r('app.string.font_preview_user_message'))
+              .fontSize(this.previewFontSize)
+              .fontColor(this.themeUserBubbleText)
+              .lineHeight(this.previewFontSize + 7)
+          }
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .backgroundColor(this.themeUserBubble)
+          .borderRadius({
+            topLeft: 20,
+            topRight: 20,
+            bottomLeft: 20,
+            bottomRight: 6
+          })
+          .constraintSize({ maxWidth: '75%' })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor($r('app.color.background'))
+      .borderRadius(16)
+
+      // 当前值显示
+      Text(`${this.previewFontSize} fp`)
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.text_primary'))
+        .textAlign(TextAlign.Center)
+        .width('100%')
+
+      // Slider
+      Row({ space: 8 }) {
+        Text('A')
+          .fontSize(12)
+          .fontColor($r('app.color.text_secondary'))
+        Slider({
+          value: this.previewFontSize,
+          min: 12,
+          max: 22,
+          step: 1,
+          style: SliderStyle.InSet
+        })
+          .selectedColor(this.themePrimary)
+          .trackThickness(28)
+          .layoutWeight(1)
+          .onChange((value: number, mode: SliderChangeMode) => {
+            this.previewFontSize = Math.round(value)
+            if (mode === SliderChangeMode.End || mode === SliderChangeMode.Click) {
+              this.callbacks.onFontSizeChanged(this.previewFontSize)
+            }
+          })
+        Text('A')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_secondary'))
+      }
+      .width('100%')
+
+      // 预设按钮
+      Row({ space: 8 }) {
+        this.FontSizePresetButton($r('app.string.font_size_small'), 13)
+        this.FontSizePresetButton($r('app.string.font_size_default'), 15)
+        this.FontSizePresetButton($r('app.string.font_size_large'), 17)
+        this.FontSizePresetButton($r('app.string.font_size_extra_large'), 19)
+      }
+      .width('100%')
+    }
+    .width('100%')
+  }
 
   @Builder
   private ThemeOptionItem(mode: ThemeMode, label: Resource) {
@@ -217,6 +350,8 @@ export struct IndexSettingsSheetContent {
 
         Divider().color($r('app.color.divider')).margin({ top: 6 })
         this.OpenSystemNotificationSettingsEntry()
+      } else if (this.settingsSheetType === SettingsSheetType.FONT_SIZE) {
+        this.FontSizeSheetContent()
       } else {
         Column()
           .width('100%')

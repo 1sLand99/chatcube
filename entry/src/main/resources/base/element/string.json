@@ -1691,6 +1691,38 @@
     {
       "name": "provider_tab_models",
       "value": "Models"
+    },
+    {
+      "name": "settings_font_size",
+      "value": "Font Size"
+    },
+    {
+      "name": "settings_font_size_desc",
+      "value": "Adjust chat message font size"
+    },
+    {
+      "name": "font_size_small",
+      "value": "Small"
+    },
+    {
+      "name": "font_size_default",
+      "value": "Default"
+    },
+    {
+      "name": "font_size_large",
+      "value": "Large"
+    },
+    {
+      "name": "font_size_extra_large",
+      "value": "XL"
+    },
+    {
+      "name": "font_preview_ai_message",
+      "value": "Hello! I'm your AI assistant, happy to help you."
+    },
+    {
+      "name": "font_preview_user_message",
+      "value": "Hi, can you help me write something?"
     }
   ]
 }

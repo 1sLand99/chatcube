@@ -29,11 +29,13 @@ export struct IndexSettingsPanel {
   @Link @Watch('onSummaryLinkChanged') notifyEnabled: boolean
   @Link @Watch('onSummaryLinkChanged') notifyOnComplete: boolean
   @Link @Watch('onSummaryLinkChanged') notifyOnFailed: boolean
+  @StorageProp('chat_font_size') @Watch('onSummaryLinkChanged') chatFontSize: number = 15
   @State themeModeSummary: string = ''
   @State languageSummary: string = ''
   @State colorThemeSummary: string = ''
   @State handAdaptiveSummary: string = ''
   @State notifySummary: string = ''
+  @State fontSizeSummary: string = ''
   @State versionName: string = ''
   onOpenModelManage: () => void = () => {}
   onOpenDefaultModel: () => void = () => {}
@@ -44,6 +46,7 @@ export struct IndexSettingsPanel {
   onOpenColorTheme: () => void = () => {}
   onOpenLanguage: () => void = () => {}
   onOpenNotification: () => void = () => {}
+  onOpenFontSize: () => void = () => {}
   onOpenExportData: () => void = () => {}
   onOpenImportData: () => void = () => {}
   onOpenAbout: () => void = () => {}
@@ -56,7 +59,7 @@ export struct IndexSettingsPanel {
       this.versionName = info.versionName
     } catch (err) {
       console.error('IndexSettingsPanel', `Get version failed: ${JSON.stringify(err)}`)
-      this.versionName = '1.0.0'
+      this.versionName = '1.0.4'
     }
   }
 
@@ -81,9 +84,10 @@ export struct IndexSettingsPanel {
       this.handAdaptiveUnsupported, this.handAdaptiveNewChat))
     this.notifySummary = this.resourceToString(
       this.getNotificationSummaryText(this.notifyEnabled, this.notifyOnComplete, this.notifyOnFailed))
+    this.fontSizeSummary = this.resourceToString(this.getFontSizeSummaryText(this.chatFontSize))
     console.info('IndexSettingsPanel', `Summary text states: theme=${this.themeModeSummary},` +
       ` language=${this.languageSummary}, color=${this.colorThemeSummary}, hand=${this.handAdaptiveSummary},` +
-      ` notify=${this.notifySummary}`)
+      ` notify=${this.notifySummary}, fontSize=${this.fontSizeSummary}`)
   }
 
   private onSummaryLinkChanged(): void {
@@ -253,6 +257,19 @@ export struct IndexSettingsPanel {
     return $r('app.string.notification_summary_none')
   }
 
+  private getFontSizeSummaryText(fontSize: number): Resource {
+    if (fontSize <= 13) {
+      return $r('app.string.font_size_small')
+    }
+    if (fontSize <= 15) {
+      return $r('app.string.font_size_default')
+    }
+    if (fontSize <= 17) {
+      return $r('app.string.font_size_large')
+    }
+    return $r('app.string.font_size_extra_large')
+  }
+
   @Builder
   private HandAdaptiveText() {
     Column() {
@@ -338,6 +355,24 @@ export struct IndexSettingsPanel {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
       Text(this.notifySummary)
+        .fontSize(12)
+        .fontColor($r('app.color.text_secondary'))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .margin({ top: 2 })
+    }.alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private FontSizeText() {
+    Column() {
+      Text($r('app.string.settings_font_size'))
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_primary'))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Text(this.fontSizeSummary)
         .fontSize(12)
         .fontColor($r('app.color.text_secondary'))
         .maxLines(1)
@@ -458,6 +493,20 @@ export struct IndexSettingsPanel {
             cardBorderRadius: 12,
             onClick: (): void => { this.onOpenNotification() }
           })
+
+          Divider().color($r('app.color.divider')).margin({ left: 60 })
+
+          // 字体大小 - HdsListItemCard（动态摘要）
+          HdsListItemCard({
+            prefixItem: new PrefixCustomBuilder((): void => { this.PrefixIcon($r('sys.symbol.textformat_size_square')) }),
+            textItem: {
+              customBuilder: (): void => { this.FontSizeText() }
+            },
+            suffixItem: new SuffixCustomBuilder((): void => { this.ChevronSuffix() }),
+            cardBackgroundColor: $r('app.color.surface'),
+            cardBorderRadius: 12,
+            onClick: (): void => { this.onOpenFontSize() }
+          })
         }
         .width('100%')
         .backgroundColor($r('app.color.surface'))
@@ -505,7 +554,7 @@ export struct IndexSettingsPanel {
         .borderRadius(16)
       }
       .width('100%')
-      .padding({ left: 16, right: 16, bottom: 40 })
+      .padding({ left: 8, right: 8, bottom: 40 })
     }
     .width('100%')
     .layoutWeight(1)

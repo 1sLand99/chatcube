@@ -167,6 +167,27 @@ export class ChatViewModel {
     }
   }
 
+  // 当 AI 消息内容完全为空时，填充一条兜底提示，避免出现空气泡
+  private fillEmptyAIContentPlaceholder(aiMessage: ChatMessage, errorHint: string = ''): void {
+    if (aiMessage.content.trim() !== '') {
+      return
+    }
+    if (aiMessage.reasoningContent.trim() !== '') {
+      return
+    }
+    if (aiMessage.attachments.length > 0) {
+      return
+    }
+    if (aiMessage.toolCalls.length > 0 || aiMessage.toolResults.length > 0) {
+      return
+    }
+    if (errorHint !== '') {
+      aiMessage.content = errorHint
+    } else {
+      aiMessage.content = '[模型未返回内容]'
+    }
+  }
+
   // 判断待持久化消息是否包含有效内容（空占位消息不应跨会话残留）
   private hasMeaningfulPendingMessageContent(message: ChatMessage): boolean {
     if (message.content.trim() !== '') {
@@ -524,6 +545,7 @@ export class ChatViewModel {
           }
         })
 
+        this.fillEmptyAIContentPlaceholder(aiMessage)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
 
@@ -571,6 +593,7 @@ export class ChatViewModel {
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage, error)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
 
@@ -823,6 +846,7 @@ ${webContext.content}
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
         if (snapshotSession !== null) {
@@ -868,6 +892,7 @@ ${webContext.content}
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage, error)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
 
@@ -1120,6 +1145,7 @@ ${limitedSearchContext}
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
         if (snapshotSession !== null) {
@@ -1165,6 +1191,7 @@ ${limitedSearchContext}
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage, error)
         aiMessage.isGenerating = false
         onAIMessageUpdated(aiMessage)
 
@@ -1355,17 +1382,17 @@ ${limitedSearchContext}
     if (hasWeatherQueryTool) {
       toolUsageSystemPrompt += `
 - 当用户询问天气/气温/降雨/风力/AQI 等信息时，优先调用 weather_query。
-- 调用 weather_query 时: location 只填地点名称，days 取 1-7，unit 仅用 celsius/fahrenheit。`
+- 调用 weather_query 时: location 只填地点名称，days 取 1-7，unit 仅用 celsius/fahrenheit。
+- 回答天气相关问题时请优先提取并明确给出具体数值（如温度、降水概率、湿度、风速、AQI）。`
     }
     if (hasWebSearchTool) {
       toolUsageSystemPrompt += `
-- 针对同一个用户问题，最多调用 web_search 1 次;如需多个关键词，请合并为一次查询。
+- 针对同一个用户问题，最多调用 web_search 5 次;超过 5 次后不再调用，根据已获取的内容整理并返回结果。
 - 生成 web_search.query 时优先保留用户原始关键词，不要擅自改写实体、地点和时间。`
     }
     toolUsageSystemPrompt += `
 - 若用户提到“今天/昨天/明天/现在/最新”等相对时间，请以当前时间为基准理解，不要编造不一致的绝对日期。
-- 工具返回后必须给出最终回答，不要在没有必要的情况下重复调用工具。
-- 回答时请优先提取并明确给出具体数值（如温度、降水概率、湿度、风速、AQI）。`
+- 工具返回后必须给出最终回答，不要在没有必要的情况下重复调用工具。`
     const renderedSystemPromptTools = await this.getRenderedSystemPrompt()
     const finalToolUsageSystemPrompt = `${renderedSystemPromptTools}\n\n${toolUsageSystemPrompt}`
     requestMessages.push(new RequestMessage('system', finalToolUsageSystemPrompt))
@@ -1767,6 +1794,7 @@ ${limitedSearchContext}
           }
           // 没有工具调用，完成
           this.fillFallbackFromSearchSummaryIfNeeded(aiMessage)
+          this.fillEmptyAIContentPlaceholder(aiMessage)
           aiMessage.isGenerating = false
           aiMessage.isSearching = false
           onAIMessageUpdated(aiMessage)
@@ -1815,6 +1843,7 @@ ${limitedSearchContext}
             onAIMessageUpdated(aiMessage)
           }
         })
+        this.fillEmptyAIContentPlaceholder(aiMessage, error)
         aiMessage.isGenerating = false
         aiMessage.isSearching = false
         onAIMessageUpdated(aiMessage)

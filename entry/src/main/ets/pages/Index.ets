@@ -72,11 +72,8 @@ struct Index {
   @State currentHoldingHand: motion.HoldingHandStatus = motion.HoldingHandStatus.UNKNOWN_STATUS
   @State fabPressed: boolean = false
   @State @Watch('onSettingsSummaryStateChanged') currentColorTheme: ColorTheme = ColorTheme.DEFAULT
-  @State showThemeSheet: boolean = false
-  @State showLanguageSheet: boolean = false
-  @State showColorThemeSheet: boolean = false
-  @State showNotificationSheet: boolean = false
-  @State showHandAdaptiveSheet: boolean = false
+  @State showSettingsSheet: boolean = false
+  @State activeSettingsSheetType: SettingsSheetType = SettingsSheetType.NONE
   @State showSystemPromptSheet: boolean = false
   @State customSystemPrompt: string = ''
   @State searchText: string = ''
@@ -88,6 +85,7 @@ struct Index {
   // 主题颜色
   @StorageProp('theme_primary') themePrimary: string = '#0A59F7'
   @StorageProp('theme_primary_light') themePrimaryLight: string = '#E6F2FF'
+  @StorageProp('chat_font_size') chatFontSize: number = 15
   // 监听从服务卡片打开新聊天的事件
   @StorageProp('openNewChat') @Watch('onOpenNewChat') openNewChatTimestamp: number = 0
   @StorageProp('openSessionPayload') @Watch('onOpenSessionPayloadChanged') openSessionPayload: string = ''
@@ -103,6 +101,9 @@ struct Index {
   // 分享预览弹窗状态
   @State showSharePreview: boolean = false
   @State shareMessages: ChatMessage[] = []
+  // Settings Sheet 关闭动画期间的状态机（避免“关闭回调晚到”误关新弹窗）
+  private settingsSheetClosing: boolean = false
+  private pendingSettingsSheetType: SettingsSheetType = SettingsSheetType.NONE
   private navPathStack: NavPathStack = new NavPathStack()
   // 返回键退出控制
   private lastBackPressTime: number = 0
@@ -280,6 +281,10 @@ struct Index {
         this.notifyOnComplete = notifyOnComplete
         this.notifyOnFailed = notifyOnFailed
         this.syncSettingsSummaryToStorage()
+      },
+      onChatFontSizeChanged: (size: number): void => {
+        this.chatFontSize = size
+        this.syncSettingsSummaryToStorage()
       }
     }
     this.settingsManager.registerCallback(this.settingsCallback)
@@ -294,6 +299,7 @@ struct Index {
     this.notifyEnabled = this.settingsManager.getNotificationEnabled()
     this.notifyOnComplete = this.settingsManager.getNotifyOnCompleteEnabled()
     this.notifyOnFailed = this.settingsManager.getNotifyOnFailedEnabled()
+    this.chatFontSize = this.settingsManager.getChatFontSize()
     await this.loadHandAdaptiveSettings()
     this.syncSettingsSummaryToStorage()
   }
@@ -305,6 +311,7 @@ struct Index {
     this.notifyEnabled = this.settingsManager.getNotificationEnabled()
     this.notifyOnComplete = this.settingsManager.getNotifyOnCompleteEnabled()
     this.notifyOnFailed = this.settingsManager.getNotifyOnFailedEnabled()
+    this.chatFontSize = this.settingsManager.getChatFontSize()
     this.syncSettingsSummaryToStorage()
   }
 
@@ -318,6 +325,7 @@ struct Index {
     AppStorage.setOrCreate('setting_hand_adaptive_enabled', this.handAdaptiveEnabled)
     AppStorage.setOrCreate('setting_hand_adaptive_new_chat', this.handAdaptiveNewChat)
     AppStorage.setOrCreate('setting_hand_adaptive_unsupported', this.handAdaptiveUnsupported)
+    AppStorage.setOrCreate(AppStorageKeys.CHAT_FONT_SIZE, this.chatFontSize)
   }
 
   private async loadHandAdaptiveSettings(): Promise<void> {
@@ -503,37 +511,43 @@ struct Index {
   }
 
   private openSettingsSheet(type: SettingsSheetType): void {
-    this.refreshSettingsState()
-    if (type === SettingsSheetType.HAND_ADAPTIVE) {
-      this.loadHandAdaptiveSettings()
+    if (type === SettingsSheetType.NONE) {
+      return
     }
-    // 先关闭所有，再打开目标
-    this.closeAllSettingsSheets()
-    if (type === SettingsSheetType.THEME) {
-      this.showThemeSheet = true
-    } else if (type === SettingsSheetType.LANGUAGE) {
-      this.showLanguageSheet = true
-    } else if (type === SettingsSheetType.COLOR_THEME) {
-      this.showColorThemeSheet = true
-    } else if (type === SettingsSheetType.NOTIFICATION) {
-      this.showNotificationSheet = true
-    } else if (type === SettingsSheetType.HAND_ADAPTIVE) {
-      this.showHandAdaptiveSheet = true
+    // 关闭动画期间的点击：排队到 onDisappear 后再打开，避免 show 状态与可见状态不同步。
+    if (this.settingsSheetClosing) {
+      this.pendingSettingsSheetType = type
+      return
     }
+    // 弹窗已打开时，直接切换内容类型，避免“先关后开”造成的点击延迟/吞点击。
+    if (this.showSettingsSheet) {
+      this.activeSettingsSheetType = type
+      return
+    }
+
+    this.activeSettingsSheetType = type
+    this.showSettingsSheet = true
+  }
+
+  private openHandAdaptiveSheet(): void {
+    if (this.showSettingsSheet && this.activeSettingsSheetType === SettingsSheetType.HAND_ADAPTIVE) {
+      return
+    }
+    // 纯 UI 展示切换，避免在点击路径引入异步刷新导致动画周期内重渲染。
+    this.openSettingsSheet(SettingsSheetType.HAND_ADAPTIVE)
   }
 
   private closeAllSettingsSheets(): void {
-    this.showThemeSheet = false
-    this.showLanguageSheet = false
-    this.showColorThemeSheet = false
-    this.showNotificationSheet = false
-    this.showHandAdaptiveSheet = false
+    if (!this.showSettingsSheet) {
+      return
+    }
+    // 仅当弹窗当前处于打开状态时进入 Closing，避免重复 close 干扰排队打开逻辑。
+    this.settingsSheetClosing = true
+    this.showSettingsSheet = false
   }
 
   private isAnySettingsSheetOpen(): boolean {
-    return this.showThemeSheet || this.showLanguageSheet ||
-      this.showColorThemeSheet || this.showNotificationSheet ||
-      this.showHandAdaptiveSheet
+    return this.showSettingsSheet || this.settingsSheetClosing
   }
 
   async loadSessions(): Promise<void> {
@@ -690,71 +704,24 @@ struct Index {
         Column()
           .width(0)
           .height(0)
-          .bindSheet($$this.showThemeSheet, this.ThemeSheetBuilder(), {
-            height: SheetSize.FIT_CONTENT,
-            dragBar: true,
-            showClose: true,
-            title: { title: getSettingsSheetTitleText(SettingsSheetType.THEME) },
+          .bindSheet($$this.showSettingsSheet, this.SettingsSheetBuilder(), {
+            height: this.getActiveSettingsSheetHeight(),
+            dragBar: false,
+            showClose: false,
+            // 禁止遮罩点击/拖拽关闭，只允许显式点击关闭按钮/返回键关闭。
+            shouldDismiss: (_dismissAction: SheetDismiss) => {
+            },
             onDisappear: () => {
-              this.showThemeSheet = false
-              this.refreshSettingsState()
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showLanguageSheet, this.LanguageSheetBuilder(), {
-            height: SheetSize.FIT_CONTENT,
-            dragBar: true,
-            showClose: true,
-            title: { title: getSettingsSheetTitleText(SettingsSheetType.LANGUAGE) },
-            onDisappear: () => {
-              this.showLanguageSheet = false
-              this.refreshSettingsState()
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showColorThemeSheet, this.ColorThemeSheetBuilder(), {
-            height: SheetSize.MEDIUM,
-            dragBar: true,
-            showClose: true,
-            title: { title: getSettingsSheetTitleText(SettingsSheetType.COLOR_THEME) },
-            onDisappear: () => {
-              this.showColorThemeSheet = false
-              this.refreshSettingsState()
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showNotificationSheet, this.NotificationSheetBuilder(), {
-            height: SheetSize.FIT_CONTENT,
-            dragBar: true,
-            showClose: true,
-            title: { title: getSettingsSheetTitleText(SettingsSheetType.NOTIFICATION) },
-            onDisappear: () => {
-              this.showNotificationSheet = false
-              this.refreshSettingsState()
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showHandAdaptiveSheet, this.HandAdaptiveSheetBuilder(), {
-            height: SheetSize.FIT_CONTENT,
-            dragBar: true,
-            showClose: true,
-            title: { title: getSettingsSheetTitleText(SettingsSheetType.HAND_ADAPTIVE) },
-            onDisappear: () => {
-              this.showHandAdaptiveSheet = false
-              this.refreshSettingsState()
-              this.loadHandAdaptiveSettings()
+              // Closing 结束：如果有排队的打开请求，直接重开并切换内容。
+              this.settingsSheetClosing = false
+              if (this.pendingSettingsSheetType !== SettingsSheetType.NONE) {
+                const nextType = this.pendingSettingsSheetType
+                this.pendingSettingsSheetType = SettingsSheetType.NONE
+                this.activeSettingsSheetType = nextType
+                this.showSettingsSheet = true
+                return
+              }
+              this.activeSettingsSheetType = SettingsSheetType.NONE
             }
           })
 
@@ -844,7 +811,7 @@ struct Index {
         }
         .width('100%')
         .height(56)
-        .padding({ left: 16, right: 16 })
+        .padding({ left: 8, right: 8 })
         .alignItems(VerticalAlign.Center)
 
         Column() {
@@ -974,7 +941,7 @@ struct Index {
           }
           .width('100%')
           .height(56)
-          .padding({ left: 16, right: 16 })
+          .padding({ left: 8, right: 8 })
           .alignItems(VerticalAlign.Center)
 
           IndexFilterBar({
@@ -1002,7 +969,7 @@ struct Index {
           }
           .width('100%')
           .height(56)
-          .padding({ left: 16, right: 16 })
+          .padding({ left: 8, right: 8 })
           .alignItems(VerticalAlign.Center)
         }
 
@@ -1116,12 +1083,12 @@ struct Index {
   FloatingActionButton() {
     Column() {
       SymbolGlyph($r('sys.symbol.plus'))
-        .fontSize(20)
+        .fontSize(22)
         .fontColor([Color.White])
     }
-    .width(44)
-    .height(44)
-    .borderRadius(22)
+    .width(48)
+    .height(48)
+    .borderRadius(24)
     .backgroundColor(this.themePrimary)
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
@@ -1174,7 +1141,7 @@ struct Index {
       }
       .width('100%')
       .height(56)
-      .padding({ left: 16, right: 16 })
+      .padding({ left: 8, right: 8 })
       .alignItems(VerticalAlign.Center)
 
       IndexSettingsPanel({
@@ -1200,7 +1167,7 @@ struct Index {
           this.openSystemPromptSheet()
         },
         onOpenHandAdaptive: (): void => {
-          this.openSettingsSheet(SettingsSheetType.HAND_ADAPTIVE)
+          this.openHandAdaptiveSheet()
         },
         onOpenTheme: (): void => {
           this.openSettingsSheet(SettingsSheetType.THEME)
@@ -1213,6 +1180,9 @@ struct Index {
         },
         onOpenNotification: (): void => {
           this.openSettingsSheet(SettingsSheetType.NOTIFICATION)
+        },
+        onOpenFontSize: (): void => {
+          this.openSettingsSheet(SettingsSheetType.FONT_SIZE)
         },
         onOpenExportData: (): void => {
           this.safePushUrl('pages/ExportDataPage')
@@ -1227,6 +1197,66 @@ struct Index {
     }
     .width('100%')
     .layoutWeight(1)
+    .backgroundColor($r('app.color.background'))
+  }
+
+  private getActiveSettingsSheetHeight(): SheetSize {
+    if (this.activeSettingsSheetType === SettingsSheetType.COLOR_THEME) {
+      return SheetSize.MEDIUM
+    }
+    return SheetSize.FIT_CONTENT
+  }
+
+  @Builder
+  SettingsSheetBuilder() {
+    Column() {
+      // 自绘标题栏：唯一关闭入口，避免系统遮罩/拖拽关闭造成“点快了自己收缩/吞点击”。
+      Row() {
+        Button() {
+          SymbolGlyph($r('sys.symbol.xmark'))
+            .fontSize(18)
+            .fontColor([$r('app.color.text_secondary')])
+        }
+        .type(ButtonType.Circle)
+        .width(36)
+        .height(36)
+        .backgroundColor($r('app.color.divider'))
+        .onClick(() => {
+          this.closeAllSettingsSheets()
+        })
+
+        Text(getSettingsSheetTitleText(this.activeSettingsSheetType))
+          .fontSize(17)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+
+        // 占位，保持标题居中
+        Column()
+          .width(36)
+          .height(36)
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 16, right: 16 })
+      .alignItems(VerticalAlign.Center)
+
+      IndexSettingsSheetContent({
+        settingsSheetType: this.activeSettingsSheetType,
+        currentThemeMode: this.currentThemeMode,
+        currentLanguage: this.currentLanguage,
+        notifyEnabled: this.notifyEnabled,
+        notifyOnComplete: this.notifyOnComplete,
+        notifyOnFailed: this.notifyOnFailed,
+        handAdaptiveEnabled: this.handAdaptiveEnabled,
+        handAdaptiveNewChat: this.handAdaptiveNewChat,
+        handAdaptiveUnsupported: this.handAdaptiveUnsupported,
+        chatFontSize: this.chatFontSize,
+        callbacks: this.buildSettingsSheetCallbacks()
+      })
+    }
+    .width('100%')
     .backgroundColor($r('app.color.background'))
   }
 
@@ -1310,19 +1340,46 @@ struct Index {
     })
   }
 
+  @Builder
+  FontSizeSheetBuilder() {
+    IndexSettingsSheetContent({
+      settingsSheetType: SettingsSheetType.FONT_SIZE,
+      currentThemeMode: this.currentThemeMode,
+      currentLanguage: this.currentLanguage,
+      notifyEnabled: this.notifyEnabled,
+      notifyOnComplete: this.notifyOnComplete,
+      notifyOnFailed: this.notifyOnFailed,
+      handAdaptiveEnabled: this.handAdaptiveEnabled,
+      handAdaptiveNewChat: this.handAdaptiveNewChat,
+      handAdaptiveUnsupported: this.handAdaptiveUnsupported,
+      chatFontSize: this.chatFontSize,
+      callbacks: this.buildSettingsSheetCallbacks()
+    })
+  }
+
   private buildSettingsSheetCallbacks(): IndexSettingsSheetActionCallbacks {
     const callbacks = new IndexSettingsSheetActionCallbacks()
     callbacks.onSelectTheme = async (mode: ThemeMode): Promise<void> => {
       this.currentThemeMode = mode
       this.syncSettingsSummaryToStorage()
-      await this.settingsManager.setThemeMode(mode)
-      this.showThemeSheet = false
+      this.closeAllSettingsSheets()
+      try {
+        await this.settingsManager.setThemeMode(mode)
+      } catch (error) {
+        console.error('Index', `Failed to set theme mode: ${JSON.stringify(error)}`)
+        this.refreshSettingsState()
+      }
     }
     callbacks.onSelectLanguage = async (language: AppLanguage): Promise<void> => {
       this.currentLanguage = language
       this.syncSettingsSummaryToStorage()
-      await this.settingsManager.setLanguage(language)
-      this.showLanguageSheet = false
+      this.closeAllSettingsSheets()
+      try {
+        await this.settingsManager.setLanguage(language)
+      } catch (error) {
+        console.error('Index', `Failed to set language: ${JSON.stringify(error)}`)
+        this.refreshSettingsState()
+      }
     }
     callbacks.onSelectColorTheme = (theme: ColorTheme): void => {
       this.handleColorThemeSelected(theme)
@@ -1350,6 +1407,13 @@ struct Index {
     }
     callbacks.onOpenSystemNotificationSettings = (): void => {
       this.openSystemNotificationSettings()
+    }
+    callbacks.onFontSizeChanged = (size: number): void => {
+      this.chatFontSize = size
+      this.syncSettingsSummaryToStorage()
+      this.settingsManager.setChatFontSize(size).catch((error: Error) => {
+        console.error('Index', `Failed to update chat font size: ${JSON.stringify(error)}`)
+      })
     }
     return callbacks
   }
@@ -1470,9 +1534,14 @@ struct Index {
     // 先本地更新，确保摘要先刷新，再持久化
     this.currentColorTheme = theme
     this.syncSettingsSummaryToStorage()
-    await this.settingsManager.setColorTheme(theme)
-    this.showColorThemeSheet = false
-    this.showIndexSnack($r('app.string.theme_switched'), 2000, SnackBarTone.SUCCESS)
+    this.closeAllSettingsSheets()
+    try {
+      await this.settingsManager.setColorTheme(theme)
+      this.showIndexSnack($r('app.string.theme_switched'), 2000, SnackBarTone.SUCCESS)
+    } catch (error) {
+      console.error('Index', `Failed to set color theme: ${JSON.stringify(error)}`)
+      this.refreshSettingsState()
+    }
   }
 
   private async openSystemNotificationSettings(): Promise<void> {

@@ -175,6 +175,7 @@ export struct ModelSelectorContent {
       this.ModelList()
     }
     .width('100%')
+    .layoutWeight(1)
   }
 
   @Builder
@@ -266,7 +267,7 @@ export struct ModelSelectorContent {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .nestedScroll({
-        scrollForward: NestedScrollMode.PARENT_FIRST,
+        scrollForward: NestedScrollMode.SELF_FIRST,
         scrollBackward: NestedScrollMode.SELF_FIRST
       })
     }

@@ -1691,6 +1691,38 @@
     {
       "name": "provider_tab_models",
       "value": "模型"
+    },
+    {
+      "name": "settings_font_size",
+      "value": "字体大小"
+    },
+    {
+      "name": "settings_font_size_desc",
+      "value": "调整聊天消息字体大小"
+    },
+    {
+      "name": "font_size_small",
+      "value": "小"
+    },
+    {
+      "name": "font_size_default",
+      "value": "默认"
+    },
+    {
+      "name": "font_size_large",
+      "value": "大"
+    },
+    {
+      "name": "font_size_extra_large",
+      "value": "超大"
+    },
+    {
+      "name": "font_preview_ai_message",
+      "value": "你好！我是 AI 助手，很高兴为你服务。"
+    },
+    {
+      "name": "font_preview_user_message",
+      "value": "你好，请帮我写一段文字。"
     }
   ]
 }

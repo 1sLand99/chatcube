@@ -1,0 +1,74 @@
+/**
+ * 带 Loading 圆环旋转动效的底部居中"回到底部"按钮
+ * 仅在 AI 流式生成中且用户不在底部时显示
+ */
+
+import {
+  createButtonTouchHandler,
+  getButtonScale,
+  getButtonAnimation
+} from '../utils/ButtonAnimationUtils'
+
+@Component
+export struct ScrollToBottomLoadingButton {
+  @Prop isVisible: boolean = false
+  @Prop isInputBarVisible: boolean = true
+  @Prop bottomAvoidHeight: number = 0
+  onScrollToBottom: () => void = () => {}
+
+  @State private btnPressed: boolean = false
+  @State private loadingAngle: number = 0
+  @StorageProp('theme_primary') themePrimary: string = '#0A59F7'
+
+  build() {
+    if (this.isVisible) {
+      Stack({ alignContent: Alignment.Center }) {
+        // 外围 loading 圆环
+        Progress({ value: 25, total: 100, type: ProgressType.Ring })
+          .width(48)
+          .height(48)
+          .color(this.themePrimary)
+          .backgroundColor('transparent')
+          .style({ strokeWidth: 2.5 })
+          .rotate({ angle: this.loadingAngle })
+          .onAppear(() => {
+            this.loadingAngle = 0
+            animateTo({ duration: 1000, curve: Curve.Linear, iterations: -1 }, () => {
+              this.loadingAngle = 360
+            })
+          })
+
+        // 中心向下箭头按钮
+        Button({ type: ButtonType.Circle }) {
+          SymbolGlyph($r('sys.symbol.chevron_down'))
+            .fontSize(20)
+            .fontColor([this.themePrimary])
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor($r('app.color.surface'))
+        .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetX: 0, offsetY: 2 })
+        .scale(getButtonScale(this.btnPressed))
+        .animation(getButtonAnimation())
+        .onTouch(createButtonTouchHandler((pressed: boolean) => {
+          this.btnPressed = pressed
+        }))
+        .onClick(() => {
+          this.onScrollToBottom()
+        })
+      }
+      .position({ x: '50%', y: '100%' })
+      .translate({
+        x: '-50%',
+        y: this.isInputBarVisible
+          ? (-140 - this.bottomAvoidHeight)
+          : (-72 - this.bottomAvoidHeight)
+      })
+      .transition(
+        TransitionEffect.OPACITY.combine(
+          TransitionEffect.scale({ x: 0.8, y: 0.8 })
+        ).animation({ duration: 200, curve: Curve.EaseOut })
+      )
+    }
+  }
+}

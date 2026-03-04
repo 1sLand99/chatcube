@@ -13,6 +13,7 @@ import { AttachmentPicker } from '../components/AttachmentPicker'
 import { ImagePreview } from '../components/ImagePreview'
 import { ChatNavigationBar } from '../components/ChatNavigationBar'
 import { ScrollToBottomButton } from '../components/ScrollToBottomButton'
+import { ScrollToBottomLoadingButton } from '../components/ScrollToBottomLoadingButton'
 import { MultiSelectToolbar } from '../components/MultiSelectToolbar'
 import { SharePreviewSheet } from '../components/SharePreviewSheet'
 import { ChatViewModel, TitleGenerationCallbacks } from '../viewmodels/ChatViewModel'
@@ -522,7 +523,7 @@ export struct ChatPage {
       },
       (): void => {
         this.safeStopInputSession()
-        this.scroller.scrollEdge(Edge.Bottom)
+        this.getScrollUiFlow().scrollToBottomWithAnimation()
       },
       (value: boolean): void => {
         this.isSending = value
@@ -534,7 +535,9 @@ export struct ChatPage {
         this.syncMessagesFromDataSource()
       },
       (): void => {
-        this.scroller.scrollEdge(Edge.Bottom)
+        if (this.isAtBottom) {
+          this.scroller.scrollEdge(Edge.Bottom)
+        }
       },
       (value: boolean): void => {
         this.isNewEmptySession = value
@@ -617,7 +620,11 @@ export struct ChatPage {
       (): ReasoningLevel => this.reasoningLevel,
       (): boolean => this.isSearchCancelled,
       (): void => this.syncMessagesFromDataSource(),
-      (): void => this.scroller.scrollEdge(Edge.Bottom),
+      (): void => {
+        if (this.isAtBottom) {
+          this.scroller.scrollEdge(Edge.Bottom)
+        }
+      },
       (value: boolean): void => {
         this.isSending = value
       },
@@ -630,7 +637,7 @@ export struct ChatPage {
       },
       (): void => {
         this.safeStopInputSession()
-        this.scroller.scrollEdge(Edge.Bottom)
+        this.getScrollUiFlow().scrollToBottomWithAnimation()
       },
       (value: boolean): void => {
         this.isNewEmptySession = value
@@ -1098,12 +1105,22 @@ export struct ChatPage {
           }
         })
 
-        // 回到底部按钮
+        // 回到底部按钮（非 AI 生成状态时显示）
         ScrollToBottomButton({
-          isVisible: !this.isAtBottom && !this.isMultiSelectMode,
+          isVisible: !this.isAtBottom && !this.isMultiSelectMode && !this.isSending,
           isInputBarVisible: this.isInputBarVisible,
           bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
           buttonDirection: 0,
+          onScrollToBottom: () => {
+            this.scrollToBottomWithAnimation()
+          }
+        })
+
+        // AI 生成中的底部居中 loading 回到底部按钮
+        ScrollToBottomLoadingButton({
+          isVisible: !this.isAtBottom && !this.isMultiSelectMode && this.isSending,
+          isInputBarVisible: this.isInputBarVisible,
+          bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
           onScrollToBottom: () => {
             this.scrollToBottomWithAnimation()
           }

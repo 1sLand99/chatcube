@@ -12,6 +12,7 @@ export class IndexSettingsSheetActionCallbacks {
   onToggleNotifyOnComplete: (value: boolean) => Promise<void> = async (_value: boolean): Promise<void> => {}
   onToggleNotifyOnFailed: (value: boolean) => Promise<void> = async (_value: boolean): Promise<void> => {}
   onOpenSystemNotificationSettings: () => void = (): void => {}
+  onFontSizeChanged: (size: number) => void = (_size: number): void => {}
 }
 
 export class IndexSettingsSheetCoordinatorBindOptions {

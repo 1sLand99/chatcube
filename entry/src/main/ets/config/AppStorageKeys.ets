@@ -43,4 +43,7 @@ export class AppStorageKeys {
   static readonly THEME_MARKDOWN_TABLE_HEADER_BG: string = 'theme_markdown_table_header_bg'
   static readonly THEME_MARKDOWN_TABLE_ALT_BG: string = 'theme_markdown_table_alt_bg'
   static readonly THEME_MARKDOWN_TABLE_BORDER: string = 'theme_markdown_table_border'
+
+  // 聊天字体大小
+  static readonly CHAT_FONT_SIZE: string = 'chat_font_size'
 }

@@ -2,6 +2,7 @@ import { ChatSession } from '../../models/ChatModels'
 import { SymbolGlyphModifier } from '@kit.ArkUI'
 import { HdsListItemCard, PrefixCustomBuilder, SuffixCustomBuilder } from '@kit.UIDesignKit'
 import { SessionGroupData } from '../../pages/index/IndexPageTypes'
+import { buildSessionRenderKeyForIndex } from '../../pages/index/IndexSessionGroupHelper'
 
 @Component
 export struct IndexSessionListSection {
@@ -36,7 +37,7 @@ export struct IndexSessionListSection {
         .margin({ left: 8 })
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 6, bottom: 2 })
+    .padding({ left: 8, right: 8, top: 6, bottom: 2 })
   }
 
   // --- SessionCard inlined builders ---
@@ -309,14 +310,16 @@ export struct IndexSessionListSection {
         Text(session.isFavorite ? $r('app.string.menu_unfavorite') : $r('app.string.menu_favorite'))
           .fontSize(10)
           .fontColor(Color.White)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
           .margin({ top: 2 })
       }
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
     }
-    .width(84)
+    .width(64)
     .height('100%')
-    .borderRadius({ topRight: 12, bottomRight: 12 })
+    .borderRadius({ topLeft: 12, bottomLeft: 12 })
     .backgroundColor(session.isFavorite ? $r('app.color.status_error') : this.themePrimary + 'B3')
     .onClick(() => {
       this.sessionListScroller.closeAllSwipeActions()
@@ -331,7 +334,7 @@ export struct IndexSessionListSection {
         .fontSize(24)
         .fontColor([Color.White])
     }
-    .width(80)
+    .width(64)
     .height('100%')
     .backgroundColor($r('app.color.status_error'))
     .borderRadius({ topRight: 12, bottomRight: 12 })
@@ -374,7 +377,7 @@ export struct IndexSessionListSection {
             start: this.FavoriteSwipeButton(session),
             end: this.DeleteSwipePanel(session.id)
           })
-          .margin({ left: 16, right: 16, top: index === 0 ? 4 : 0, bottom: 6 })
+          .margin({ left: 8, right: 8, top: index === 0 ? 4 : 0, bottom: 6 })
           .borderRadius(12)
           .clip(true)
           .border(this.isMultiSelectMode && this.selectedSessionIds.includes(session.id)
@@ -385,9 +388,7 @@ export struct IndexSessionListSection {
             (): void => { this.SessionContextMenu(session) }, ResponseType.LongPress, {
             preview: (): void => { this.SessionPreview(session) }
           })
-        // TODO: 标题生成后返回列表页标题未更新，ForEach key 不含 title 导致不重渲染，
-        //  但简单加入 key 无效，需排查 @Prop sessionGroups 的深层响应性问题，考虑迁移 Repeat（需 V2 装饰器）
-        }, (session: ChatSession) => `${session.id}_${session.isFavorite ? '1' : '0'}`)
+        }, (session: ChatSession) => buildSessionRenderKeyForIndex(session))
       }, (group: SessionGroupData) => this.onGetGroupRenderKey(group))
 
       ListItem() {

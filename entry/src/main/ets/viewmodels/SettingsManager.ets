@@ -9,6 +9,7 @@ export interface SettingsChangeCallback {
   onLanguageChanged: (language: AppLanguage) => void
   onColorThemeChanged?: (theme: ColorTheme, colors: ThemeColorConfig) => void
   onNotificationSettingsChanged?: (enabled: boolean, notifyOnComplete: boolean, notifyOnFailed: boolean) => void
+  onChatFontSizeChanged?: (size: number) => void
 }
 
 // 设置管理器 - 单例模式
@@ -19,6 +20,7 @@ export class SettingsManager {
   private notificationEnabled: boolean = true
   private notifyOnComplete: boolean = true
   private notifyOnFailed: boolean = true
+  private chatFontSize: number = 15
   private callbacks: SettingsChangeCallback[] = []
   private isInitialized: boolean = false
   private initPromise: Promise<void> | null = null
@@ -54,6 +56,7 @@ export class SettingsManager {
     this.notificationEnabled = await preferencesService.getNotifyEnabled()
     this.notifyOnComplete = await preferencesService.getNotifyOnComplete()
     this.notifyOnFailed = await preferencesService.getNotifyOnFailed()
+    this.chatFontSize = await preferencesService.getChatFontSize()
     this.isInitialized = true
   }
 
@@ -65,6 +68,7 @@ export class SettingsManager {
     this.notificationEnabled = await preferencesService.getNotifyEnabled()
     this.notifyOnComplete = await preferencesService.getNotifyOnComplete()
     this.notifyOnFailed = await preferencesService.getNotifyOnFailed()
+    this.chatFontSize = await preferencesService.getChatFontSize()
   }
 
   // 等待初始化完成
@@ -230,6 +234,29 @@ export class SettingsManager {
           this.notifyOnComplete,
           this.notifyOnFailed
         )
+      }
+    }
+  }
+
+  // ========== 聊天字体大小相关方法 ==========
+
+  getChatFontSize(): number {
+    return this.chatFontSize
+  }
+
+  async setChatFontSize(size: number): Promise<void> {
+    if (this.chatFontSize === size) {
+      return
+    }
+
+    this.chatFontSize = size
+    await getPreferencesService().setChatFontSize(size)
+    AppStorage.setOrCreate('chat_font_size', size)
+
+    for (let i = 0; i < this.callbacks.length; i++) {
+      const callback = this.callbacks[i]
+      if (callback.onChatFontSizeChanged !== undefined) {
+        callback.onChatFontSizeChanged(size)
       }
     }
   }
