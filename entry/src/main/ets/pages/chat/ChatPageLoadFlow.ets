@@ -22,26 +22,12 @@ export class ChatPageLoadResult {
   isNewEmptySession: boolean = false
 }
 
-export class ChatPageLoadFlowDependencies {
+export interface ChatPageLoadFlowDependencies {
   appStateManager: AppStateManager
   preferencesService: PreferencesService
   providerViewModel: ProviderViewModel
   chatViewModel: ChatViewModel
   parseToolIdsFromRoute: (raw: string) => string[]
-
-  constructor(
-    appStateManager: AppStateManager,
-    preferencesService: PreferencesService,
-    providerViewModel: ProviderViewModel,
-    chatViewModel: ChatViewModel,
-    parseToolIdsFromRoute: (raw: string) => string[]
-  ) {
-    this.appStateManager = appStateManager
-    this.preferencesService = preferencesService
-    this.providerViewModel = providerViewModel
-    this.chatViewModel = chatViewModel
-    this.parseToolIdsFromRoute = parseToolIdsFromRoute
-  }
 }
 
 export class ChatPageLoadFlow {

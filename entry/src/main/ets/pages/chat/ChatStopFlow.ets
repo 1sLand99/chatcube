@@ -3,7 +3,7 @@ import { MessageDataSource } from '../../datasource/MessageDataSource'
 import { ChatTaskOrchestratorService } from '../../services/ChatTaskOrchestratorService'
 import { ChatViewModel } from '../../viewmodels/ChatViewModel'
 
-export class ChatStopFlowDependencies {
+export interface ChatStopFlowDependencies {
   chatViewModel: ChatViewModel
   chatTaskOrchestrator: ChatTaskOrchestratorService
   messageDataSource: MessageDataSource
@@ -16,34 +16,6 @@ export class ChatStopFlowDependencies {
   onSetLoading: (value: boolean) => void
   onClearForcedToolIds: () => void
   onMarkAutoTaskFailed: (message: string) => void
-
-  constructor(
-    chatViewModel: ChatViewModel,
-    chatTaskOrchestrator: ChatTaskOrchestratorService,
-    messageDataSource: MessageDataSource,
-    getCurrentTaskId: () => string,
-    onSetCurrentTaskId: (taskId: string) => void,
-    onSetSearchCancelled: (value: boolean) => void,
-    onCancelManualSearchRequests: () => void,
-    onSyncMessages: () => void,
-    onSetSending: (value: boolean) => void,
-    onSetLoading: (value: boolean) => void,
-    onClearForcedToolIds: () => void,
-    onMarkAutoTaskFailed: (message: string) => void
-  ) {
-    this.chatViewModel = chatViewModel
-    this.chatTaskOrchestrator = chatTaskOrchestrator
-    this.messageDataSource = messageDataSource
-    this.getCurrentTaskId = getCurrentTaskId
-    this.onSetCurrentTaskId = onSetCurrentTaskId
-    this.onSetSearchCancelled = onSetSearchCancelled
-    this.onCancelManualSearchRequests = onCancelManualSearchRequests
-    this.onSyncMessages = onSyncMessages
-    this.onSetSending = onSetSending
-    this.onSetLoading = onSetLoading
-    this.onClearForcedToolIds = onClearForcedToolIds
-    this.onMarkAutoTaskFailed = onMarkAutoTaskFailed
-  }
 }
 
 export class ChatStopFlow {

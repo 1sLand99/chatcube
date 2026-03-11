@@ -2,6 +2,7 @@ import {
   ApiStyle,
   ChatMessage,
   MessageAttachment,
+  MessageRole,
   ModelProvider,
   ProviderType,
   ReasoningLevel,
@@ -22,14 +23,14 @@ export class ChatSendPrepareResult {
   currentProvider: ModelProvider | null = null
 }
 
-export class ChatSendDispatchResult {
-  static readonly NOT_HANDLED: number = 0
-  static readonly SENT_WITH_TOOLS: number = 1
-  static readonly MANUAL_FALLBACK: number = 2
-  static readonly UNSUPPORTED_TOOLS: number = 3
+export enum ChatSendDispatchResult {
+  NOT_HANDLED,
+  SENT_WITH_TOOLS,
+  MANUAL_FALLBACK,
+  UNSUPPORTED_TOOLS
 }
 
-export class ChatSendFlowDependencies {
+export interface ChatSendFlowDependencies {
   chatViewModel: ChatViewModel
   messageDataSource: MessageDataSource
   chatTaskOrchestrator: ChatTaskOrchestratorService
@@ -53,56 +54,6 @@ export class ChatSendFlowDependencies {
   onMarkAutoTaskFailed: (message: string) => void
   onShowError: (message: string | Resource) => void
   onShowToast: (message: string | Resource) => void
-
-  constructor(
-    chatViewModel: ChatViewModel,
-    messageDataSource: MessageDataSource,
-    chatTaskOrchestrator: ChatTaskOrchestratorService,
-    toolRegistry: ToolRegistry,
-    getSessionId: () => string,
-    getSessionTitle: () => string,
-    getCurrentTaskId: () => string,
-    getCurrentModelId: () => string,
-    getCurrentModelName: () => string,
-    getMessages: () => ChatMessage[],
-    getReasoningLevel: () => ReasoningLevel,
-    onClearComposer: () => void,
-    onBeforeSend: () => void,
-    onSetSending: (value: boolean) => void,
-    onSetCurrentTaskId: (taskId: string) => void,
-    onSyncMessages: () => void,
-    onScrollBottom: () => void,
-    onSetNewEmptySession: (value: boolean) => void,
-    onDraftCommitted: () => void,
-    onMarkAutoTaskCompleted: () => void,
-    onMarkAutoTaskFailed: (message: string) => void,
-    onShowError: (message: string | Resource) => void,
-    onShowToast: (message: string | Resource) => void
-  ) {
-    this.chatViewModel = chatViewModel
-    this.messageDataSource = messageDataSource
-    this.chatTaskOrchestrator = chatTaskOrchestrator
-    this.toolRegistry = toolRegistry
-    this.getSessionId = getSessionId
-    this.getSessionTitle = getSessionTitle
-    this.getCurrentTaskId = getCurrentTaskId
-    this.getCurrentModelId = getCurrentModelId
-    this.getCurrentModelName = getCurrentModelName
-    this.getMessages = getMessages
-    this.getReasoningLevel = getReasoningLevel
-    this.onClearComposer = onClearComposer
-    this.onBeforeSend = onBeforeSend
-    this.onSetSending = onSetSending
-    this.onSetCurrentTaskId = onSetCurrentTaskId
-    this.onSyncMessages = onSyncMessages
-    this.onScrollBottom = onScrollBottom
-    this.onSetNewEmptySession = onSetNewEmptySession
-    this.onDraftCommitted = onDraftCommitted
-    this.onMarkAutoTaskCompleted = onMarkAutoTaskCompleted
-    this.onMarkAutoTaskFailed = onMarkAutoTaskFailed
-    this.onShowError = onShowError
-    this.onShowToast = onShowToast
-  }
 }
 
 export class ChatSendFlow {
@@ -167,7 +118,7 @@ export class ChatSendFlow {
     currentModelId: string,
     onManualFallbackStart: (content: string, attachments: MessageAttachment[]) => void,
     onUnsupportedTools: () => void
-  ): Promise<number> {
+  ): Promise<ChatSendDispatchResult> {
     const enabledToolIds = this.buildEnabledToolIds(webSearchEnabled, weatherQueryEnabled, forcedToolIds)
     if (enabledToolIds.length <= 0) {
       return ChatSendDispatchResult.NOT_HANDLED
@@ -175,7 +126,7 @@ export class ChatSendFlow {
 
     const currentModelSupportsTools = this.isCurrentModelSupportsTools(currentProvider, currentModelId)
     if (currentModelSupportsTools) {
-      await this.sendMessageWithTools(
+      const hasContent = await this.sendMessageWithTools(
         messageContent,
         currentProvider,
         effectiveApiKey,
@@ -184,6 +135,11 @@ export class ChatSendFlow {
         webSearchEnabled,
         weatherQueryEnabled
       )
+      if (!hasContent) {
+        console.warn('ChatSendFlow',
+          '[Function Calling] tools 路径返回空内容，疑似模型不兼容 Function Calling，降级为不带 tools 重试')
+        await this.retryWithoutTools(messageContent, currentProvider, effectiveApiKey, attachmentsToSend)
+      }
       return ChatSendDispatchResult.SENT_WITH_TOOLS
     }
 
@@ -372,10 +328,10 @@ export class ChatSendFlow {
     extraToolIds: string[] = [],
     webSearchEnabled: boolean = false,
     weatherQueryEnabled: boolean = false
-  ): Promise<void> {
+  ): Promise<boolean> {
     const taskId = this.startTaskOrFail(messageContent)
     if (taskId === '') {
-      return
+      return true
     }
 
     this.prepareSendState(taskId)
@@ -385,8 +341,12 @@ export class ChatSendFlow {
 
     console.info('ChatSendFlow', `[Function Calling] 启用工具: ${enabledToolIds.join(', ')}`)
 
+    let lastAIMessage: ChatMessage | null = null
+    let hasToolCallActivity = false
+
     const toolCallbacks: ToolCallCallbacks = {
       onToolCallStarted: (toolCalls: ToolCall[]): void => {
+        hasToolCallActivity = true
         console.info('ChatSendFlow', `[Function Calling] 工具调用开始: ${toolCalls.length} 个`)
         for (let i = 0; i < toolCalls.length; i++) {
           console.info('ChatSendFlow', `  - ${toolCalls[i].functionName}: ${toolCalls[i].arguments}`)
@@ -415,9 +375,11 @@ export class ChatSendFlow {
           this.handleUserMessageAdded(userMessage)
         },
         (aiMessage: ChatMessage): void => {
+          lastAIMessage = aiMessage
           this.handleAIMessageAdded(aiMessage)
         },
         (aiMessage: ChatMessage): void => {
+          lastAIMessage = aiMessage
           this.handleAIMessageUpdated(aiMessage)
         },
         (): void => {
@@ -436,6 +398,63 @@ export class ChatSendFlow {
     } catch (error) {
       const message = `发送失败: ${JSON.stringify(error)}`
       this.handleTaskFailed(taskId, message, true)
+      return true
+    }
+
+    if (hasToolCallActivity) {
+      return true
+    }
+    return this.hasAIMessageContent(lastAIMessage)
+  }
+
+  private hasAIMessageContent(aiMessage: ChatMessage | null): boolean {
+    if (aiMessage === null) {
+      return false
+    }
+    if (aiMessage.content.trim() !== '' && aiMessage.content !== '[模型未返回内容]') {
+      return true
+    }
+    if (aiMessage.reasoningContent.trim() !== '') {
+      return true
+    }
+    if (aiMessage.attachments.length > 0) {
+      return true
+    }
+    if (aiMessage.toolCalls.length > 0 || aiMessage.toolResults.length > 0) {
+      return true
+    }
+    return false
+  }
+
+  private async retryWithoutTools(
+    messageContent: string,
+    currentProvider: ModelProvider,
+    effectiveApiKey: string,
+    attachmentsToSend: MessageAttachment[]
+  ): Promise<void> {
+    await this.removeLastRoundMessages()
+    this.deps.onSyncMessages()
+
+    await this.sendPlainMessage(
+      messageContent,
+      currentProvider,
+      effectiveApiKey,
+      attachmentsToSend
+    )
+  }
+
+  private async removeLastRoundMessages(): Promise<void> {
+    const messages = this.deps.getMessages()
+    if (messages.length < 2) {
+      return
+    }
+    const lastMsg = messages[messages.length - 1]
+    const secondLastMsg = messages[messages.length - 2]
+    if (lastMsg.role === MessageRole.ASSISTANT && secondLastMsg.role === MessageRole.USER) {
+      const idsToDelete = [lastMsg.id, secondLastMsg.id]
+      this.deps.messageDataSource.removeMessageById(lastMsg.id)
+      this.deps.messageDataSource.removeMessageById(secondLastMsg.id)
+      await this.deps.chatViewModel.deleteMessagesFromIndex(idsToDelete)
     }
   }
 }

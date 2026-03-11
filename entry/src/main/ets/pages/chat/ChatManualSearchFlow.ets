@@ -31,7 +31,7 @@ import {
   shouldApplyLlmQueryOptimizationForChat
 } from './ChatSearchDecisionHelper'
 
-export class ChatManualSearchFlowDependencies {
+export interface ChatManualSearchFlowDependencies {
   chatViewModel: ChatViewModel
   providerViewModel: ProviderViewModel
   webSearchService: WebSearchService
@@ -57,60 +57,6 @@ export class ChatManualSearchFlowDependencies {
   onMarkAutoTaskCompleted: () => void
   onShowError: (message: string | Resource) => void
   onShowToast: (message: string | Resource) => void
-
-  constructor(
-    chatViewModel: ChatViewModel,
-    providerViewModel: ProviderViewModel,
-    webSearchService: WebSearchService,
-    defaultModelService: DefaultModelService,
-    preferencesService: PreferencesService,
-    appStateManager: AppStateManager,
-    messageDataSource: MessageDataSource,
-    getCurrentProvider: () => ModelProvider | null,
-    getCurrentModelId: () => string,
-    getCurrentModelName: () => string,
-    getMessages: () => ChatMessage[],
-    getReasoningLevel: () => ReasoningLevel,
-    isSearchCancelled: () => boolean,
-    onSyncMessages: () => void,
-    onScrollBottom: () => void,
-    onSetSending: (value: boolean) => void,
-    onSetSearchCancelled: (value: boolean) => void,
-    onClearComposer: () => void,
-    onBeforeManualSearchStart: () => void,
-    onSetNewEmptySession: (value: boolean) => void,
-    onDraftCommitted: () => void,
-    onMarkAutoTaskFailed: (message: string) => void,
-    onMarkAutoTaskCompleted: () => void,
-    onShowError: (message: string | Resource) => void,
-    onShowToast: (message: string | Resource) => void
-  ) {
-    this.chatViewModel = chatViewModel
-    this.providerViewModel = providerViewModel
-    this.webSearchService = webSearchService
-    this.defaultModelService = defaultModelService
-    this.preferencesService = preferencesService
-    this.appStateManager = appStateManager
-    this.messageDataSource = messageDataSource
-    this.getCurrentProvider = getCurrentProvider
-    this.getCurrentModelId = getCurrentModelId
-    this.getCurrentModelName = getCurrentModelName
-    this.getMessages = getMessages
-    this.getReasoningLevel = getReasoningLevel
-    this.isSearchCancelled = isSearchCancelled
-    this.onSyncMessages = onSyncMessages
-    this.onScrollBottom = onScrollBottom
-    this.onSetSending = onSetSending
-    this.onSetSearchCancelled = onSetSearchCancelled
-    this.onClearComposer = onClearComposer
-    this.onBeforeManualSearchStart = onBeforeManualSearchStart
-    this.onSetNewEmptySession = onSetNewEmptySession
-    this.onDraftCommitted = onDraftCommitted
-    this.onMarkAutoTaskFailed = onMarkAutoTaskFailed
-    this.onMarkAutoTaskCompleted = onMarkAutoTaskCompleted
-    this.onShowError = onShowError
-    this.onShowToast = onShowToast
-  }
 }
 
 export class ChatManualSearchFlow {

@@ -1,6 +1,6 @@
 import { MessageDataSource } from '../../datasource/MessageDataSource'
 
-export class ChatScrollUiFlowDependencies {
+export interface ChatScrollUiFlowDependencies {
   scroller: Scroller
   messageDataSource: MessageDataSource
   getLastScrollOffset: () => number
@@ -19,46 +19,6 @@ export class ChatScrollUiFlowDependencies {
   onSetIsAtBottomState: (value: boolean) => void
   onSetInputBarVisibleState: (value: boolean) => void
   onAnimate: (duration: number, curve: Curve, updater: () => void) => void
-
-  constructor(
-    scroller: Scroller,
-    messageDataSource: MessageDataSource,
-    getLastScrollOffset: () => number,
-    setLastScrollOffset: (value: number) => void,
-    getInputBarShowThreshold: () => number,
-    getInputBarHideThreshold: () => number,
-    getIsAtTop: () => boolean,
-    getIsAtBottom: () => boolean,
-    getIsInputBarVisible: () => boolean,
-    getIsSending: () => boolean,
-    getIsInputFocused: () => boolean,
-    getIsEditingMessage: () => boolean,
-    getEditingMessageId: () => string,
-    hasDraftContent: () => boolean,
-    onSetIsAtTopState: (value: boolean) => void,
-    onSetIsAtBottomState: (value: boolean) => void,
-    onSetInputBarVisibleState: (value: boolean) => void,
-    onAnimate: (duration: number, curve: Curve, updater: () => void) => void
-  ) {
-    this.scroller = scroller
-    this.messageDataSource = messageDataSource
-    this.getLastScrollOffset = getLastScrollOffset
-    this.setLastScrollOffset = setLastScrollOffset
-    this.getInputBarShowThreshold = getInputBarShowThreshold
-    this.getInputBarHideThreshold = getInputBarHideThreshold
-    this.getIsAtTop = getIsAtTop
-    this.getIsAtBottom = getIsAtBottom
-    this.getIsInputBarVisible = getIsInputBarVisible
-    this.getIsSending = getIsSending
-    this.getIsInputFocused = getIsInputFocused
-    this.getIsEditingMessage = getIsEditingMessage
-    this.getEditingMessageId = getEditingMessageId
-    this.hasDraftContent = hasDraftContent
-    this.onSetIsAtTopState = onSetIsAtTopState
-    this.onSetIsAtBottomState = onSetIsAtBottomState
-    this.onSetInputBarVisibleState = onSetInputBarVisibleState
-    this.onAnimate = onAnimate
-  }
 }
 
 export class ChatScrollUiFlow {

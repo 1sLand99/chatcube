@@ -8,7 +8,7 @@ import {
   tryParseUnreadBySessionMap
 } from '../../utils/TaskAlertUtils'
 
-export class ChatTaskAlertFlowDependencies {
+export interface ChatTaskAlertFlowDependencies {
   chatTaskOrchestrator: ChatTaskOrchestratorService
   getTaskUnreadBySessionJson: () => string
   getCurrentSessionId: () => string
@@ -20,32 +20,6 @@ export class ChatTaskAlertFlowDependencies {
   onClearOpenSessionPayloadStorage: () => void
   onClearInAppTaskAlertPayloadStorage: () => void
   getUIContext: () => UIContext
-
-  constructor(
-    chatTaskOrchestrator: ChatTaskOrchestratorService,
-    getTaskUnreadBySessionJson: () => string,
-    getCurrentSessionId: () => string,
-    isCurrentSessionVisible: () => boolean,
-    getLastHandledAlertTimestamp: () => number,
-    onSetOtherSessionUnreadCount: (count: number) => void,
-    onSetLastHandledAlertTimestamp: (value: number) => void,
-    onNavigateToSession: (sessionId: string) => void,
-    onClearOpenSessionPayloadStorage: () => void,
-    onClearInAppTaskAlertPayloadStorage: () => void,
-    getUIContext: () => UIContext
-  ) {
-    this.chatTaskOrchestrator = chatTaskOrchestrator
-    this.getTaskUnreadBySessionJson = getTaskUnreadBySessionJson
-    this.getCurrentSessionId = getCurrentSessionId
-    this.isCurrentSessionVisible = isCurrentSessionVisible
-    this.getLastHandledAlertTimestamp = getLastHandledAlertTimestamp
-    this.onSetOtherSessionUnreadCount = onSetOtherSessionUnreadCount
-    this.onSetLastHandledAlertTimestamp = onSetLastHandledAlertTimestamp
-    this.onNavigateToSession = onNavigateToSession
-    this.onClearOpenSessionPayloadStorage = onClearOpenSessionPayloadStorage
-    this.onClearInAppTaskAlertPayloadStorage = onClearInAppTaskAlertPayloadStorage
-    this.getUIContext = getUIContext
-  }
 }
 
 export class ChatTaskAlertFlow {

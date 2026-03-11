@@ -9,7 +9,7 @@ import {
 } from '../../utils/SelectionHelper'
 import { collectAllMessageIds, collectSelectedMessages, filterMessagesByRemovedIds } from './ChatMessageActionHelper'
 
-export class ChatSelectionFlowDependencies {
+export interface ChatSelectionFlowDependencies {
   chatViewModel: ChatViewModel
   messageDataSource: MessageDataSource
   getMessages: () => ChatMessage[]
@@ -21,32 +21,6 @@ export class ChatSelectionFlowDependencies {
   onSetShareMessages: (messages: ChatMessage[]) => void
   onSetShowSharePreview: (value: boolean) => void
   onShowToast: (message: string | Resource) => void
-
-  constructor(
-    chatViewModel: ChatViewModel,
-    messageDataSource: MessageDataSource,
-    getMessages: () => ChatMessage[],
-    onSetMessages: (messages: ChatMessage[]) => void,
-    onSyncMessages: () => void,
-    onSetMultiSelectMode: (value: boolean) => void,
-    onSetSelectedMessageIds: (ids: string[]) => void,
-    onSetInputBarVisible: (value: boolean) => void,
-    onSetShareMessages: (messages: ChatMessage[]) => void,
-    onSetShowSharePreview: (value: boolean) => void,
-    onShowToast: (message: string | Resource) => void
-  ) {
-    this.chatViewModel = chatViewModel
-    this.messageDataSource = messageDataSource
-    this.getMessages = getMessages
-    this.onSetMessages = onSetMessages
-    this.onSyncMessages = onSyncMessages
-    this.onSetMultiSelectMode = onSetMultiSelectMode
-    this.onSetSelectedMessageIds = onSetSelectedMessageIds
-    this.onSetInputBarVisible = onSetInputBarVisible
-    this.onSetShareMessages = onSetShareMessages
-    this.onSetShowSharePreview = onSetShowSharePreview
-    this.onShowToast = onShowToast
-  }
 }
 
 export class ChatSelectionFlow {

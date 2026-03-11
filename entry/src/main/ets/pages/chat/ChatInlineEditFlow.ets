@@ -3,7 +3,7 @@ import { MessageDataSource } from '../../datasource/MessageDataSource'
 import { ChatViewModel } from '../../viewmodels/ChatViewModel'
 import { collectTailMessageIds, findMessageIndexById } from './ChatMessageActionHelper'
 
-export class ChatInlineEditFlowDependencies {
+export interface ChatInlineEditFlowDependencies {
   chatViewModel: ChatViewModel
   messageDataSource: MessageDataSource
   getMessages: () => ChatMessage[]
@@ -18,33 +18,6 @@ export class ChatInlineEditFlowDependencies {
   onSetSending: (value: boolean) => void
   onTriggerSend: () => void
   onShowToast: (message: string | Resource) => void
-
-  constructor(
-    chatViewModel: ChatViewModel,
-    messageDataSource: MessageDataSource,
-    getMessages: () => ChatMessage[],
-    onSyncMessages: () => void,
-    onResetEditState: () => void,
-    onApplySavedDraft: (
-      content: string,
-      attachments: MessageAttachment[],
-      webSearchEnabled: boolean,
-      reasoningLevel: ReasoningLevel
-    ) => void,
-    onSetSending: (value: boolean) => void,
-    onTriggerSend: () => void,
-    onShowToast: (message: string | Resource) => void
-  ) {
-    this.chatViewModel = chatViewModel
-    this.messageDataSource = messageDataSource
-    this.getMessages = getMessages
-    this.onSyncMessages = onSyncMessages
-    this.onResetEditState = onResetEditState
-    this.onApplySavedDraft = onApplySavedDraft
-    this.onSetSending = onSetSending
-    this.onTriggerSend = onTriggerSend
-    this.onShowToast = onShowToast
-  }
 }
 
 export class ChatInlineEditFlow {

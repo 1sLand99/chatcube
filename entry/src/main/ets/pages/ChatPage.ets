@@ -517,62 +517,62 @@ export struct ChatPage {
     if (this.sendFlow !== null) {
       return this.sendFlow
     }
-    const deps = new ChatSendFlowDependencies(
-      this.chatViewModel,
-      this.messageDataSource,
-      this.chatTaskOrchestrator,
-      this.toolRegistry,
-      (): string => this.sessionId,
-      (): string => this.sessionTitle,
-      (): string => this.currentTaskId,
-      (): string => this.currentModelId,
-      (): string => this.currentModel,
-      (): ChatMessage[] => this.messages,
-      (): ReasoningLevel => this.reasoningLevel,
-      (): void => {
+    const deps: ChatSendFlowDependencies = {
+      chatViewModel: this.chatViewModel,
+      messageDataSource: this.messageDataSource,
+      chatTaskOrchestrator: this.chatTaskOrchestrator,
+      toolRegistry: this.toolRegistry,
+      getSessionId: (): string => this.sessionId,
+      getSessionTitle: (): string => this.sessionTitle,
+      getCurrentTaskId: (): string => this.currentTaskId,
+      getCurrentModelId: (): string => this.currentModelId,
+      getCurrentModelName: (): string => this.currentModel,
+      getMessages: (): ChatMessage[] => this.messages,
+      getReasoningLevel: (): ReasoningLevel => this.reasoningLevel,
+      onClearComposer: (): void => {
         this.clearDraftAutosaveTimer()
         this.inputText = ''
         this.pendingAttachments = []
       },
-      (): void => {
+      onBeforeSend: (): void => {
         this.safeStopInputSession()
         this.getScrollUiFlow().scrollToBottomWithAnimation()
       },
-      (value: boolean): void => {
+      onSetSending: (value: boolean): void => {
         this.isSending = value
       },
-      (taskId: string): void => {
+      onSetCurrentTaskId: (taskId: string): void => {
         this.currentTaskId = taskId
       },
-      (): void => {
+      onSyncMessages: (): void => {
         this.syncMessagesFromDataSource()
       },
-      (): void => {
+      onScrollBottom: (): void => {
         if (this.isAtBottom) {
           this.scroller.scrollEdge(Edge.Bottom)
         }
       },
-      (value: boolean): void => {
+      onSetNewEmptySession: (value: boolean): void => {
         this.isNewEmptySession = value
       },
-      (): void => {
+      onDraftCommitted: (): void => {
         this.persistCurrentDraftState('', []).catch((error: Error): void => {
           console.error('ChatPage', `Failed to clear draft after send: ${JSON.stringify(error)}`)
         })
       },
-      (): void => {
+      onMarkAutoTaskCompleted: (): void => {
         // no-op
       },
-      (message: string): void => {
+      onMarkAutoTaskFailed: (message: string): void => {
         // no-op
       },
-      (message: string | Resource): void => {
+      onShowError: (message: string | Resource): void => {
         this.showError(message)
       },
-      (message: string | Resource): void => {
+      onShowToast: (message: string | Resource): void => {
         this.showChatSnack(message)
       }
-    )
+    }
     this.sendFlow = new ChatSendFlow(deps)
     return this.sendFlow
   }
@@ -581,40 +581,40 @@ export struct ChatPage {
     if (this.stopFlow !== null) {
       return this.stopFlow
     }
-    const deps = new ChatStopFlowDependencies(
-      this.chatViewModel,
-      this.chatTaskOrchestrator,
-      this.messageDataSource,
-      (): string => this.currentTaskId,
-      (taskId: string): void => {
+    const deps: ChatStopFlowDependencies = {
+      chatViewModel: this.chatViewModel,
+      chatTaskOrchestrator: this.chatTaskOrchestrator,
+      messageDataSource: this.messageDataSource,
+      getCurrentTaskId: (): string => this.currentTaskId,
+      onSetCurrentTaskId: (taskId: string): void => {
         this.currentTaskId = taskId
       },
-      (value: boolean): void => {
+      onSetSearchCancelled: (value: boolean): void => {
         this.isSearchCancelled = value
       },
-      (): void => {
+      onCancelManualSearchRequests: (): void => {
         if (this.manualSearchFlow !== null) {
           this.manualSearchFlow.cancelCurrentSearchRequest()
           return
         }
         this.webSearchService.cancelAllRequests()
       },
-      (): void => {
+      onSyncMessages: (): void => {
         this.syncMessagesFromDataSource()
       },
-      (value: boolean): void => {
+      onSetSending: (value: boolean): void => {
         this.isSending = value
       },
-      (value: boolean): void => {
+      onSetLoading: (value: boolean): void => {
         this.isLoading = value
       },
-      (): void => {
+      onClearForcedToolIds: (): void => {
         this.forcedToolIdsOnce = []
       },
-      (message: string): void => {
+      onMarkAutoTaskFailed: (message: string): void => {
         // no-op
       }
-    )
+    }
     this.stopFlow = new ChatStopFlow(deps)
     return this.stopFlow
   }
@@ -623,62 +623,62 @@ export struct ChatPage {
     if (this.manualSearchFlow !== null) {
       return this.manualSearchFlow
     }
-    const deps = new ChatManualSearchFlowDependencies(
-      this.chatViewModel,
-      this.providerViewModel,
-      this.webSearchService,
-      this.defaultModelService,
-      this.preferencesService,
-      this.appStateManager,
-      this.messageDataSource,
-      (): ModelProvider | null => this.currentProvider,
-      (): string => this.currentModelId,
-      (): string => this.currentModel,
-      (): ChatMessage[] => this.messages,
-      (): ReasoningLevel => this.reasoningLevel,
-      (): boolean => this.isSearchCancelled,
-      (): void => this.syncMessagesFromDataSource(),
-      (): void => {
+    const deps: ChatManualSearchFlowDependencies = {
+      chatViewModel: this.chatViewModel,
+      providerViewModel: this.providerViewModel,
+      webSearchService: this.webSearchService,
+      defaultModelService: this.defaultModelService,
+      preferencesService: this.preferencesService,
+      appStateManager: this.appStateManager,
+      messageDataSource: this.messageDataSource,
+      getCurrentProvider: (): ModelProvider | null => this.currentProvider,
+      getCurrentModelId: (): string => this.currentModelId,
+      getCurrentModelName: (): string => this.currentModel,
+      getMessages: (): ChatMessage[] => this.messages,
+      getReasoningLevel: (): ReasoningLevel => this.reasoningLevel,
+      isSearchCancelled: (): boolean => this.isSearchCancelled,
+      onSyncMessages: (): void => this.syncMessagesFromDataSource(),
+      onScrollBottom: (): void => {
         if (this.isAtBottom) {
           this.scroller.scrollEdge(Edge.Bottom)
         }
       },
-      (value: boolean): void => {
+      onSetSending: (value: boolean): void => {
         this.isSending = value
       },
-      (value: boolean): void => {
+      onSetSearchCancelled: (value: boolean): void => {
         this.isSearchCancelled = value
       },
-      (): void => {
+      onClearComposer: (): void => {
         this.clearDraftAutosaveTimer()
         this.inputText = ''
         this.pendingAttachments = []
       },
-      (): void => {
+      onBeforeManualSearchStart: (): void => {
         this.safeStopInputSession()
         this.getScrollUiFlow().scrollToBottomWithAnimation()
       },
-      (value: boolean): void => {
+      onSetNewEmptySession: (value: boolean): void => {
         this.isNewEmptySession = value
       },
-      (): void => {
+      onDraftCommitted: (): void => {
         this.persistCurrentDraftState('', []).catch((error: Error): void => {
           console.error('ChatPage', `Failed to clear draft after manual search: ${JSON.stringify(error)}`)
         })
       },
-      (message: string): void => {
+      onMarkAutoTaskFailed: (message: string): void => {
         // no-op
       },
-      (): void => {
+      onMarkAutoTaskCompleted: (): void => {
         // no-op
       },
-      (message: string | Resource): void => {
+      onShowError: (message: string | Resource): void => {
         this.showError(message)
       },
-      (message: string | Resource): void => {
+      onShowToast: (message: string | Resource): void => {
         this.showChatSnack(message)
       }
-    )
+    }
     this.manualSearchFlow = new ChatManualSearchFlow(deps)
     return this.manualSearchFlow
   }
@@ -687,14 +687,14 @@ export struct ChatPage {
     if (this.inlineEditFlow !== null) {
       return this.inlineEditFlow
     }
-    const deps = new ChatInlineEditFlowDependencies(
-      this.chatViewModel,
-      this.messageDataSource,
-      (): ChatMessage[] => this.messages,
-      (): void => {
+    const deps: ChatInlineEditFlowDependencies = {
+      chatViewModel: this.chatViewModel,
+      messageDataSource: this.messageDataSource,
+      getMessages: (): ChatMessage[] => this.messages,
+      onSyncMessages: (): void => {
         this.syncMessagesFromDataSource()
       },
-      (): void => {
+      onResetEditState: (): void => {
         this.isEditingMessage = false
         this.editingMessageId = ''
         this.editingOriginalContent = ''
@@ -702,7 +702,7 @@ export struct ChatPage {
         this.editingWebSearchEnabled = false
         this.editingReasoningLevel = ReasoningLevel.OFF
       },
-      (
+      onApplySavedDraft: (
         content: string,
         attachments: MessageAttachment[],
         webSearchEnabled: boolean,
@@ -713,16 +713,16 @@ export struct ChatPage {
         this.webSearchEnabled = webSearchEnabled
         this.reasoningLevel = reasoningLevel
       },
-      (value: boolean): void => {
+      onSetSending: (value: boolean): void => {
         this.isSending = value
       },
-      (): void => {
+      onTriggerSend: (): void => {
         this.handleSend()
       },
-      (message: string | Resource): void => {
+      onShowToast: (message: string | Resource): void => {
         this.showChatSnack(message)
       }
-    )
+    }
     this.inlineEditFlow = new ChatInlineEditFlow(deps)
     return this.inlineEditFlow
   }
@@ -731,35 +731,35 @@ export struct ChatPage {
     if (this.selectionFlow !== null) {
       return this.selectionFlow
     }
-    const deps = new ChatSelectionFlowDependencies(
-      this.chatViewModel,
-      this.messageDataSource,
-      (): ChatMessage[] => this.messages,
-      (messages: ChatMessage[]): void => {
+    const deps: ChatSelectionFlowDependencies = {
+      chatViewModel: this.chatViewModel,
+      messageDataSource: this.messageDataSource,
+      getMessages: (): ChatMessage[] => this.messages,
+      onSetMessages: (messages: ChatMessage[]): void => {
         this.messages = messages
       },
-      (): void => {
+      onSyncMessages: (): void => {
         this.syncMessagesFromDataSource()
       },
-      (value: boolean): void => {
+      onSetMultiSelectMode: (value: boolean): void => {
         this.isMultiSelectMode = value
       },
-      (ids: string[]): void => {
+      onSetSelectedMessageIds: (ids: string[]): void => {
         this.selectedMessageIds = ids
       },
-      (value: boolean): void => {
+      onSetInputBarVisible: (value: boolean): void => {
         this.getScrollUiFlow().setInputBarVisible(value)
       },
-      (messages: ChatMessage[]): void => {
+      onSetShareMessages: (messages: ChatMessage[]): void => {
         this.shareMessages = messages
       },
-      (value: boolean): void => {
+      onSetShowSharePreview: (value: boolean): void => {
         this.showSharePreview = value
       },
-      (message: string | Resource): void => {
+      onShowToast: (message: string | Resource): void => {
         this.showChatSnack(message)
       }
-    )
+    }
     this.selectionFlow = new ChatSelectionFlow(deps)
     return this.selectionFlow
   }
@@ -768,15 +768,15 @@ export struct ChatPage {
     if (this.loadFlow !== null) {
       return this.loadFlow
     }
-    const deps = new ChatPageLoadFlowDependencies(
-      this.appStateManager,
-      this.preferencesService,
-      this.providerViewModel,
-      this.chatViewModel,
-      (raw: string): string[] => {
+    const deps: ChatPageLoadFlowDependencies = {
+      appStateManager: this.appStateManager,
+      preferencesService: this.preferencesService,
+      providerViewModel: this.providerViewModel,
+      chatViewModel: this.chatViewModel,
+      parseToolIdsFromRoute: (raw: string): string[] => {
         return this.parseToolIdsFromRoute(raw)
       }
-    )
+    }
     this.loadFlow = new ChatPageLoadFlow(deps)
     return this.loadFlow
   }
@@ -785,31 +785,31 @@ export struct ChatPage {
     if (this.taskAlertFlow !== null) {
       return this.taskAlertFlow
     }
-    const deps = new ChatTaskAlertFlowDependencies(
-      this.chatTaskOrchestrator,
-      (): string => this.taskUnreadBySessionJson,
-      (): string => this.sessionId,
-      (): boolean => this.isPageVisible,
-      (): number => this.lastHandledAlertTimestamp,
-      (count: number): void => {
+    const deps: ChatTaskAlertFlowDependencies = {
+      chatTaskOrchestrator: this.chatTaskOrchestrator,
+      getTaskUnreadBySessionJson: (): string => this.taskUnreadBySessionJson,
+      getCurrentSessionId: (): string => this.sessionId,
+      isCurrentSessionVisible: (): boolean => this.isPageVisible,
+      getLastHandledAlertTimestamp: (): number => this.lastHandledAlertTimestamp,
+      onSetOtherSessionUnreadCount: (count: number): void => {
         this.otherSessionUnreadCount = count
       },
-      (value: number): void => {
+      onSetLastHandledAlertTimestamp: (value: number): void => {
         this.lastHandledAlertTimestamp = value
       },
-      (sessionId: string): void => {
+      onNavigateToSession: (sessionId: string): void => {
         this.navPathStack.replacePath({ name: 'ChatPage', param: { sessionId: sessionId } as ChatPageRouteParams })
       },
-      (): void => {
+      onClearOpenSessionPayloadStorage: (): void => {
         AppStorage.setOrCreate(AppStorageKeys.OPEN_SESSION_PAYLOAD, '')
       },
-      (): void => {
+      onClearInAppTaskAlertPayloadStorage: (): void => {
         AppStorage.setOrCreate(AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD, '')
       },
-      (): UIContext => {
+      getUIContext: (): UIContext => {
         return this.getUIContext()
       }
-    )
+    }
     this.taskAlertFlow = new ChatTaskAlertFlow(deps)
     return this.taskAlertFlow
   }
@@ -818,39 +818,39 @@ export struct ChatPage {
     if (this.scrollUiFlow !== null) {
       return this.scrollUiFlow
     }
-    const deps = new ChatScrollUiFlowDependencies(
-      this.scroller,
-      this.messageDataSource,
-      (): number => this.lastScrollOffset,
-      (value: number): void => {
+    const deps: ChatScrollUiFlowDependencies = {
+      scroller: this.scroller,
+      messageDataSource: this.messageDataSource,
+      getLastScrollOffset: (): number => this.lastScrollOffset,
+      setLastScrollOffset: (value: number): void => {
         this.lastScrollOffset = value
       },
-      (): number => this.inputBarShowThreshold,
-      (): number => this.inputBarHideThreshold,
-      (): boolean => this.isAtTop,
-      (): boolean => this.isAtBottom,
-      (): boolean => this.isInputBarVisible,
-      (): boolean => this.isSending,
-      (): boolean => this.isInputFocused,
-      (): boolean => this.isEditingMessage,
-      (): string => this.editingMessageId,
-      (): boolean => this.inputText.trim() !== '' || this.pendingAttachments.length > 0,
-      (value: boolean): void => {
+      getInputBarShowThreshold: (): number => this.inputBarShowThreshold,
+      getInputBarHideThreshold: (): number => this.inputBarHideThreshold,
+      getIsAtTop: (): boolean => this.isAtTop,
+      getIsAtBottom: (): boolean => this.isAtBottom,
+      getIsInputBarVisible: (): boolean => this.isInputBarVisible,
+      getIsSending: (): boolean => this.isSending,
+      getIsInputFocused: (): boolean => this.isInputFocused,
+      getIsEditingMessage: (): boolean => this.isEditingMessage,
+      getEditingMessageId: (): string => this.editingMessageId,
+      hasDraftContent: (): boolean => this.inputText.trim() !== '' || this.pendingAttachments.length > 0,
+      onSetIsAtTopState: (value: boolean): void => {
         this.isAtTop = value
       },
-      (value: boolean): void => {
+      onSetIsAtBottomState: (value: boolean): void => {
         this.isAtBottom = value
       },
-      (value: boolean): void => {
+      onSetInputBarVisibleState: (value: boolean): void => {
         this.isInputBarVisible = value
       },
-      (duration: number, curve: Curve, updater: () => void): void => {
+      onAnimate: (duration: number, curve: Curve, updater: () => void): void => {
         this.getUIContext().animateTo({
           duration: duration,
           curve: curve
         }, updater)
       }
-    )
+    }
     this.scrollUiFlow = new ChatScrollUiFlow(deps)
     return this.scrollUiFlow
   }
