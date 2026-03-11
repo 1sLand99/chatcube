@@ -5,137 +5,153 @@
 <h1 align="center">ChatCube</h1>
 
 <p align="center">
-  An open-source AI chat client for HarmonyOS NEXT.<br/>
-  One app, 13+ providers, native experience.
+  一个开源的 HarmonyOS NEXT AI 聊天客户端。<br/>
+  一个应用，13+ 服务商，原生体验。
 </p>
 
 <p align="center">
-  <a href="./README_ZH.md">简体中文</a> · <a href="./LICENSE">MIT License</a>
+  <a href="./README_EN.md">English</a> · <a href="./LICENSE">MIT License</a>
 </p>
 
 ---
 
-## Why ChatCube?
+## 为什么选 ChatCube？
 
-- Built entirely with ArkTS — a true HarmonyOS native app, not a web wrapper
-- Polished UI with dynamic blur, 7 color themes, and smooth interactions
-- Adaptive layouts for phones, tablets, and large screens
-- Highly customizable providers — add any OpenAI / Anthropic / Gemini compatible service in seconds
-- Simple and intuitive — configure your API key and start chatting
-- Home screen widget for quick access
-- Background task support — keep receiving replies while multitasking
+- 完全使用 ArkTS 原生开发，不是 WebView 套壳
+- 界面精致，动态模糊、7 种配色主题、流畅交互
+- 适配手机、平板和大屏设备，布局更合理
+- 服务商高度自定义，几秒添加任何 OpenAI / Anthropic / Gemini 兼容服务
+- 简单易上手，填个 API Key 就能开聊
+- 桌面小组件，快速发起对话
+- 后台任务支持，切到其他应用也不耽误接收回复
 
-## Preview
+## 应用预览
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/chat.png" width="200" /><br/><sub>Chat</sub></td>
-    <td align="center"><img src="docs/screenshots/tool_calling.png" width="200" /><br/><sub>Tool Calling</sub></td>
-    <td align="center"><img src="docs/screenshots/markdown_preview.jpg" width="200" /><br/><sub>Markdown</sub></td>
-    <td align="center"><img src="docs/screenshots/html_preview.jpg" width="200" /><br/><sub>HTML Preview</sub></td>
+    <td align="center"><img src="docs/screenshots/chat.png" width="200" /><br/><sub>对话</sub></td>
+    <td align="center"><img src="docs/screenshots/tool_calling.png" width="200" /><br/><sub>工具调用</sub></td>
+    <td align="center"><img src="docs/screenshots/markdown_preview.jpg" width="200" /><br/><sub>Markdown 渲染</sub></td>
+    <td align="center"><img src="docs/screenshots/html_preview.jpg" width="200" /><br/><sub>HTML 预览</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/providers.png" width="200" /><br/><sub>Providers</sub></td>
-    <td align="center"><img src="docs/screenshots/color_themes.png" width="200" /><br/><sub>Themes</sub></td>
-    <td align="center"><img src="docs/screenshots/blur_effect.png" width="200" /><br/><sub>Dynamic Blur</sub></td>
-    <td align="center"><img src="docs/screenshots/settings.png" width="200" /><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/providers.png" width="200" /><br/><sub>服务商管理</sub></td>
+    <td align="center"><img src="docs/screenshots/color_themes.png" width="200" /><br/><sub>配色主题</sub></td>
+    <td align="center"><img src="docs/screenshots/blur_effect.png" width="200" /><br/><sub>动态模糊</sub></td>
+    <td align="center"><img src="docs/screenshots/settings.png" width="200" /><br/><sub>设置</sub></td>
   </tr>
 </table>
 
-## Features
+## 功能特性
 
-### Talk to any model
+### 和任何模型对话
 
-Connect to 13+ AI providers out of the box. Bring your own API key, pick a model, and start chatting. Add any OpenAI / Anthropic / Gemini compatible provider in seconds.
+内置 13+ AI 服务商，填入 API Key 选个模型就能聊。支持自定义添加任何 OpenAI / Anthropic / Gemini 兼容的服务商，几秒搞定。
 
-### Tools that models can use
+### 模型能用的工具
 
-Built-in web search (Bing, zero config) and weather query (Open-Meteo, free). When a model supports function calling, it can reach out to the real world on its own.
+内置联网搜索（Bing，零配置）和天气查询（Open-Meteo，免费）。支持 Function Calling 的模型可以自主调用这些工具，获取实时信息。
 
-### Markdown & beyond
+### Markdown 及更多
 
-Full markdown rendering — code blocks with syntax highlighting, tables, LaTeX formulas, images. Even raw HTML gets a live preview.
+完整的 Markdown 渲染，支持语法高亮代码块、表格、LaTeX 公式、图片。甚至原始 HTML 也能实时预览。
 
-### Looks good, feels good
+### 好看，好用
 
-7 color themes. Dark / Light / System mode. Real-time dynamic blur effects. A UI that feels native because it is native.
+7 种配色主题，深色 / 浅色 / 跟随系统。实时动态模糊效果。原生 UI 的流畅感，因为它就是原生的。
 
-### Phone & tablet ready
+### 手机、平板都顺手
 
-Responsive layouts for phones and HarmonyOS tablets. Chat, settings, and provider management all stay comfortable on larger screens.
+针对手机、平板和大屏设备做了布局适配。聊天、设置、服务商管理等页面在更大屏幕上也能保持清晰、顺手的使用体验。
 
-### Smart Grip
+### 智感握姿
 
-Detects which hand you're holding the phone with and moves the "New Chat" button to the reachable side. One-handed use, done right.
+检测你用哪只手握着手机，自动把「新对话」按钮移到够得着的一侧。单手操作，就该这么简单。
 
-### Your data, your rules
+### 数据在你手里
 
-Export and import everything — conversations, provider configs, preferences. JSON format, no lock-in.
+导出和导入一切，对话、服务商配置、偏好设置都能带走。JSON 格式，没有锁定。
 
-### Stays alive in the background
+### 后台也不掉线
 
-Switch to another app while waiting for a long response. ChatCube keeps working and notifies you when the reply is ready.
+切到其他应用等待长回复？ChatCube 在后台继续工作，回复完成后通知你。
 
-## Supported Providers
+## 支持的服务商
 
-| Provider | API Format | Notes |
-|----------|-----------|-------|
-| OpenAI | OpenAI | GPT-4o, o1, etc. |
-| Claude | Anthropic | Claude 4, 3.5, etc. |
-| DeepSeek | OpenAI-compatible | DeepSeek-V3, R1, etc. |
-| Gemini | Google | Gemini 2.5, etc. |
-| Grok | OpenAI-compatible | xAI models |
-| Ollama | OpenAI-compatible | Local models |
-| OpenRouter | OpenAI-compatible | Multi-provider gateway |
-| SiliconFlow | OpenAI-compatible | Chinese AI models |
-| Qwen (Alibaba) | OpenAI-compatible | Qwen series |
-| Zhipu AI | OpenAI-compatible | GLM series |
-| Doubao (Volcengine) | OpenAI-compatible | Doubao series |
-| MiniMax | OpenAI-compatible | MiniMax models |
-| AiHubMix | OpenAI-compatible | Multi-provider gateway |
+| 服务商 | API 格式 | 说明 |
+|--------|---------|------|
+| OpenAI | OpenAI | GPT-4o、o1 等 |
+| Claude | Anthropic | Claude 4、3.5 等 |
+| DeepSeek | OpenAI 兼容 | DeepSeek-V3、R1 等 |
+| Gemini | Google | Gemini 2.5 等 |
+| Grok | OpenAI 兼容 | xAI 模型 |
+| Ollama | OpenAI 兼容 | 本地模型 |
+| OpenRouter | OpenAI 兼容 | 多服务商网关 |
+| 硅基流动 | OpenAI 兼容 | 国产 AI 模型 |
+| 阿里云百炼 | OpenAI 兼容 | 通义千问系列 |
+| 智谱 AI | OpenAI 兼容 | GLM 系列 |
+| 火山引擎 | OpenAI 兼容 | 豆包系列 |
+| MiniMax | OpenAI 兼容 | MiniMax 模型 |
+| AiHubMix | OpenAI 兼容 | 多服务商网关 |
 
-...or add any compatible provider yourself.
+……或者自己添加任何兼容的服务商。
 
-## Getting Started
+## 快速开始
 
-### Requirements
+### 环境要求
 
-- HarmonyOS NEXT (API 21+)
+- HarmonyOS NEXT（API 21+）
 - DevEco Studio 5.0+
 
-### Build & Run
+### 构建运行
 
 ```bash
 git clone https://github.com/LongLiveY96/ChatCube.git
 cd ChatCube
 cp build-profile.json5.example build-profile.json5
-# Edit build-profile.json5 with your signing config
+# 编辑 build-profile.json5 填入你的签名配置
 ```
 
-Open in DevEco Studio → Sync → Run.
+用 DevEco Studio 打开 → 同步 → 运行。
 
-### Configure providers
+### 邀请测试
 
-In the app: **Settings → Provider Management** → add your API keys.
+已开启华为应用市场邀测，欢迎体验最新版本：
 
-## Project Structure
+- 邀测地址：<https://appgallery.huawei.com/link/invite-test-wap?taskId=950c3ff7c47af3d4ea25b68382a491da&invitationCode=2sM0HJ9vjqa>
+
+### 配置服务商
+
+在应用中：**设置 → 服务商管理** → 添加你的 API Key。
+
+## 项目结构
 
 ```
 entry/src/main/ets/
-├── components/         # Reusable UI components
-├── config/             # App & provider configuration
-├── models/             # Data models
-├── pages/              # App pages
-├── services/           # Business logic
-├── viewmodels/         # ViewModels (MVVM)
-├── utils/              # Utilities
-└── widget/             # Home screen widget
+├── components/         # 可复用 UI 组件
+├── config/             # 应用和服务商配置
+├── models/             # 数据模型
+├── pages/              # 应用页面
+├── services/           # 业务逻辑服务
+├── viewmodels/         # ViewModel（MVVM）
+├── utils/              # 工具函数
+└── widget/             # 桌面小组件
 ```
 
-## Community
+## 交流反馈
 
-Chinese-speaking users can join the feedback group in [README_ZH.md](./README_ZH.md).
+欢迎加入 ChatCube 交流反馈群，一起提建议、聊体验、报问题。
 
-## License
+- QQ 群号：`752237762`
 
-[MIT](./LICENSE) — do whatever you want with it.
+<p align="center">
+  <img src="assets/qrcode_1772160303793.jpg" width="280" alt="ChatCube QQ 群二维码" />
+</p>
+
+## English README
+
+英文说明请查看：[README_EN.md](./README_EN.md)
+
+## 许可证
+
+[MIT](./LICENSE) — 随便用，开心就好。
