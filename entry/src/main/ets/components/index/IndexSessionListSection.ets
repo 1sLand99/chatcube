@@ -16,6 +16,7 @@ export struct IndexSessionListSection {
   @Param isMultiSelectMode: boolean = false
   @Param selectedSessionIds: Array<string> = []
   @Param activeSessionId: string = ''
+  @Param bottomSpacerHeight: number = 100
   @Param unreadRenderVersion: number = 0
   @Event onGetUnreadCount: (sessionId: string) => number = (_sessionId: string): number => 0
   @Event onGetGroupTitle: (groupKey: string) => Resource = (_groupKey: string): Resource => $r('app.string.group_older')
@@ -414,7 +415,7 @@ export struct IndexSessionListSection {
       }, (group: SessionGroupData) => this.onGetGroupRenderKey(group))
 
       ListItem() {
-        Column().height(100)
+        Column().height(this.bottomSpacerHeight)
       }
     }
     .width('100%')

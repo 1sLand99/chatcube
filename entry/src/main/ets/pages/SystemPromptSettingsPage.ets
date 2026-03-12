@@ -70,6 +70,15 @@ struct SystemPromptSettingsPage {
     this.customSystemPrompt = SystemPromptTemplateDefaults.DEFAULT_TEMPLATE
   }
 
+  private handleBack(): void {
+    this.getUIContext().getRouter().back()
+  }
+
+  onBackPress(): boolean {
+    this.handleBack()
+    return true
+  }
+
   @Builder
   private PageContent() {
     Row() {

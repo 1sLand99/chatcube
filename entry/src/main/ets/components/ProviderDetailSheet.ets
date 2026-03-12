@@ -1,5 +1,5 @@
 import { KeyboardAvoidMode } from '@kit.ArkUI'
-import { ModelProvider, ModelInfo, ProviderType, ProviderIconType, ApiStyle } from '../models/ChatModels'
+import { ModelProvider, ModelInfo, ModelInfoExtendedJson, ProviderType, ProviderIconType, ApiStyle } from '../models/ChatModels'
 import { ModelEditSheet } from '../components/ModelEditSheet'
 import { ModelPickerSheetHost } from '../components/ModelPickerSheetHost'
 import { ProviderViewModel } from '../viewmodels/ProviderViewModel'
@@ -29,6 +29,7 @@ import {
   buildSelectedModelsWithPreservedConfig
 } from '../config/ProviderModelActions'
 import { getAppUiState } from '../state/AppUiState'
+import { applyModelDraft } from '../utils/ModelDraftUtils'
 
 export enum ProviderDetailPresentationMode {
   SHEET = 'sheet',
@@ -258,10 +259,18 @@ export struct ProviderDetailPanel {
       return
     }
 
+    const providerId = this.provider.id
+    const existingModelIds = new Set<string>()
+    for (let i = 0; i < this.provider.models.length; i++) {
+      existingModelIds.add(this.provider.models[i].id)
+    }
     const newModels = buildSelectedModelsWithPreservedConfig(this.provider.models, selectedIds)
-
-    // 自动匹配模型能力（失败时静默降级）
-    await ModelCapabilityMatcher.getInstance().applyCapabilitiesBatch(newModels)
+    const newlyAddedModelIds: string[] = []
+    for (let i = 0; i < selectedIds.length; i++) {
+      if (!existingModelIds.has(selectedIds[i])) {
+        newlyAddedModelIds.push(selectedIds[i])
+      }
+    }
 
     this.provider.models = newModels
 
@@ -283,6 +292,48 @@ export struct ProviderDetailPanel {
       setTimeout(() => {
         this.onClose()
       }, 200)
+    }
+
+    if (newlyAddedModelIds.length > 0) {
+      this.applySelectedModelCapabilitiesAsync(providerId, newlyAddedModelIds)
+    }
+  }
+
+  private applySelectedModelCapabilitiesAsync(providerId: string, modelIds: string[]): void {
+    this.applySelectedModelCapabilities(providerId, modelIds).catch((error: Object) => {
+      console.warn('ProviderDetailSheet', `[applySelectedModelCapabilitiesAsync] skipped: ${JSON.stringify(error)}`)
+    })
+  }
+
+  private async applySelectedModelCapabilities(providerId: string, modelIds: string[]): Promise<void> {
+    if (modelIds.length === 0) {
+      return
+    }
+    const provider = await this.providerViewModel.getProviderByIdAsync(providerId)
+    if (provider === null) {
+      return
+    }
+
+    const targetModels: ModelInfo[] = []
+    for (let i = 0; i < provider.models.length; i++) {
+      if (modelIds.includes(provider.models[i].id)) {
+        targetModels.push(provider.models[i])
+      }
+    }
+    if (targetModels.length === 0) {
+      return
+    }
+
+    const matchedCount = await ModelCapabilityMatcher.getInstance().applyCapabilitiesBatch(targetModels)
+    if (matchedCount <= 0) {
+      return
+    }
+
+    await this.providerViewModel.saveProvider(provider)
+    if (this.provider !== null && this.provider.id === providerId) {
+      this.provider = provider
+      this.refreshModelGroups()
+      this.notifyProviderChanged()
     }
   }
 
@@ -437,6 +488,40 @@ export struct ProviderDetailPanel {
     return countGroupEnabled(group)
   }
 
+  private updateModelEnabled(modelId: string, isEnabled: boolean): void {
+    this.updateModelEnabledAsync(modelId, isEnabled).catch((error: Object) => {
+      console.error('ProviderDetailSheet', `[updateModelEnabled] failed: ${JSON.stringify(error)}`)
+      this.showProviderToast($r('app.string.action_failed_retry'))
+      this.refreshModelGroups()
+    })
+  }
+
+  private async updateModelEnabledAsync(modelId: string, isEnabled: boolean): Promise<void> {
+    if (this.provider === null) {
+      return
+    }
+
+    let changed = false
+    for (let i = 0; i < this.provider.models.length; i++) {
+      const model = this.provider.models[i]
+      if (model.id === modelId) {
+        if (model.isEnabled !== isEnabled) {
+          model.isEnabled = isEnabled
+          changed = true
+        }
+        break
+      }
+    }
+
+    if (!changed) {
+      return
+    }
+
+    await this.saveCurrentProvider()
+    this.refreshModelGroups()
+    this.notifyProviderChanged()
+  }
+
   // 打开模型编辑弹窗
   private openModelEditSheet(model: ModelInfo): void {
     this.editingModel = model
@@ -445,17 +530,21 @@ export struct ProviderDetailPanel {
   }
 
   // 保存模型编辑
-  private async saveModelEdit(): Promise<void> {
-    if (this.provider !== null) {
-      await this.saveCurrentProvider()
-      this.showProviderToast($r('app.string.provider_model_saved'))
+  private async saveModelEdit(draft: ModelInfoExtendedJson): Promise<void> {
+    if (this.provider === null || this.editingModel === null) {
+      return
     }
+
+    applyModelDraft(this.editingModel, draft)
+    await this.saveCurrentProvider()
+    this.showProviderToast($r('app.string.provider_model_saved'))
     this.getUIContext().animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
       this.showSheet = false
       this.activeSheet = 'none'
     })
     this.editingModel = null
     this.refreshModelGroups()
+    this.notifyProviderChanged()
   }
 
   // 取消模型编辑
@@ -464,6 +553,7 @@ export struct ProviderDetailPanel {
       this.showSheet = false
       this.activeSheet = 'none'
     })
+    this.editingModel = null
   }
 
   // 显示删除确认对话框
@@ -1197,10 +1287,8 @@ export struct ProviderDetailPanel {
                         model: model,
                         showDivider: modelIndex < group.models.length - 1,
                         providerId: this.provider?.id ?? '',
-                        onToggle: async () => {
-                          if (this.provider !== null) {
-                            await this.providerViewModel.saveProvider(this.provider)
-                          }
+                        onToggle: (modelId: string, isOn: boolean) => {
+                          this.updateModelEnabled(modelId, isOn)
                         },
                         onEdit: () => {
                           this.openModelEditSheet(model)
@@ -1272,8 +1360,8 @@ export struct ProviderDetailPanel {
     if (this.activeSheet === 'edit' && this.editingModel !== null) {
       ModelEditSheet({
         model: this.editingModel,
-        onSave: async (): Promise<void> => {
-          await this.saveModelEdit()
+        onSave: async (draft: ModelInfoExtendedJson): Promise<void> => {
+          await this.saveModelEdit(draft)
         },
         onCancel: () => {
           this.cancelModelEdit()
@@ -1437,7 +1525,7 @@ export struct ModelItemCard {
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
-  @Event onToggle: () => void = () => {}
+  @Event onToggle: (modelId: string, isEnabled: boolean) => void = (_modelId: string, _isEnabled: boolean): void => {}
   @Event onEdit: () => void = () => {}
 
   private getModelIconRenderData(): ModelIconRenderData {
@@ -1522,8 +1610,7 @@ export struct ModelItemCard {
           .width(44)
           .height(24)
           .onChange((isOn: boolean) => {
-            this.model.isEnabled = isOn
-            this.onToggle()
+            this.onToggle(this.model.id, isOn)
           })
 
         // 设置按钮

@@ -104,9 +104,10 @@ export function buildModelSelectorRows(
     } as ModelSelectorProviderHeaderRow)
 
     for (let j = 0; j < matchedModels.length; j++) {
+      const favoriteStateKey = favoriteKeys.has(`${provider.id}::${matchedModels[j].id}`) ? 'favorite' : 'normal'
       rows.push({
         type: ModelSelectorRowType.MODEL_ITEM,
-        key: `${provider.id}::${matchedModels[j].id}`,
+        key: `${provider.id}::${matchedModels[j].id}::${favoriteStateKey}`,
         provider: provider,
         model: matchedModels[j],
         isFavorite: favoriteKeys.has(`${provider.id}::${matchedModels[j].id}`),
@@ -158,48 +159,34 @@ export interface ModelPickerBuildResult {
 
 export function buildModelPickerRows(
   availableModels: string[],
+  selectedModelIds: Set<string>,
   existingModelIds: Set<string>,
   searchKeywords: string,
   expansionState: Map<string, boolean>
 ): ModelPickerBuildResult {
   const filteredModelIds = filterAvailableModels(availableModels, searchKeywords)
-  const rawGroups = buildPickerModelGroups(filteredModelIds)
+  const selectedFilteredModelIds = collectSelectedModelIds(filteredModelIds, selectedModelIds)
+  const unselectedFilteredModelIds = collectUnselectedModelIds(filteredModelIds, selectedModelIds)
+  const rawGroups = buildPickerModelGroups(unselectedFilteredModelIds)
   const groups: PickerModelGroup[] = []
   const rows: ModelPickerRow[] = []
 
+  if (selectedFilteredModelIds.length > 0) {
+    appendPickerGroup(
+      groups,
+      rows,
+      {
+        name: '已选择',
+        modelIds: selectedFilteredModelIds,
+        isExpanded: true
+      },
+      expansionState,
+      existingModelIds
+    )
+  }
+
   for (let i = 0; i < rawGroups.length; i++) {
-    const rawGroup = rawGroups[i]
-    const isExpanded = expansionState.has(rawGroup.name) ? (expansionState.get(rawGroup.name) ?? true) : true
-    const group: PickerModelGroup = {
-      name: rawGroup.name,
-      modelIds: rawGroup.modelIds,
-      isExpanded: isExpanded
-    }
-    groups.push(group)
-
-    rows.push({
-      type: ModelPickerRowType.GROUP_HEADER,
-      key: `group::${group.name}`,
-      groupName: group.name,
-      modelIds: group.modelIds,
-      isExpanded: group.isExpanded
-    } as ModelPickerGroupHeaderRow)
-
-    if (!group.isExpanded) {
-      continue
-    }
-
-    for (let j = 0; j < group.modelIds.length; j++) {
-      const modelId = group.modelIds[j]
-      rows.push({
-        type: ModelPickerRowType.MODEL_ITEM,
-        key: `${group.name}::${modelId}`,
-        groupName: group.name,
-        modelId: modelId,
-        isExisting: existingModelIds.has(modelId),
-        groupPosition: resolveGroupPosition(j, group.modelIds.length)
-      } as ModelPickerModelRow)
-    }
+    appendPickerGroup(groups, rows, rawGroups[i], expansionState, existingModelIds)
   }
 
   return {
@@ -223,6 +210,68 @@ function filterAvailableModels(availableModels: string[], searchKeywords: string
     }
   }
   return result
+}
+
+function collectSelectedModelIds(modelIds: string[], selectedModelIds: Set<string>): string[] {
+  const selected: string[] = []
+  for (let i = 0; i < modelIds.length; i++) {
+    const modelId = modelIds[i]
+    if (selectedModelIds.has(modelId)) {
+      selected.push(modelId)
+    }
+  }
+  return selected
+}
+
+function collectUnselectedModelIds(modelIds: string[], selectedModelIds: Set<string>): string[] {
+  const unselected: string[] = []
+  for (let i = 0; i < modelIds.length; i++) {
+    const modelId = modelIds[i]
+    if (!selectedModelIds.has(modelId)) {
+      unselected.push(modelId)
+    }
+  }
+  return unselected
+}
+
+function appendPickerGroup(
+  groups: PickerModelGroup[],
+  rows: ModelPickerRow[],
+  rawGroup: PickerModelGroup,
+  expansionState: Map<string, boolean>,
+  existingModelIds: Set<string>
+): void {
+  const isExpanded = expansionState.has(rawGroup.name) ? (expansionState.get(rawGroup.name) ?? true) : true
+  const group: PickerModelGroup = {
+    name: rawGroup.name,
+    modelIds: rawGroup.modelIds,
+    isExpanded: isExpanded
+  }
+  groups.push(group)
+
+  rows.push({
+    type: ModelPickerRowType.GROUP_HEADER,
+    key: `group::${group.name}`,
+    groupName: group.name,
+    modelIds: group.modelIds,
+    isExpanded: group.isExpanded
+  } as ModelPickerGroupHeaderRow)
+
+  if (!group.isExpanded) {
+    return
+  }
+
+  for (let i = 0; i < group.modelIds.length; i++) {
+    const modelId = group.modelIds[i]
+    rows.push({
+      type: ModelPickerRowType.MODEL_ITEM,
+      key: `${group.name}::${modelId}`,
+      groupName: group.name,
+      modelId: modelId,
+      isExisting: existingModelIds.has(modelId),
+      groupPosition: resolveGroupPosition(i, group.modelIds.length)
+    } as ModelPickerModelRow)
+  }
 }
 
 function resolveGroupPosition(index: number, totalCount: number): ModelRowGroupPosition {

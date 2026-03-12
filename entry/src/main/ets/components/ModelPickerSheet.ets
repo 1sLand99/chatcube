@@ -60,6 +60,7 @@ export struct ModelPickerSheet {
     const startAt = Date.now()
     const result: ModelPickerBuildResult = buildModelPickerRows(
       this.availableModels,
+      this.selectedIds,
       this.existingModelIdSet,
       this.searchKeywords,
       this.groupExpansionState
@@ -80,6 +81,7 @@ export struct ModelPickerSheet {
       newSet.add(modelId)
     }
     this.selectedIds = newSet
+    this.rebuildRows()
   }
 
   private isSelected(modelId: string): boolean {
@@ -110,6 +112,7 @@ export struct ModelPickerSheet {
       }
     }
     this.selectedIds = newSet
+    this.rebuildRows()
   }
 
   private toggleGroupExpansion(groupName: string): void {
@@ -152,6 +155,7 @@ export struct ModelPickerSheet {
       }
     }
     this.selectedIds = newSet
+    this.rebuildRows()
   }
 
   private getModelIconRenderData(modelId: string): ModelIconRenderData {
@@ -331,14 +335,12 @@ export struct ModelPickerSheet {
           }
         })
         .key((row: ModelPickerRow) => row.key)
-        .virtualScroll({ totalCount: this.rows.length })
     }
     .width('100%')
     .layoutWeight(1)
     .padding({ left: 16, right: 16, bottom: 40 })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.Spring)
-    .cachedCount(10)
   }
 
   @Builder
@@ -383,13 +385,6 @@ export struct ModelPickerSheet {
             .fontColor($r('app.color.text_primary'))
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-          if (row.isExisting) {
-            Text($r('app.string.model_picker_added'))
-              .fontSize(11)
-              .fontColor(this.themePrimary)
-              .margin({ top: 2 })
-          }
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)

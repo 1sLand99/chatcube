@@ -27,7 +27,6 @@ export struct ToolsCenterPanel {
   private toolRegistry: ToolRegistry = ServiceRegistry.toolRegistry()
   private preferencesService: PreferencesService = getPreferencesService()
   private readonly searchToolId: string = 'web_search'
-  private readonly weatherToolId: string = 'weather_query'
   private readonly searchEngineOptions: Array<SelectOption> = [
     { value: 'Bing(local)' },
     { value: 'Exa' }
@@ -85,7 +84,7 @@ export struct ToolsCenterPanel {
   }
 
   private isBuiltinToolToggleSupported(toolId: string): boolean {
-    return toolId === this.searchToolId || toolId === this.weatherToolId
+    return toolId === this.searchToolId
   }
 
   private applyToolEnabledState(toolId: string, enabled: boolean): void {
@@ -103,12 +102,7 @@ export struct ToolsCenterPanel {
 
   private async loadToolEnabledStates(): Promise<void> {
     const webSearchEnabled = await this.preferencesService.getBoolean(PreferenceKeys.SEARCH_SERVICE_ENABLED, false)
-    const weatherQueryEnabled = await this.preferencesService.getBoolean(
-      PreferenceKeys.WEATHER_QUERY_ENABLED,
-      webSearchEnabled
-    )
     this.applyToolEnabledState(this.searchToolId, webSearchEnabled)
-    this.applyToolEnabledState(this.weatherToolId, weatherQueryEnabled)
   }
 
   private handleToolEnabledChanged(toolId: string, enabled: boolean): void {
@@ -119,10 +113,6 @@ export struct ToolsCenterPanel {
     this.applyToolEnabledState(toolId, enabled)
     if (toolId === this.searchToolId) {
       this.preferencesService.setBoolean(PreferenceKeys.SEARCH_SERVICE_ENABLED, enabled)
-      return
-    }
-    if (toolId === this.weatherToolId) {
-      this.preferencesService.setBoolean(PreferenceKeys.WEATHER_QUERY_ENABLED, enabled)
     }
   }
 
@@ -564,7 +554,6 @@ struct BuiltinToolCardItem {
       if (this.isToggleSupported) {
         Toggle({ type: ToggleType.Switch, isOn: this.tool.enabled })
           .onChange((value: boolean) => {
-            this.tool.enabled = value
             this.onToggle(value)
           })
       }

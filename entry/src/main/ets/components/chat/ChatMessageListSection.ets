@@ -46,11 +46,21 @@ export struct ChatMessageListSection {
     return shouldShowMessageHeader(message, index, (i: number) => this.messages[i])
   }
 
+  private isValidMessageTimestamp(message: ChatMessage | null | undefined): boolean {
+    if (message === undefined || message === null) {
+      return false
+    }
+    return typeof message.timestamp === 'number' && !Number.isNaN(message.timestamp)
+  }
+
   private checkShouldShowDateDivider(message: ChatMessage, index: number): boolean {
-    if (index === 0) {
+    if (index === 0 || !this.isValidMessageTimestamp(message)) {
       return true
     }
     const prevMessage = this.messages[index - 1]
+    if (!this.isValidMessageTimestamp(prevMessage)) {
+      return true
+    }
     const currentDate = new Date(message.timestamp)
     const prevDate = new Date(prevMessage.timestamp)
     return currentDate.getFullYear() !== prevDate.getFullYear() ||
@@ -148,7 +158,6 @@ export struct ChatMessageListSection {
               .animation({ duration: 200 })
             })
             .key((message: ChatMessage) => message.id)
-            .virtualScroll({ totalCount: this.messages.length })
 
           if (!this.isEditingMessage && this.showDraftPreview) {
             ListItem() {

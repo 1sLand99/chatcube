@@ -50,7 +50,7 @@
 
 ### 模型能用的工具
 
-内置联网搜索（Bing，零配置）和天气查询（Open-Meteo，免费）。支持 Function Calling 的模型可以自主调用这些工具，获取实时信息。
+内置联网搜索（Bing，零配置）。支持 Function Calling 的模型可以自主调用工具，获取实时信息。
 
 ### Markdown 及更多
 

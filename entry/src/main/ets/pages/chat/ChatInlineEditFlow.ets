@@ -4,7 +4,7 @@ import { collectTailMessageIds, findMessageIndexById } from './ChatMessageAction
 
 export interface ChatInlineEditFlowDependencies {
   chatViewModel: ChatViewModel
-  messages: ChatMessage[]
+  getMessages: () => ChatMessage[]
   onSyncMessages: () => void
   onResetEditState: () => void
   onApplySavedDraft: (
@@ -13,8 +13,12 @@ export interface ChatInlineEditFlowDependencies {
     webSearchEnabled: boolean,
     reasoningLevel: ReasoningLevel
   ) => void
-  onSetSending: (value: boolean) => void
-  onTriggerSend: () => void
+  onTriggerSend: (
+    content: string,
+    attachments: MessageAttachment[],
+    webSearchEnabled: boolean,
+    reasoningLevel: ReasoningLevel
+  ) => Promise<void>
   onShowToast: (message: string | Resource) => void
 }
 
@@ -37,7 +41,8 @@ export class ChatInlineEditFlow {
       return
     }
 
-    const messageIndex = findMessageIndexById(this.deps.messages, editingMessageId)
+    const messages = this.deps.getMessages()
+    const messageIndex = findMessageIndexById(messages, editingMessageId)
     if (messageIndex < 0) {
       console.warn('ChatInlineEditFlow', '[saveAndSendInline] message not found:', editingMessageId)
       return
@@ -55,19 +60,15 @@ export class ChatInlineEditFlow {
       const savedContent = inputText.trim()
       const savedWebSearch = editingWebSearchEnabled
       const savedReasoningLevel = editingReasoningLevel
-      const messageIdsToDelete = collectTailMessageIds(this.deps.messages, messageIndex)
+      const messageIdsToDelete = collectTailMessageIds(messages, messageIndex)
 
       await this.deps.chatViewModel.deleteMessagesFromIndex(messageIdsToDelete)
-      this.deps.messages.splice(messageIndex)
+      this.deps.getMessages().splice(messageIndex)
       this.deps.onSyncMessages()
 
       this.deps.onResetEditState()
       this.deps.onApplySavedDraft(savedContent, savedAttachments, savedWebSearch, savedReasoningLevel)
-      this.deps.onSetSending(false)
-
-      setTimeout(() => {
-        this.deps.onTriggerSend()
-      }, 50)
+      await this.deps.onTriggerSend(savedContent, savedAttachments, savedWebSearch, savedReasoningLevel)
     } catch (error) {
       console.error('ChatInlineEditFlow', `[saveAndSendInline] Error: ${JSON.stringify(error)}`)
       this.deps.onShowToast($r('app.string.action_failed_retry'))

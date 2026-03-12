@@ -8,7 +8,6 @@ import { ChatPageRouteParams } from './ChatPageRouteTypes'
 export class ChatPageLoadResult {
   webSearchEnabled: boolean = false
   webSearchConversationEnabled: boolean = false
-  weatherQueryEnabled: boolean = false
   providers: ModelProvider[] = []
   pendingInitialPrompt: string = ''
   pendingInitialToolIds: string[] = []
@@ -45,10 +44,6 @@ export class ChatPageLoadFlow {
     result.webSearchEnabled = await this.deps.preferencesService.getBoolean(PreferenceKeys.SEARCH_SERVICE_ENABLED, false)
     result.webSearchConversationEnabled = await this.deps.preferencesService.getBoolean(
       PreferenceKeys.SEARCH_CONVERSATION_ENABLED,
-      result.webSearchEnabled
-    )
-    result.weatherQueryEnabled = await this.deps.preferencesService.getBoolean(
-      PreferenceKeys.WEATHER_QUERY_ENABLED,
       result.webSearchEnabled
     )
     result.providers = await this.deps.providerViewModel.loadProviders()

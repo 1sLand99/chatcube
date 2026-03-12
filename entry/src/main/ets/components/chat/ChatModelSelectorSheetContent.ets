@@ -1,4 +1,4 @@
-import { ModelProvider, ModelInfo } from '../../models/ChatModels'
+import { ModelProvider, ModelInfo, ModelInfoExtendedJson } from '../../models/ChatModels'
 import { ModelSelectorContent } from '../ModelSelector'
 import { ModelEditSheet } from '../ModelEditSheet'
 
@@ -6,6 +6,7 @@ import { ModelEditSheet } from '../ModelEditSheet'
 export struct ChatModelSelectorSheetContent {
   @Param providers: ModelProvider[] = []
   @Param currentModelId: string = ''
+  @Param currentProviderId: string = ''
   @Param activePanel: string = 'selector'
   @Param editingModel: ModelInfo | null = null
   @Event $editingModel: (value: ModelInfo | null) => void = (_value: ModelInfo | null) => {}
@@ -13,7 +14,8 @@ export struct ChatModelSelectorSheetContent {
     (_providerId: string, _modelId: string, _modelName: string): void => {}
   @Event onStartEdit: (model: ModelInfo, provider: ModelProvider) => void =
     (_model: ModelInfo, _provider: ModelProvider): void => {}
-  @Event onSaveEdit: () => Promise<void> = async (): Promise<void> => {}
+  @Event onSaveEdit: (draft: ModelInfoExtendedJson) => Promise<void> =
+    async (_draft: ModelInfoExtendedJson): Promise<void> => {}
   @Event onCancelEdit: () => void = (): void => {}
 
   @Builder
@@ -21,8 +23,8 @@ export struct ChatModelSelectorSheetContent {
     if (this.editingModel !== null) {
       ModelEditSheet({
         model: this.editingModel,
-        onSave: () => {
-          return this.onSaveEdit()
+        onSave: (draft: ModelInfoExtendedJson) => {
+          return this.onSaveEdit(draft)
         },
         onCancel: () => {
           this.onCancelEdit()
@@ -56,6 +58,7 @@ export struct ChatModelSelectorSheetContent {
         ModelSelectorContent({
           providers: this.providers,
           currentModelId: this.currentModelId,
+          currentProviderId: this.currentProviderId,
           onSelectModel: (providerId: string, modelId: string, modelName: string): void => {
             this.onSelectModel(providerId, modelId, modelName)
           },

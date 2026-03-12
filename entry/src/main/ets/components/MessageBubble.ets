@@ -168,10 +168,7 @@ export struct MessageBubble {
       this.startDotAnimation()
     }
 
-    // 推理内容默认展开逻辑：较短时（<500字符）默认展开，较长时默认折叠
-    if (this.message.reasoningContent.length > 0 && this.message.reasoningContent.length < 500) {
-      this.isReasoningExpanded = true
-    }
+    this.isReasoningExpanded = false
   }
 
   // 消息状态变化回调（优化跳动点动画性能）
@@ -1513,8 +1510,8 @@ export struct MessageBubble {
         }
       })
 
-      // 推理内容（可折叠）：生成中自动展开，完成后由 isReasoningExpanded 控制
-      if (this.isReasoningExpanded || (this.message.isGenerating && this.message.reasoningContent.length > 0)) {
+      // 推理内容默认折叠，仅在用户显式展开后显示
+      if (this.isReasoningExpanded) {
         Column() {
           Markdown({
             controller: this.reasoningMarkdownController,

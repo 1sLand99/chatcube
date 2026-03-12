@@ -2,7 +2,7 @@
  * 模型编辑半模态组件
  * 单页滚动布局：核心信息 → 能力标签 → 可折叠高级参数
  */
-import { ModelInfo, InputMode, OutputMode } from '../models/ChatModels'
+import { ModelInfo, InputMode, OutputMode, ModelInfoExtendedJson } from '../models/ChatModels'
 import { LengthMetrics } from '@kit.ArkUI'
 import { getAppUiState } from '../state/AppUiState'
 
@@ -31,12 +31,16 @@ export struct ModelEditSheet {
   @Local paramPresencePenalty: number = 0
   @Local paramFrequencyPenalty: number = 0
   // 回调函数
-  @Event onSave: () => Promise<void> = async (): Promise<void> => {
+  @Event onSave: (draft: ModelInfoExtendedJson) => Promise<void> = async (_draft: ModelInfoExtendedJson): Promise<void> => {
   }
   @Event onCancel: () => void = () => {
   }
 
   aboutToAppear(): void {
+    this.syncDraftFromModel()
+  }
+
+  private syncDraftFromModel(): void {
     this.tempName = this.model.name
     this.capSupportsTools = this.model.capabilities.supportsTools
     this.capSupportsReasoning = this.model.capabilities.supportsReasoning
@@ -48,6 +52,33 @@ export struct ModelEditSheet {
     this.paramTopP = this.model.parameters.topP
     this.paramPresencePenalty = this.model.parameters.presencePenalty
     this.paramFrequencyPenalty = this.model.parameters.frequencyPenalty
+  }
+
+  private buildDraft(): ModelInfoExtendedJson {
+    return {
+      id: this.model.id,
+      name: this.tempName,
+      contextLength: this.model.contextLength,
+      isEnabled: this.model.isEnabled,
+      isRecommended: this.model.isRecommended,
+      modelType: this.model.modelType,
+      inputMode: this.capSupportsVision ? InputMode.VISION : InputMode.TEXT,
+      outputMode: this.capOutputImage ? OutputMode.IMAGE : OutputMode.TEXT,
+      capabilities: {
+        supportsTools: this.capSupportsTools,
+        supportsReasoning: this.capSupportsReasoning,
+        supportsWebSearch: this.capSupportsWebSearch,
+        supportsVision: this.capSupportsVision,
+        supportsStreaming: this.capSupportsStreaming
+      },
+      parameters: {
+        temperature: this.paramTemperature,
+        topP: this.paramTopP,
+        maxTokens: this.model.parameters.maxTokens,
+        presencePenalty: this.paramPresencePenalty,
+        frequencyPenalty: this.paramFrequencyPenalty
+      }
+    }
   }
 
   build() {
@@ -109,8 +140,7 @@ export struct ModelEditSheet {
       .height(36)
       .backgroundColor(this.themePrimary)
       .onClick(async () => {
-        await this.onSave()
-        this.onCancel()
+        await this.onSave(this.buildDraft())
       })
     }
     .width('100%')
@@ -169,7 +199,6 @@ export struct ModelEditSheet {
         .padding({ left: 16, right: 16 })
         .onChange((value: string) => {
           this.tempName = value
-          this.model.name = value
         })
     }
     .width('100%')
@@ -205,7 +234,6 @@ export struct ModelEditSheet {
         .borderRadius(18)
         .onClick(() => {
           this.capSupportsTools = !this.capSupportsTools
-          this.model.capabilities.supportsTools = this.capSupportsTools
         })
 
         // 推理
@@ -224,7 +252,6 @@ export struct ModelEditSheet {
         .borderRadius(18)
         .onClick(() => {
           this.capSupportsReasoning = !this.capSupportsReasoning
-          this.model.capabilities.supportsReasoning = this.capSupportsReasoning
         })
 
         // 联网搜索
@@ -244,7 +271,6 @@ export struct ModelEditSheet {
         .borderRadius(18)
         .onClick(() => {
           this.capSupportsWebSearch = !this.capSupportsWebSearch
-          this.model.capabilities.supportsWebSearch = this.capSupportsWebSearch
         })
 
         // 视觉理解
@@ -263,8 +289,6 @@ export struct ModelEditSheet {
         .borderRadius(18)
         .onClick(() => {
           this.capSupportsVision = !this.capSupportsVision
-          this.model.capabilities.supportsVision = this.capSupportsVision
-          this.model.inputMode = this.capSupportsVision ? InputMode.VISION : InputMode.TEXT
         })
 
         // 图片生成
@@ -283,7 +307,6 @@ export struct ModelEditSheet {
         .borderRadius(18)
         .onClick(() => {
           this.capOutputImage = !this.capOutputImage
-          this.model.outputMode = this.capOutputImage ? OutputMode.IMAGE : OutputMode.TEXT
         })
       }
       .width('100%')
@@ -362,7 +385,6 @@ export struct ModelEditSheet {
               .margin({ top: 8 })
               .onChange((v: number) => {
                 this.paramTemperature = v
-                this.model.parameters.temperature = v
               })
           }
           .width('100%')
@@ -406,7 +428,6 @@ export struct ModelEditSheet {
               .margin({ top: 8 })
               .onChange((v: number) => {
                 this.paramTopP = v
-                this.model.parameters.topP = v
               })
           }
           .width('100%')
@@ -450,7 +471,6 @@ export struct ModelEditSheet {
               .margin({ top: 8 })
               .onChange((v: number) => {
                 this.paramPresencePenalty = v
-                this.model.parameters.presencePenalty = v
               })
           }
           .width('100%')
@@ -494,7 +514,6 @@ export struct ModelEditSheet {
               .margin({ top: 8 })
               .onChange((v: number) => {
                 this.paramFrequencyPenalty = v
-                this.model.parameters.frequencyPenalty = v
               })
           }
           .width('100%')
@@ -510,11 +529,10 @@ export struct ModelEditSheet {
             .width('100%')
             .margin({ top: 12 })
             .onClick(() => {
-              this.model.parameters.reset()
-              this.paramTemperature = this.model.parameters.temperature
-              this.paramTopP = this.model.parameters.topP
-              this.paramPresencePenalty = this.model.parameters.presencePenalty
-              this.paramFrequencyPenalty = this.model.parameters.frequencyPenalty
+              this.paramTemperature = 0.7
+              this.paramTopP = 1.0
+              this.paramPresencePenalty = 0
+              this.paramFrequencyPenalty = 0
             })
         }
         .width('100%')

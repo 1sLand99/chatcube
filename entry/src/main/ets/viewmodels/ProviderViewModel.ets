@@ -260,20 +260,10 @@ export class ProviderViewModel {
       console.info('ProviderViewModel', `Parsing models for ${config.name}: ${config.modelsJson}`)
       try {
         const modelsArray: ModelData[] = JSON.parse(config.modelsJson) as ModelData[]
-        let hasEnabledModel = false
-
-        // 先检查是否有任何启用的模型
-        for (let i = 0; i < modelsArray.length; i++) {
-          if (modelsArray[i].isEnabled) {
-            hasEnabledModel = true
-            break
-          }
-        }
 
         for (let i = 0; i < modelsArray.length; i++) {
           const modelObj = modelsArray[i]
-          // 如果没有任何启用的模型，则默认全部启用
-          const shouldEnable = hasEnabledModel ? modelObj.isEnabled : true
+          const shouldEnable = modelObj.isEnabled !== undefined ? modelObj.isEnabled : true
           const modelInfo = new ModelInfo(
             modelObj.id,
             modelObj.name,
@@ -462,7 +452,7 @@ interface ModelData {
   id: string
   name: string
   contextLength: number
-  isEnabled: boolean
+  isEnabled?: boolean
   isRecommended: boolean
   // 扩展字段
   modelType?: string

@@ -12,7 +12,8 @@ export interface ProviderModelGroup {
   isExpanded: boolean
 }
 
-const BRAND_ORDER: string[] = ['openai', 'claude', 'gemini', 'deepseek', 'other']
+const BRAND_ORDER: string[] = ['openai', 'claude', 'gemini', 'deepseek', 'qwen', 'grok', 'moonshotai',
+  'minimax', 'other']
 
 export function getDefaultApiStyleOptions(): ApiStyleOption[] {
   return [
@@ -80,7 +81,7 @@ export function buildProviderModelGroups(models: ModelInfo[]): ProviderModelGrou
 
 function getModelBrand(modelId: string): string {
   const id = modelId.toLowerCase()
-  if (id.includes('gpt') || id.includes('o1') || id.includes('o3') || id.includes('chatgpt')) {
+  if (id.includes('gpt') || id.includes('o1') || id.includes('o3') || id.includes('o4') || id.includes('chatgpt')) {
     return 'openai'
   }
   if (id.includes('claude')) {
@@ -91,6 +92,18 @@ function getModelBrand(modelId: string): string {
   }
   if (id.includes('deepseek')) {
     return 'deepseek'
+  }
+  if (id.includes('qwen') || id.includes('qwq') || id.includes('qvq')) {
+    return 'qwen'
+  }
+  if (id.includes('grok')) {
+    return 'grok'
+  }
+  if (id.includes('moonshot') || id.includes('kimi')) {
+    return 'moonshotai'
+  }
+  if (id.includes('minimax') || id.includes('abab')) {
+    return 'minimax'
   }
   return 'other'
 }
@@ -107,6 +120,18 @@ function getBrandDisplayName(brand: string): string {
   }
   if (brand === 'deepseek') {
     return 'DeepSeek'
+  }
+  if (brand === 'qwen') {
+    return 'Qwen'
+  }
+  if (brand === 'grok') {
+    return 'Grok'
+  }
+  if (brand === 'moonshotai') {
+    return 'Moonshot AI'
+  }
+  if (brand === 'minimax') {
+    return 'MiniMax'
   }
   return '其他模型'
 }
@@ -145,4 +170,3 @@ export function buildPickerModelGroups(modelIds: string[]): PickerModelGroup[] {
   }
   return result
 }
-

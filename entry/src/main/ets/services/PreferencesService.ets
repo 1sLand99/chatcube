@@ -40,7 +40,6 @@ export class PreferenceKeys {
   // 搜索服务配置
   static readonly SEARCH_SERVICE_ENABLED: string = 'search_service_enabled'
   static readonly SEARCH_CONVERSATION_ENABLED: string = 'search_conversation_enabled'
-  static readonly WEATHER_QUERY_ENABLED: string = 'weather_query_enabled'
   static readonly SEARCH_ENGINE: string = 'search_engine'
   static readonly SEARCH_MAX_RESULTS: string = 'search_max_results'
   static readonly SEARCH_TIMEOUT: string = 'search_timeout'

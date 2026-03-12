@@ -62,11 +62,6 @@ export class ToolExecutionService {
       && this.registry.isToolRegistered('web_search')) {
       return 'web_search'
     }
-    if ((normalized === 'weather' || normalized === 'weather_search' || normalized === 'get_weather'
-      || normalized === 'query_weather' || normalized === 'weather_lookup')
-      && this.registry.isToolRegistered('weather_query')) {
-      return 'weather_query'
-    }
 
     if (this.registry.getToolCount() === 1) {
       const ids = this.registry.getAllToolIds()
@@ -102,7 +97,7 @@ export class ToolExecutionService {
         JSON.stringify({ error: `未知工具: ${displayName}` })
       )
     }
-    if (toolCall.functionName !== toolId && (toolId === 'web_search' || toolId === 'weather_query')) {
+    if (toolCall.functionName !== toolId && toolId === 'web_search') {
       toolCall.functionName = toolId
     }
 

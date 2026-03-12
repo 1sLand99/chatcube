@@ -65,7 +65,10 @@ export class ChatScrollUiFlow {
   }
 
   handleMessageListDidScroll(scrollOffset: number, scrollState: ScrollState): void {
-    if (scrollState === ScrollState.Scroll && scrollOffset < 0) {
+    const lastScrollOffset = this.deps.getLastScrollOffset()
+    const offsetDelta = scrollOffset - lastScrollOffset
+
+    if (scrollState === ScrollState.Scroll && this.deps.getIsAtBottom() && offsetDelta < 0) {
       this.setIsAtBottom(false)
     }
 
@@ -74,8 +77,6 @@ export class ChatScrollUiFlow {
     }
 
     if (scrollState === ScrollState.Scroll || scrollState === ScrollState.Fling) {
-      const offsetDelta = scrollOffset - this.deps.getLastScrollOffset()
-
       if (offsetDelta > this.deps.getInputBarShowThreshold()) {
         this.setInputBarVisible(true)
       } else if (scrollState === ScrollState.Scroll && offsetDelta < -this.deps.getInputBarHideThreshold()) {

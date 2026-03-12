@@ -50,7 +50,7 @@ Connect to 13+ AI providers out of the box. Bring your own API key, pick a model
 
 ### Tools that models can use
 
-Built-in web search (Bing, zero config) and weather query (Open-Meteo, free). When a model supports function calling, it can reach out to the real world on its own.
+Built-in web search (Bing, zero config). When a model supports function calling, it can reach out to the real world on its own.
 
 ### Markdown & beyond
 
