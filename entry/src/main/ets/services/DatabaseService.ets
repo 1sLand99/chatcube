@@ -90,6 +90,8 @@ export class DatabaseService {
   private rdbStore: relationalStore.RdbStore | null = null
   private isInitialized: boolean = false
   private initPromise: Promise<void> | null = null
+  private legacySummaryRepairPromise: Promise<void> | null = null
+  private pendingLegacySummaryRepairIds: string[] = []
 
   private constructor() {
   }
@@ -669,7 +671,7 @@ export class DatabaseService {
     return ''
   }
 
-  private async refreshSessionSummary(sessionId: string): Promise<void> {
+  private async refreshSessionSummary(sessionId: string, notifyListRefresh: boolean = true): Promise<void> {
     if (this.rdbStore === null || sessionId === '') {
       return
     }
@@ -713,9 +715,43 @@ export class DatabaseService {
     updatePredicates.equalTo('id', sessionId)
     try {
       await this.rdbStore.update(valueBucket, updatePredicates)
-      setAppUiStateValue(AppStorageKeys.SESSION_LIST_REFRESH_AT, Date.now())
+      if (notifyListRefresh) {
+        setAppUiStateValue(AppStorageKeys.SESSION_LIST_REFRESH_AT, Date.now())
+      }
     } catch (error) {
       console.error('DatabaseService', `Failed to update session summary: ${JSON.stringify(error)}`)
+    }
+  }
+
+  private scheduleLegacySummaryRepair(sessionIds: string[]): void {
+    for (let i = 0; i < sessionIds.length; i++) {
+      this.addUniqueSessionId(this.pendingLegacySummaryRepairIds, sessionIds[i])
+    }
+    if (this.pendingLegacySummaryRepairIds.length === 0 || this.legacySummaryRepairPromise !== null) {
+      return
+    }
+    this.legacySummaryRepairPromise = this.runLegacySummaryRepairQueue()
+    this.legacySummaryRepairPromise.finally(() => {
+      this.legacySummaryRepairPromise = null
+      if (this.pendingLegacySummaryRepairIds.length > 0) {
+        this.scheduleLegacySummaryRepair([])
+      }
+    })
+  }
+
+  private async runLegacySummaryRepairQueue(): Promise<void> {
+    let repaired = false
+    while (this.pendingLegacySummaryRepairIds.length > 0) {
+      const sessionId = this.pendingLegacySummaryRepairIds[0]
+      this.pendingLegacySummaryRepairIds.splice(0, 1)
+      if (sessionId === undefined || sessionId === '') {
+        continue
+      }
+      await this.refreshSessionSummary(sessionId, false)
+      repaired = true
+    }
+    if (repaired) {
+      setAppUiStateValue(AppStorageKeys.SESSION_LIST_REFRESH_AT, Date.now())
     }
   }
 
@@ -926,6 +962,7 @@ export class DatabaseService {
       return []
     }
     const sessions: ChatSession[] = []
+    const legacySummaryRepairIds: string[] = []
     const predicates = new relationalStore.RdbPredicates(TableNames.SESSIONS)
     predicates.orderByDesc('updated_at')
     try {
@@ -982,35 +1019,15 @@ export class DatabaseService {
       resultSet.close()
 
       if (repairLegacySummary) {
-        // 兼容旧数据：首次加载时回填会话摘要和计数
+        // 兼容旧数据：回填放到后台队列里，避免首页首屏被历史修复任务卡住
         for (let i = 0; i < sessions.length; i++) {
           if (sessions[i].messageCount === 0 &&
             sessions[i].lastMessagePreview === '' &&
             sessions[i].updatedAt > sessions[i].createdAt) {
-            await this.refreshSessionSummary(sessions[i].id)
-            const summaryPredicates = new relationalStore.RdbPredicates(TableNames.SESSIONS)
-            summaryPredicates.equalTo('id', sessions[i].id)
-            const summaryResult = await this.rdbStore.query(summaryPredicates)
-            if (summaryResult.goToNextRow()) {
-              try {
-                sessions[i].lastMessagePreview = summaryResult.getString(summaryResult.getColumnIndex('last_message_preview')) || ''
-              } catch (e) {
-                sessions[i].lastMessagePreview = ''
-              }
-              try {
-                sessions[i].messageCount = summaryResult.getLong(summaryResult.getColumnIndex('message_count'))
-              } catch (e) {
-                sessions[i].messageCount = 0
-              }
-              try {
-                sessions[i].updatedAt = summaryResult.getLong(summaryResult.getColumnIndex('updated_at'))
-              } catch (e) {
-                // ignore
-              }
-            }
-            summaryResult.close()
+            this.addUniqueSessionId(legacySummaryRepairIds, sessions[i].id)
           }
         }
+        this.scheduleLegacySummaryRepair(legacySummaryRepairIds)
       }
     } catch (error) {
       console.error('DatabaseService', `Failed to get sessions: ${JSON.stringify(error)}`)
