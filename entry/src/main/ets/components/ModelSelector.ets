@@ -188,6 +188,16 @@ export struct ModelSelectorContent {
     return this.getModelIconRenderData(row.model.id, row.provider.id, row.model.name)
   }
 
+  private getListCachedCount(): number {
+    if (this.rows.length >= 120) {
+      return 2
+    }
+    if (this.rows.length >= 40) {
+      return 3
+    }
+    return 4
+  }
+
   build() {
     Column() {
       this.SearchBar()
@@ -270,17 +280,15 @@ export struct ModelSelectorContent {
           .padding({ left: 16, right: 16, top: 6, bottom: 6 })
         }
 
-        Repeat<ModelSelectorRow>(this.rows)
-          .each((ri: RepeatItem<ModelSelectorRow>) => {
-            ListItem() {
-              if (ri.item.type === ModelSelectorRowType.PROVIDER_HEADER) {
-                this.ProviderHeader(ri.item.provider)
-              } else {
-                this.ModelRow(ri.item as ModelSelectorModelRow)
-              }
+        ForEach(this.rows, (row: ModelSelectorRow) => {
+          ListItem() {
+            if (row.type === ModelSelectorRowType.PROVIDER_HEADER) {
+              this.ProviderHeader(row.provider)
+            } else {
+              this.ModelRow(row as ModelSelectorModelRow)
             }
-          })
-          .key((row: ModelSelectorRow) => row.key)
+          }
+        }, (row: ModelSelectorRow) => row.key)
 
         ListItem() {
           Column().height(20)
@@ -290,6 +298,7 @@ export struct ModelSelectorContent {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      .cachedCount(this.getListCachedCount())
       .padding({ bottom: 12 })
       .nestedScroll({
         scrollForward: NestedScrollMode.SELF_FIRST,

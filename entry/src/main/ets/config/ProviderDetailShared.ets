@@ -12,7 +12,7 @@ export interface ProviderModelGroup {
   isExpanded: boolean
 }
 
-const BRAND_ORDER: string[] = ['openai', 'claude', 'gemini', 'deepseek', 'qwen', 'grok', 'moonshotai',
+const BRAND_ORDER: string[] = ['openai', 'claude', 'gemini', 'deepseek', 'qwen', 'zhipu', 'grok', 'moonshotai',
   'minimax', 'other']
 
 export function getDefaultApiStyleOptions(): ApiStyleOption[] {
@@ -96,6 +96,10 @@ function getModelBrand(modelId: string): string {
   if (id.includes('qwen') || id.includes('qwq') || id.includes('qvq')) {
     return 'qwen'
   }
+  if (id.includes('glm') || id.includes('zhipu') || id.includes('bigmodel') || id.includes('cogview') ||
+    id.includes('codegeex') || id.includes('charglm') || id.includes('characterglm')) {
+    return 'zhipu'
+  }
   if (id.includes('grok')) {
     return 'grok'
   }
@@ -124,6 +128,9 @@ function getBrandDisplayName(brand: string): string {
   if (brand === 'qwen') {
     return 'Qwen'
   }
+  if (brand === 'zhipu') {
+    return '智谱'
+  }
   if (brand === 'grok') {
     return 'Grok'
   }
@@ -139,7 +146,6 @@ function getBrandDisplayName(brand: string): string {
 export interface PickerModelGroup {
   name: string
   modelIds: string[]
-  isExpanded: boolean
 }
 
 export function buildPickerModelGroups(modelIds: string[]): PickerModelGroup[] {
@@ -163,8 +169,7 @@ export function buildPickerModelGroups(modelIds: string[]): PickerModelGroup[] {
     if (brandModelIds !== undefined && brandModelIds.length > 0) {
       result.push({
         name: getBrandDisplayName(brand),
-        modelIds: brandModelIds,
-        isExpanded: true
+        modelIds: brandModelIds
       })
     }
   }

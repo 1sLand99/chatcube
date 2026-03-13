@@ -127,71 +127,34 @@ export function buildModelSelectorRows(
   } as ModelSelectorBuildResult
 }
 
-export enum ModelPickerRowType {
-  GROUP_HEADER = 'group_header',
-  MODEL_ITEM = 'model_item'
-}
-
-export interface ModelPickerGroupHeaderRow {
-  type: ModelPickerRowType.GROUP_HEADER
-  key: string
-  groupName: string
-  modelIds: string[]
-  isExpanded: boolean
-}
-
 export interface ModelPickerModelRow {
-  type: ModelPickerRowType.MODEL_ITEM
-  key: string
   groupName: string
   modelId: string
   isExisting: boolean
   groupPosition: ModelRowGroupPosition
 }
 
-export type ModelPickerRow = ModelPickerGroupHeaderRow | ModelPickerModelRow
-
 export interface ModelPickerBuildResult {
-  rows: ModelPickerRow[]
   filteredModelIds: string[]
+  visibleModelIds: string[]
   groups: PickerModelGroup[]
 }
 
 export function buildModelPickerRows(
   availableModels: string[],
   selectedModelIds: Set<string>,
-  existingModelIds: Set<string>,
   searchKeywords: string,
-  expansionState: Map<string, boolean>
+  showSelectedOnly: boolean
 ): ModelPickerBuildResult {
   const filteredModelIds = filterAvailableModels(availableModels, searchKeywords)
-  const selectedFilteredModelIds = collectSelectedModelIds(filteredModelIds, selectedModelIds)
-  const unselectedFilteredModelIds = collectUnselectedModelIds(filteredModelIds, selectedModelIds)
-  const rawGroups = buildPickerModelGroups(unselectedFilteredModelIds)
-  const groups: PickerModelGroup[] = []
-  const rows: ModelPickerRow[] = []
-
-  if (selectedFilteredModelIds.length > 0) {
-    appendPickerGroup(
-      groups,
-      rows,
-      {
-        name: '已选择',
-        modelIds: selectedFilteredModelIds,
-        isExpanded: true
-      },
-      expansionState,
-      existingModelIds
-    )
-  }
-
-  for (let i = 0; i < rawGroups.length; i++) {
-    appendPickerGroup(groups, rows, rawGroups[i], expansionState, existingModelIds)
-  }
+  const visibleModelIds = showSelectedOnly
+    ? collectSelectedModelIds(filteredModelIds, selectedModelIds)
+    : filteredModelIds.slice()
+  const groups = buildPickerModelGroups(visibleModelIds)
 
   return {
-    rows: rows,
     filteredModelIds: filteredModelIds,
+    visibleModelIds: visibleModelIds,
     groups: groups
   } as ModelPickerBuildResult
 }
@@ -221,57 +184,6 @@ function collectSelectedModelIds(modelIds: string[], selectedModelIds: Set<strin
     }
   }
   return selected
-}
-
-function collectUnselectedModelIds(modelIds: string[], selectedModelIds: Set<string>): string[] {
-  const unselected: string[] = []
-  for (let i = 0; i < modelIds.length; i++) {
-    const modelId = modelIds[i]
-    if (!selectedModelIds.has(modelId)) {
-      unselected.push(modelId)
-    }
-  }
-  return unselected
-}
-
-function appendPickerGroup(
-  groups: PickerModelGroup[],
-  rows: ModelPickerRow[],
-  rawGroup: PickerModelGroup,
-  expansionState: Map<string, boolean>,
-  existingModelIds: Set<string>
-): void {
-  const isExpanded = expansionState.has(rawGroup.name) ? (expansionState.get(rawGroup.name) ?? true) : true
-  const group: PickerModelGroup = {
-    name: rawGroup.name,
-    modelIds: rawGroup.modelIds,
-    isExpanded: isExpanded
-  }
-  groups.push(group)
-
-  rows.push({
-    type: ModelPickerRowType.GROUP_HEADER,
-    key: `group::${group.name}`,
-    groupName: group.name,
-    modelIds: group.modelIds,
-    isExpanded: group.isExpanded
-  } as ModelPickerGroupHeaderRow)
-
-  if (!group.isExpanded) {
-    return
-  }
-
-  for (let i = 0; i < group.modelIds.length; i++) {
-    const modelId = group.modelIds[i]
-    rows.push({
-      type: ModelPickerRowType.MODEL_ITEM,
-      key: `${group.name}::${modelId}`,
-      groupName: group.name,
-      modelId: modelId,
-      isExisting: existingModelIds.has(modelId),
-      groupPosition: resolveGroupPosition(i, group.modelIds.length)
-    } as ModelPickerModelRow)
-  }
 }
 
 function resolveGroupPosition(index: number, totalCount: number): ModelRowGroupPosition {

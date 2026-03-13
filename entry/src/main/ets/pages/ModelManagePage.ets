@@ -29,6 +29,7 @@ struct ModelManagePage {
   @Local showProviderSheet: boolean = false
   @Local selectedProviderId: string = ''
   @Local detailCreateMode: boolean = false
+  @Local providerSheetClosing: boolean = false
   @Local isMatchingIcons: boolean = false
   private get themePrimary(): string {
     return getAppUiState().themePrimary
@@ -51,6 +52,9 @@ struct ModelManagePage {
   private hasLoaded: boolean = false
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
   private layoutObserverDisposer: (() => void) | null = null
+  private pendingProviderSheetOpen: boolean = false
+  private pendingProviderSheetProviderId: string = ''
+  private pendingProviderSheetCreateMode: boolean = false
 
   private showManageToast(message: string | Resource, duration: number = 2000): void {
     showToast(this.getUIContext(), message, duration)
@@ -97,11 +101,12 @@ struct ModelManagePage {
       this.selectedProviderId = providerId
       return
     }
+    if (!this.isEmbeddedSettingsDetailPane()) {
+      this.requestOpenProviderSheet(providerId, false)
+      return
+    }
     this.detailCreateMode = false
     this.selectedProviderId = providerId
-    if (!this.isEmbeddedSettingsDetailPane()) {
-      this.showProviderSheet = true
-    }
   }
 
   private openCreateProvider(): void {
@@ -110,27 +115,72 @@ struct ModelManagePage {
       this.selectedProviderId = ''
       return
     }
+    if (!this.isEmbeddedSettingsDetailPane()) {
+      this.requestOpenProviderSheet('', true)
+      return
+    }
     this.detailCreateMode = true
     this.selectedProviderId = ''
-    if (!this.isEmbeddedSettingsDetailPane()) {
-      this.showProviderSheet = true
-    }
   }
 
-  private handleProviderDetailClosed(): void {
+  private requestOpenProviderSheet(providerId: string, isCreateMode: boolean): void {
+    if (this.providerSheetClosing) {
+      this.pendingProviderSheetOpen = true
+      this.pendingProviderSheetProviderId = providerId
+      this.pendingProviderSheetCreateMode = isCreateMode
+      return
+    }
+    this.pendingProviderSheetOpen = false
+    this.pendingProviderSheetProviderId = ''
+    this.pendingProviderSheetCreateMode = false
+    this.detailCreateMode = isCreateMode
+    this.selectedProviderId = providerId
+    this.showProviderSheet = true
+  }
+
+  private requestCloseProviderDetail(): void {
+    if (this.isExpandedLayout() || this.isEmbeddedSettingsDetailPane()) {
+      this.finalizeProviderDetailClosed()
+      return
+    }
+    if (!this.showProviderSheet) {
+      return
+    }
+    this.providerSheetClosing = true
+    this.showProviderSheet = false
+  }
+
+  private handleProviderSheetDisappear(): void {
+    this.providerSheetClosing = false
+    if (this.pendingProviderSheetOpen) {
+      const nextProviderId = this.pendingProviderSheetProviderId
+      const nextCreateMode = this.pendingProviderSheetCreateMode
+      this.pendingProviderSheetOpen = false
+      this.pendingProviderSheetProviderId = ''
+      this.pendingProviderSheetCreateMode = false
+      this.detailCreateMode = nextCreateMode
+      this.selectedProviderId = nextProviderId
+      this.showProviderSheet = true
+      return
+    }
+    this.pendingProviderSheetProviderId = ''
+    this.pendingProviderSheetCreateMode = false
+    this.finalizeProviderDetailClosed()
+  }
+
+  private finalizeProviderDetailClosed(): void {
     this.refreshFromCache()
+    this.detailCreateMode = false
+    this.showProviderSheet = false
     if (this.isExpandedLayout()) {
-      this.detailCreateMode = false
       this.selectedProviderId = ''
       this.ensureExpandedDetailSelection()
       return
     }
     if (this.isEmbeddedSettingsDetailPane()) {
-      this.detailCreateMode = false
       this.selectedProviderId = ''
       return
     }
-    this.showProviderSheet = false
     this.selectedProviderId = ''
   }
 
@@ -299,6 +349,21 @@ struct ModelManagePage {
     return result
   }
 
+  private getProviderListDataSource(): ModelProvider[] {
+    return this.getFilteredProviders()
+  }
+
+  private getProviderListCachedCount(): number {
+    const providerCount = this.getProviderListDataSource().length
+    if (providerCount >= 60) {
+      return 2
+    }
+    if (providerCount >= 20) {
+      return 3
+    }
+    return 4
+  }
+
   build() {
     Column() {
       if (this.showEmbeddedProviderDetailPage()) {
@@ -330,7 +395,7 @@ struct ModelManagePage {
           dragBar: true,
           blurStyle: BlurStyle.Regular,
           onDisappear: () => {
-            this.handleProviderDetailClosed()
+            this.handleProviderSheetDisappear()
           }
         })
     }
@@ -452,7 +517,7 @@ struct ModelManagePage {
   @Builder
   CompactManageBody() {
     Column() {
-      this.ProviderListPane(false)
+        this.ProviderListPane(false)
     }
     .width('100%')
     .layoutWeight(1)
@@ -501,7 +566,7 @@ struct ModelManagePage {
         this.LoadingView()
       } else {
         List({ space: 8 }) {
-          Repeat<ModelProvider>(this.allProviders)
+          Repeat<ModelProvider>(this.getProviderListDataSource())
             .each((obj: RepeatItem<ModelProvider>) => {
               ListItem() {
                 ProviderCardItem({
@@ -520,12 +585,15 @@ struct ModelManagePage {
               .borderRadius(16)
               .clip(true)
               .transition({ type: TransitionType.All, opacity: 0 })
-              .visibility(this.matchesSearch(obj.item) ? Visibility.Visible : Visibility.None)
             })
             .key((item: ModelProvider) => {
               return item.id
             })
+            .virtualScroll({ totalCount: this.getProviderListDataSource().length })
             .onMove((from: number, to: number) => {
+              if (this.searchKeywords.trim() !== '') {
+                return
+              }
               let temp = this.allProviders.splice(from, 1)
               this.allProviders.splice(to, 0, temp[0])
               this.saveOrder()
@@ -589,6 +657,7 @@ struct ModelManagePage {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
+        .cachedCount(this.getProviderListCachedCount())
       }
     }
     .width('100%')
@@ -612,7 +681,7 @@ struct ModelManagePage {
         }
       },
       onClose: () => {
-        this.handleProviderDetailClosed()
+        this.requestCloseProviderDetail()
       }
     })
   }
@@ -623,7 +692,7 @@ struct ModelManagePage {
       providerId: this.selectedProviderId,
       isCreateMode: this.detailCreateMode,
       onClose: () => {
-        this.handleProviderDetailClosed()
+        this.requestCloseProviderDetail()
       }
     })
   }

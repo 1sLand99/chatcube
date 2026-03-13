@@ -414,7 +414,7 @@
     },
     {
       "name": "settings_support_development_desc",
-      "value": "微信赞赏，支持 token 与持续开发"
+      "value": "微信打赏，支持 token 与持续开发"
     },
     {
       "name": "settings_privacy_policy",
@@ -1525,6 +1525,26 @@
       "value": "已添加"
     },
     {
+      "name": "model_picker_show_selected",
+      "value": "仅看已选"
+    },
+    {
+      "name": "model_picker_show_all",
+      "value": "查看全部"
+    },
+    {
+      "name": "model_picker_select_filtered",
+      "value": "全选当前结果"
+    },
+    {
+      "name": "model_picker_selected_only_empty",
+      "value": "当前筛选下暂无已选模型"
+    },
+    {
+      "name": "model_picker_selected_only_empty_hint",
+      "value": "关闭“仅看已选”后可继续选择其他模型"
+    },
+    {
       "name": "default_model_section_chat",
       "value": "默认聊天模型"
     },
@@ -1754,7 +1774,7 @@
     },
     {
       "name": "about_wechat_support",
-      "value": "微信赞赏"
+      "value": "微信打赏"
     },
     {
       "name": "about_wechat_support_desc",
@@ -1762,7 +1782,7 @@
     },
     {
       "name": "about_wechat_pay_note",
-      "value": "如果 ChatCube 对你有帮助，欢迎自愿赞赏支持开发。你的转账将主要用于购买模型 token、接口测试和持续迭代。"
+      "value": "如果 ChatCube 对你有帮助，欢迎自愿打赏支持开发。你的转账将主要用于购买模型 token、接口测试和持续迭代。"
     },
     {
       "name": "about_save_payment_code",

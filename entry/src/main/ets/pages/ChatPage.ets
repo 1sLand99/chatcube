@@ -166,6 +166,13 @@ export struct ChatPage {
   private get isDarkMode(): boolean {
     return getAppUiState().isDarkMode
   }
+  private get chatFontSize(): number {
+    return getAppUiState().chatFontSize
+  }
+  private get messageThemeRenderKey(): string {
+    const uiState = getAppUiState()
+    return `${uiState.colorTheme}_${uiState.isDarkMode ? '1' : '0'}`
+  }
   // 多选模式状态
   @Local isMultiSelectMode: boolean = false
   @Local selectedMessageIds: Array<string> = []
@@ -1113,6 +1120,8 @@ export struct ChatPage {
           bottomPadding: this.getListBottomPadding(),
           topInsetHeight: this.getPageTopAvoidHeight(),
           currentModelId: this.currentModelId,
+          chatFontSize: this.chatFontSize,
+          themeRenderKey: this.messageThemeRenderKey,
           contentMaxWidth: this.getChatContentMaxWidth(),
           onRegenerate: (message: ChatMessage): void => {
             this.handleRegenerate(message)

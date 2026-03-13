@@ -24,7 +24,6 @@ import {
   setGroupModelsEnabled as applyGroupModelsEnabled,
   isAllModelsEnabled as areAllModelsEnabled,
   isGroupAllEnabled as areGroupAllEnabled,
-  getGroupEnabledCount as countGroupEnabled,
   removeModelById,
   buildSelectedModelsWithPreservedConfig
 } from '../config/ProviderModelActions'
@@ -36,12 +35,27 @@ export enum ProviderDetailPresentationMode {
   PAGE = 'page'
 }
 
+enum ProviderModelRenderRowType {
+  GROUP_HEADER = 0,
+  MODEL = 1
+}
+
+interface ProviderModelRenderRow {
+  type: ProviderModelRenderRowType
+  key: string
+  groupIndex: number
+  groupName: string
+  groupCount: number
+  model: ModelInfo | null
+  showDivider: boolean
+}
+
 @ComponentV2
 export struct ProviderDetailPanel {
   @Param providerId: string = ''
   @Param isCreateMode: boolean = false
   @Param closeOnSave: boolean = true
-  @Param closeOnModelsSelected: boolean = true
+  @Param closeOnModelsSelected: boolean = false
   @Param presentationMode: ProviderDetailPresentationMode = ProviderDetailPresentationMode.SHEET
   @Event onClose: () => void = () => {}
   @Event onProviderChanged: (providerId: string, isCreateMode: boolean) => void = (_providerId: string, _isCreateMode: boolean) => {}
@@ -63,6 +77,7 @@ export struct ProviderDetailPanel {
   @Local showApiKey: boolean = false
   @Local searchKeywords: string = ''
   @Local modelGroups: ProviderModelGroup[] = []
+  @Local modelRenderRows: ProviderModelRenderRow[] = []
   // 模型编辑相关状态
   @Local showEditSheet: boolean = false
   @Local editingModel: ModelInfo | null = null
@@ -149,10 +164,12 @@ export struct ProviderDetailPanel {
   // 构建模型分组
   private buildModelGroups(): void {
     if (this.provider === null) {
+      this.modelRenderRows = []
       return
     }
     const models = filterProviderModelsByKeyword(this.provider.models, this.searchKeywords)
     this.modelGroups = buildProviderModelGroups(models)
+    this.rebuildModelRenderRows()
   }
 
   private showProviderToast(message: string | Resource, duration: number = 2000): void {
@@ -176,6 +193,47 @@ export struct ProviderDetailPanel {
   private refreshModelGroups(): void {
     this.modelGroups = []
     this.buildModelGroups()
+  }
+
+  private rebuildModelRenderRows(): void {
+    const rows: ProviderModelRenderRow[] = []
+    for (let groupIndex = 0; groupIndex < this.modelGroups.length; groupIndex++) {
+      const group = this.modelGroups[groupIndex]
+      rows.push({
+        type: ProviderModelRenderRowType.GROUP_HEADER,
+        key: `group_${groupIndex}_${group.name}`,
+        groupIndex: groupIndex,
+        groupName: group.name,
+        groupCount: group.models.length,
+        model: null,
+        showDivider: false
+      })
+      if (!group.isExpanded) {
+        continue
+      }
+      for (let modelIndex = 0; modelIndex < group.models.length; modelIndex++) {
+        rows.push({
+          type: ProviderModelRenderRowType.MODEL,
+          key: `model_${groupIndex}_${group.models[modelIndex].id}`,
+          groupIndex: groupIndex,
+          groupName: group.name,
+          groupCount: group.models.length,
+          model: group.models[modelIndex],
+          showDivider: modelIndex < group.models.length - 1
+        })
+      }
+    }
+    this.modelRenderRows = rows
+  }
+
+  private getModelListCachedCount(): number {
+    if (this.modelRenderRows.length >= 120) {
+      return 2
+    }
+    if (this.modelRenderRows.length >= 40) {
+      return 3
+    }
+    return 4
   }
 
   private getModelIconPathForRender(modelId: string): string {
@@ -417,6 +475,7 @@ export struct ProviderDetailPanel {
           models: this.modelGroups[index].models,
           isExpanded: !this.modelGroups[index].isExpanded
         }
+        this.rebuildModelRenderRows()
       })
     }
   }
@@ -481,11 +540,6 @@ export struct ProviderDetailPanel {
       return false
     }
     return areGroupAllEnabled(this.modelGroups[groupIndex])
-  }
-
-  // 获取分组内启用的模型数量（用于 ForEach key）
-  private getGroupEnabledCount(group: ProviderModelGroup): number {
-    return countGroupEnabled(group)
   }
 
   private updateModelEnabled(modelId: string, isEnabled: boolean): void {
@@ -650,18 +704,11 @@ export struct ProviderDetailPanel {
           .tabBar(this.ConfigTabBuilder())
 
           TabContent() {
-            Scroll() {
-              Column() {
-                this.ModelsCard()
-                Column().height(20)
-              }
-              .width('100%')
+            Column() {
+              this.ModelsCard()
             }
             .width('100%')
             .height('100%')
-            .scrollBar(BarState.Off)
-            .edgeEffect(EdgeEffect.Spring)
-            .align(Alignment.Top)
           }
           .tabBar(this.ModelsTabBuilder())
         }
@@ -788,7 +835,7 @@ export struct ProviderDetailPanel {
       })
     }
     .width('100%')
-    .height(56)
+    .height(52)
     .padding({ left: 16, right: 16 })
   }
 
@@ -853,7 +900,7 @@ export struct ProviderDetailPanel {
             textIcon: this.provider.textIcon,
             textIconBgColor: this.provider.textIconBgColor,
             customImagePath: this.provider.customImagePath,
-            iconSize: 48,
+            iconSize: 44,
             radius: 12,
             bgColor: $r('app.color.divider'),
             brandColor: this.provider.brandColor,
@@ -913,12 +960,12 @@ export struct ProviderDetailPanel {
           Text(this.provider?.baseUrl ?? '')
             .fontSize(12)
             .fontColor($r('app.color.text_secondary'))
-            .margin({ top: 4 })
+            .margin({ top: 2 })
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ left: 12 })
+        .margin({ left: 10 })
         .layoutWeight(1)
 
         // 启用开关
@@ -932,12 +979,12 @@ export struct ProviderDetailPanel {
           })
       }
       .width('100%')
-      .padding(16)
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
     }
     .width('100%')
     .backgroundColor($r('app.color.surface'))
     .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 8 })
+    .margin({ left: 16, right: 16, top: 4 })
   }
 
   @Builder
@@ -1167,15 +1214,15 @@ export struct ProviderDetailPanel {
       }
       .width('100%')
       .padding({ left: 16, right: 16, bottom: 16 })
-    }
-    .width('100%')
-    .backgroundColor($r('app.color.surface'))
-    .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 16 })
   }
+  .width('100%')
+  .backgroundColor($r('app.color.surface'))
+  .borderRadius(16)
+  .margin({ left: 16, right: 16, top: 8 })
+}
 
-  @Builder
-  ModelsCard() {
+@Builder
+ModelsCard() {
     Column() {
       // 标题行
       Row() {
@@ -1249,7 +1296,7 @@ export struct ProviderDetailPanel {
         })
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 16, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 12, bottom: 8 })
 
       // 搜索框
       Search({ value: this.searchKeywords, placeholder: $r('app.string.filter_models_placeholder') })
@@ -1264,94 +1311,96 @@ export struct ProviderDetailPanel {
         })
 
       // 模型分组列表
-      if (this.modelGroups.length > 0) {
-        Column() {
-          ForEach(this.modelGroups, (group: ProviderModelGroup, groupIndex: number) => {
-            Column() {
-              // 分组标题
-              Row() {
-                Row() {
-                  SymbolGlyph($r('sys.symbol.chevron_right'))
-                    .fontSize(14)
-                    .fontColor([$r('app.color.text_tertiary')])
-                    .rotate({ angle: group.isExpanded ? 90 : 0 })
-                    .animation({ duration: 200 })
+      if (this.modelRenderRows.length > 0) {
+        List() {
+          Repeat<ProviderModelRenderRow>(this.modelRenderRows)
+            .each((ri: RepeatItem<ProviderModelRenderRow>) => {
+              if (ri.item.type === ProviderModelRenderRowType.GROUP_HEADER) {
+                ListItem() {
+                  Row() {
+                    Row() {
+                      SymbolGlyph($r('sys.symbol.chevron_right'))
+                        .fontSize(14)
+                        .fontColor([$r('app.color.text_tertiary')])
+                        .rotate({ angle: this.modelGroups[ri.item.groupIndex].isExpanded ? 90 : 0 })
+                        .animation({ duration: 200 })
 
-                  Text(group.name)
-                    .fontSize(14)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor($r('app.color.text_secondary'))
-                    .margin({ left: 8 })
+                      Text(ri.item.groupName)
+                        .fontSize(14)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor($r('app.color.text_secondary'))
+                        .margin({ left: 8 })
 
-                  Text(` (${group.models.length})`)
-                    .fontSize(12)
-                    .fontColor($r('app.color.text_secondary'))
+                      Text(` (${ri.item.groupCount})`)
+                        .fontSize(12)
+                        .fontColor($r('app.color.text_secondary'))
+                    }
+                    .layoutWeight(1)
+                    .onClick(() => {
+                      this.toggleGroupExpansion(ri.item.groupIndex)
+                    })
+
+                    Button() {
+                      SymbolGlyph(this.isGroupAllEnabled(ri.item.groupIndex)
+                        ? $r('sys.symbol.xmark_circle')
+                        : $r('sys.symbol.checkmark_circle'))
+                        .fontSize(16)
+                        .fontColor([this.isGroupAllEnabled(ri.item.groupIndex)
+                          ? $r('app.color.text_tertiary')
+                          : this.themePrimary])
+                    }
+                    .type(ButtonType.Circle)
+                    .width(32)
+                    .height(32)
+                    .backgroundColor(Color.Transparent)
+                    .onClick(() => {
+                      if (this.isGroupAllEnabled(ri.item.groupIndex)) {
+                        this.disableGroupModels(ri.item.groupIndex)
+                      } else {
+                        this.enableGroupModels(ri.item.groupIndex)
+                      }
+                    })
+                  }
+                  .width('100%')
+                  .height(44)
+                  .padding({ left: 16, right: 8 })
                 }
-                .layoutWeight(1)
-                .onClick(() => {
-                  this.toggleGroupExpansion(groupIndex)
-                })
-
-                // 分组一键开关按钮
-                Button() {
-                  SymbolGlyph(this.isGroupAllEnabled(groupIndex) ? $r('sys.symbol.xmark_circle') : $r('sys.symbol.checkmark_circle'))
-                    .fontSize(16)
-                    .fontColor([this.isGroupAllEnabled(groupIndex) ? $r('app.color.text_tertiary') : this.themePrimary])
+              } else if (ri.item.model !== null) {
+                ListItem() {
+                  ModelItemCard({
+                    model: ri.item.model,
+                    showDivider: ri.item.showDivider,
+                    providerId: this.provider?.id ?? '',
+                    onToggle: (modelId: string, isOn: boolean) => {
+                      this.updateModelEnabled(modelId, isOn)
+                    },
+                    onEdit: () => {
+                      this.openModelEditSheet(ri.item.model!)
+                    }
+                  })
                 }
-                .type(ButtonType.Circle)
-                .width(32)
-                .height(32)
-                .backgroundColor(Color.Transparent)
-                .onClick(() => {
-                  if (this.isGroupAllEnabled(groupIndex)) {
-                    this.disableGroupModels(groupIndex)
-                  } else {
-                    this.enableGroupModels(groupIndex)
+                .swipeAction({
+                  end: {
+                    builder: () => {
+                      this.DeleteButton(ri.item.model!)
+                    }
                   }
                 })
               }
-              .width('100%')
-              .height(44)
-              .padding({ left: 16, right: 8 })
+            })
+            .key((row: ProviderModelRenderRow) => row.key)
+            .virtualScroll({ totalCount: this.modelRenderRows.length })
 
-              // 分组内模型列表
-              if (group.isExpanded) {
-                List() {
-                  ForEach(group.models, (model: ModelInfo, modelIndex: number) => {
-                    ListItem() {
-                      ModelItemCard({
-                        model: model,
-                        showDivider: modelIndex < group.models.length - 1,
-                        providerId: this.provider?.id ?? '',
-                        onToggle: (modelId: string, isOn: boolean) => {
-                          this.updateModelEnabled(modelId, isOn)
-                        },
-                        onEdit: () => {
-                          this.openModelEditSheet(model)
-                        }
-                      })
-                    }
-                    .swipeAction({
-                      end: {
-                        builder: () => {
-                          this.DeleteButton(model)
-                        }
-                      }
-                    })
-                  }, (model: ModelInfo) => model.id)
-                }
-                .width('100%')
-                .scrollBar(BarState.Off)
-                .nestedScroll({
-                  scrollForward: NestedScrollMode.PARENT_FIRST,
-                  scrollBackward: NestedScrollMode.SELF_FIRST
-                })
-              }
-            }
-          }, (group: ProviderModelGroup, index: number) => `${group.name}_${index}_${group.isExpanded}_${this.getGroupEnabledCount(group)}`)
+          ListItem() {
+            Column().height(16)
+          }
         }
         .width('100%')
-        .margin({ top: 12 })
+        .layoutWeight(1)
+        .margin({ top: 8 })
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
+        .cachedCount(this.getModelListCachedCount())
       } else if (this.provider !== null && this.provider.models.length === 0) {
         // 无模型提示
         Column() {
@@ -1382,12 +1431,12 @@ export struct ProviderDetailPanel {
         .padding({ top: 40, bottom: 40 })
       }
 
-      Column().height(16)
     }
     .width('100%')
+    .height('100%')
     .backgroundColor($r('app.color.surface'))
     .borderRadius(16)
-    .margin({ left: 16, right: 16, top: 16 })
+    .margin({ left: 16, right: 16, top: 8 })
   }
 
 
@@ -1528,7 +1577,7 @@ export struct ProviderDetailSheet {
   @Param providerId: string = ''
   @Param isCreateMode: boolean = false
   @Param closeOnSave: boolean = true
-  @Param closeOnModelsSelected: boolean = true
+  @Param closeOnModelsSelected: boolean = false
   @Event onClose: () => void = () => {}
   @Event onProviderChanged: (providerId: string, isCreateMode: boolean) => void = (_providerId: string, _isCreateMode: boolean) => {}
 
