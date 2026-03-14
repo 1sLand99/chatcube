@@ -1014,7 +1014,7 @@
     },
     {
       "name": "provider_no_models_hint",
-      "value": "点击上方「获取模型」按钮获取可用模型"
+      "value": "点击上方「获取模型」或「+」按钮添加模型"
     },
     {
       "name": "provider_models_not_found",
@@ -1847,6 +1847,18 @@
     {
       "name": "font_preview_user_message",
       "value": "你好，请帮我写一段文字。"
+    },
+    {
+      "name": "provider_add_model_placeholder",
+      "value": "输入模型 ID，例如 gpt-4o"
+    },
+    {
+      "name": "provider_add_model_id_required",
+      "value": "请输入模型 ID"
+    },
+    {
+      "name": "provider_model_id_duplicate",
+      "value": "该模型 ID 已存在"
     }
   ]
 }

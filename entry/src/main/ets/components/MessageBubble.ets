@@ -1528,15 +1528,9 @@ export struct MessageBubble {
       .borderRadius(8)
       .clip(true)
       .onClick(() => {
-        // 生成过程中禁止手动折叠
-        if (!this.message.isGenerating) {
-          // 先更新状态（触发 UI 刷新）
-          this.isReasoningExpanded = !this.isReasoningExpanded
-          // 再执行动画
-          this.getUIContext().animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
-            // 动画参数已经通过状态变化自动应用
-          })
-        }
+        this.isReasoningExpanded = !this.isReasoningExpanded
+        this.getUIContext().animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+        })
       })
 
       // 推理内容默认折叠，仅在用户显式展开后显示

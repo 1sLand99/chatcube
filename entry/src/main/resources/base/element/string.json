@@ -1014,7 +1014,7 @@
     },
     {
       "name": "provider_no_models_hint",
-      "value": "Tap fetch models above to get available models"
+      "value": "Click 'Fetch Models' or '+' to add models"
     },
     {
       "name": "provider_models_not_found",
@@ -1847,6 +1847,18 @@
     {
       "name": "font_preview_user_message",
       "value": "Hi, can you help me write something?"
+    },
+    {
+      "name": "provider_add_model_placeholder",
+      "value": "Enter model ID, e.g. gpt-4o"
+    },
+    {
+      "name": "provider_add_model_id_required",
+      "value": "Please enter a model ID"
+    },
+    {
+      "name": "provider_model_id_duplicate",
+      "value": "Model ID already exists"
     }
   ]
 }

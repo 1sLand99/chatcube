@@ -98,6 +98,9 @@ export struct ProviderDetailPanel {
   @Local showColorPicker: boolean = false
   @Local tempTextIcon: string = ''
   @Local tempTextIconBgColor: string = ''
+  // 手动添加模型相关状态
+  @Local showAddModelInput: boolean = false
+  @Local addModelIdText: string = ''
 
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
 
@@ -121,6 +124,8 @@ export struct ProviderDetailPanel {
     this.showSheet = false
     this.activeSheet = 'none'
     this.fetchedModels = []
+    this.showAddModelInput = false
+    this.addModelIdText = ''
     this.loadProviderData()
   }
 
@@ -191,6 +196,7 @@ export struct ProviderDetailPanel {
   }
 
   private refreshModelGroups(): void {
+    this.modelRenderRows = []
     this.modelGroups = []
     this.buildModelGroups()
   }
@@ -330,6 +336,19 @@ export struct ProviderDetailPanel {
       }
     }
 
+    // 保留不在 API 列表中的已有模型（如手动添加的模型）
+    const fetchedSet = new Set<string>(this.fetchedModels)
+    const newModelIdSet = new Set<string>()
+    for (let i = 0; i < newModels.length; i++) {
+      newModelIdSet.add(newModels[i].id)
+    }
+    for (let i = 0; i < this.provider.models.length; i++) {
+      const model = this.provider.models[i]
+      if (!fetchedSet.has(model.id) && !newModelIdSet.has(model.id)) {
+        newModels.push(model)
+      }
+    }
+
     this.provider.models = newModels
 
     await this.saveCurrentProvider()
@@ -355,6 +374,39 @@ export struct ProviderDetailPanel {
     if (newlyAddedModelIds.length > 0) {
       this.applySelectedModelCapabilitiesAsync(providerId, newlyAddedModelIds)
     }
+  }
+
+  // 手动添加模型
+  async addManualModel(): Promise<void> {
+    if (this.provider === null) {
+      return
+    }
+    const modelId = this.addModelIdText.trim()
+    if (modelId.length === 0) {
+      this.showProviderToast($r('app.string.provider_add_model_id_required'), 2000)
+      return
+    }
+    // 检查重复
+    for (let i = 0; i < this.provider.models.length; i++) {
+      if (this.provider.models[i].id === modelId) {
+        this.showProviderToast($r('app.string.provider_model_id_duplicate'), 2000)
+        return
+      }
+    }
+    const model = new ModelInfo(modelId, modelId, 4096, true, false)
+    this.provider.models.push(model)
+    await this.saveCurrentProvider()
+    this.refreshModelGroups()
+    this.showAddModelInput = false
+    this.addModelIdText = ''
+    this.getUIContext().getFocusController().clearFocus()
+    this.notifyProviderChanged()
+    // 自动打开编辑面板
+    this.editingModel = model
+    this.activeSheet = 'edit'
+    this.showSheet = true
+    // 异步匹配能力
+    this.applySelectedModelCapabilitiesAsync(this.provider.id, [modelId])
   }
 
   private applySelectedModelCapabilitiesAsync(providerId: string, modelIds: string[]): void {
@@ -1267,6 +1319,24 @@ ModelsCard() {
           })
         }
 
+        // 手动添加模型按钮
+        Button() {
+          SymbolGlyph($r('sys.symbol.plus'))
+            .fontSize(14)
+            .fontColor([this.themePrimary])
+        }
+        .type(ButtonType.Circle)
+        .width(32)
+        .height(32)
+        .backgroundColor(this.themePrimaryLight)
+        .margin({ right: 8 })
+        .onClick(() => {
+          this.showAddModelInput = !this.showAddModelInput
+          if (!this.showAddModelInput) {
+            this.addModelIdText = ''
+          }
+        })
+
         // 获取模型按钮
         Button() {
           Row() {
@@ -1310,6 +1380,54 @@ ModelsCard() {
           this.buildModelGroups()
         })
 
+      // 手动添加模型输入行
+      if (this.showAddModelInput) {
+        Row({ space: 8 }) {
+          TextInput({ text: this.addModelIdText, placeholder: $r('app.string.provider_add_model_placeholder') })
+            .layoutWeight(1)
+            .height(36)
+            .fontSize(14)
+            .backgroundColor($r('app.color.background'))
+            .borderRadius(8)
+            .onChange((value: string) => {
+              this.addModelIdText = value
+            })
+            .onSubmit(() => {
+              this.addManualModel()
+            })
+
+          Button() {
+            SymbolGlyph($r('sys.symbol.checkmark'))
+              .fontSize(16)
+              .fontColor([this.themePrimary])
+          }
+          .type(ButtonType.Circle)
+          .width(36)
+          .height(36)
+          .backgroundColor(this.themePrimaryLight)
+          .onClick(() => {
+            this.addManualModel()
+          })
+
+          Button() {
+            SymbolGlyph($r('sys.symbol.xmark'))
+              .fontSize(16)
+              .fontColor([$r('app.color.text_tertiary')])
+          }
+          .type(ButtonType.Circle)
+          .width(36)
+          .height(36)
+          .backgroundColor($r('app.color.background'))
+          .onClick(() => {
+            this.showAddModelInput = false
+            this.addModelIdText = ''
+            this.getUIContext().getFocusController().clearFocus()
+          })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 8 })
+      }
+
       // 模型分组列表
       if (this.modelRenderRows.length > 0) {
         List() {
@@ -1322,7 +1440,8 @@ ModelsCard() {
                       SymbolGlyph($r('sys.symbol.chevron_right'))
                         .fontSize(14)
                         .fontColor([$r('app.color.text_tertiary')])
-                        .rotate({ angle: this.modelGroups[ri.item.groupIndex].isExpanded ? 90 : 0 })
+                        .rotate({ angle: (ri.item.groupIndex < this.modelGroups.length &&
+                          this.modelGroups[ri.item.groupIndex].isExpanded) ? 90 : 0 })
                         .animation({ duration: 200 })
 
                       Text(ri.item.groupName)

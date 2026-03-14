@@ -146,8 +146,12 @@ struct ExportDataPage {
         const saveUris = await documentViewPicker.save(documentSaveOptions)
 
         if (saveUris && saveUris.length > 0) {
-          // 复制文件到用户选择的位置
-          await fileIo.copyFile(zipPath, saveUris[0])
+          // 复制文件到用户选择的位置（通过 fd 操作，picker URI 不能直接作为路径）
+          const srcFile = fileIo.openSync(zipPath, fileIo.OpenMode.READ_ONLY)
+          const destFile = fileIo.openSync(saveUris[0], fileIo.OpenMode.READ_WRITE)
+          await fileIo.copyFile(srcFile.fd, destFile.fd)
+          fileIo.closeSync(srcFile)
+          fileIo.closeSync(destFile)
 
           // 删除临时文件
           fileIo.unlinkSync(zipPath)
