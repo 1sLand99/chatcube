@@ -51,6 +51,11 @@
       "buildFunction": "SystemPromptSettingsPageBuilder"
     },
     {
+      "name": "ProviderDetailPage",
+      "pageSourceFile": "src/main/ets/pages/ProviderDetailPage.ets",
+      "buildFunction": "ProviderDetailPageBuilder"
+    },
+    {
       "name": "ToolsCenterPage",
       "pageSourceFile": "src/main/ets/pages/ToolsCenterPage.ets",
       "buildFunction": "ToolsCenterPageBuilder"

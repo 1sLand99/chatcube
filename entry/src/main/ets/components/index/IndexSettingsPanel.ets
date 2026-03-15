@@ -309,7 +309,7 @@ export struct IndexSettingsPanel {
             key: 'privacy',
             icon: $r('sys.symbol.doc_text'),
             title: $r('app.string.settings_privacy_policy'),
-            action: null
+            action: (): void => { this.onOpenPrivacy() }
           } as SettingsListItemModel,
           {
             key: SettingsRouteName.SUPPORT_DEVELOPMENT,

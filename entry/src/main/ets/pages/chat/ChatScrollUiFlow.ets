@@ -11,7 +11,6 @@ export interface ChatScrollUiFlowDependencies {
   getIsAtBottom: () => boolean
   getIsInputBarVisible: () => boolean
   getIsSending: () => boolean
-  getIsInputFocused: () => boolean
   getIsEditingMessage: () => boolean
   getEditingMessageId: () => string
   hasDraftContent: () => boolean
@@ -79,11 +78,9 @@ export class ChatScrollUiFlow {
     if (scrollState === ScrollState.Scroll || scrollState === ScrollState.Fling) {
       if (offsetDelta > this.deps.getInputBarShowThreshold()) {
         this.setInputBarVisible(true)
-      } else if (scrollState === ScrollState.Scroll && offsetDelta < -this.deps.getInputBarHideThreshold()) {
+      } else if (offsetDelta < -this.deps.getInputBarHideThreshold()) {
         if (!this.deps.getIsAtBottom() &&
           !this.deps.getIsSending() &&
-          !this.deps.hasDraftContent() &&
-          !this.deps.getIsInputFocused() &&
           !this.deps.getIsEditingMessage()) {
           this.setInputBarVisible(false)
         }

@@ -1,5 +1,5 @@
 import { curves } from '@kit.ArkUI'
-import { ConfigurationConstant, common } from '@kit.AbilityKit'
+import { ConfigurationConstant, Want, common } from '@kit.AbilityKit'
 import { notificationManager } from '@kit.NotificationKit'
 import { motion } from '@kit.MultimodalAwarenessKit'
 import { BusinessError } from '@kit.BasicServicesKit'
@@ -63,6 +63,10 @@ import {
 } from '../utils/SystemPromptTemplateUtils'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/AppUiState'
+import { tryHandleProviderDetailInternalBack } from '../components/ProviderDetailSheet'
+import { tryHandleModelManageInternalBack } from './ModelManagePage'
+
+const PRIVACY_POLICY_URL = 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1906111586003597632'
 
 @Entry
 @ComponentV2
@@ -368,6 +372,23 @@ struct Index {
     this.settingsNavPathStack.pushPath({ name: routeName })
   }
 
+  private async openPrivacyPolicy(): Promise<void> {
+    try {
+      const hostContext = this.getUIContext().getHostContext()
+      if (!hostContext) {
+        return
+      }
+      const want: Want = {
+        action: 'ohos.want.action.viewData',
+        entities: ['entity.system.browsable'],
+        uri: PRIVACY_POLICY_URL
+      }
+      await (hostContext as common.UIAbilityContext).startAbility(want)
+    } catch (err) {
+      console.error('Index', `Open privacy policy failed: ${JSON.stringify(err)}`)
+    }
+  }
+
   private clearSettingsDestination(animated: boolean = false): void {
     if (this.settingsNavPathStack.size() > 0) {
       this.settingsNavPathStack.clear(animated)
@@ -519,6 +540,14 @@ struct Index {
     }
 
     if (this.currentTabIndex === 2 && this.settingsNavPathStack.size() > 0) {
+      const topSettingsRouteName = this.getTopSettingsRouteName()
+      if (topSettingsRouteName === 'ProviderDetailPage' && tryHandleProviderDetailInternalBack()) {
+        return true
+      }
+      if (topSettingsRouteName === SettingsRouteName.MODEL_MANAGE &&
+        tryHandleModelManageInternalBack()) {
+        return true
+      }
       if (this.isSettingsSplitMode()) {
         this.clearSettingsDestination(false)
       } else {
@@ -555,6 +584,14 @@ struct Index {
       this.showIndexSnack($r('app.string.back_press_exit_hint'), 2000)
       return true
     }
+  }
+
+  private getTopSettingsRouteName(): string {
+    const routeNames = this.settingsNavPathStack.getAllPathName()
+    if (routeNames.length <= 0) {
+      return ''
+    }
+    return routeNames[routeNames.length - 1]
   }
 
   private registerSettingsCallback(): void {
@@ -1761,6 +1798,9 @@ struct Index {
       },
       onOpenSupportDevelopment: (): void => {
         this.openSettingsDestination(SettingsRouteName.SUPPORT_DEVELOPMENT)
+      },
+      onOpenPrivacy: (): void => {
+        this.openPrivacyPolicy()
       }
     })
   }

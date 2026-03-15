@@ -2,7 +2,11 @@ import { SymbolGlyphModifier } from '@kit.ArkUI'
 import { ModelProvider, ModelInfo, ProviderType } from '../models/ChatModels'
 import { ProviderViewModel } from '../viewmodels/ProviderViewModel'
 import { showToast } from '../utils/ToastUtil'
-import { ProviderDetailPanel, ProviderDetailPresentationMode, ProviderDetailSheet } from '../components/ProviderDetailSheet'
+import {
+  ProviderDetailPanel,
+  ProviderDetailPresentationMode,
+  tryHandleProviderDetailInternalBack
+} from '../components/ProviderDetailSheet'
 import { ProviderIcon } from '../components/ProviderIcon'
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { ModelCapabilityMatcher } from '../services/ModelCapabilityMatcher'
@@ -13,8 +17,10 @@ import { LayoutSizeClass } from '../config/LayoutProfile'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { isSettingsPageExpandedLayout } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState, observeAppUiState } from '../state/AppUiState'
+import { ProviderDetailRouteParams } from './ProviderDetailPage'
 
 let modelManagePagePathStack: NavPathStack | null = null
+let modelManageInternalBackHandler: (() => boolean) | null = null
 
 @Entry
 @ComponentV2
@@ -25,11 +31,8 @@ struct ModelManagePage {
   @Local allProviders: ModelProvider[] = []
   @Local isLoading: boolean = false
   @Local searchKeywords: string = ''
-  // 半模态弹窗相关状态
-  @Local showProviderSheet: boolean = false
   @Local selectedProviderId: string = ''
   @Local detailCreateMode: boolean = false
-  @Local providerSheetClosing: boolean = false
   @Local isMatchingIcons: boolean = false
   private get themePrimary(): string {
     return getAppUiState().themePrimary
@@ -52,22 +55,47 @@ struct ModelManagePage {
   private hasLoaded: boolean = false
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
   private layoutObserverDisposer: (() => void) | null = null
-  private pendingProviderSheetOpen: boolean = false
-  private pendingProviderSheetProviderId: string = ''
-  private pendingProviderSheetCreateMode: boolean = false
 
   private showManageToast(message: string | Resource, duration: number = 2000): void {
     showToast(this.getUIContext(), message, duration)
   }
 
-  private handleBack(): void {
+  private handleBackNavigation(): boolean {
     if (modelManagePagePathStack !== null && modelManagePagePathStack.size() > 0) {
       modelManagePagePathStack.pop()
+      return true
     }
+    return false
+  }
+
+  private handleBack(): void {
+    this.handlePageBackPressed()
+  }
+
+  private handleInternalBackPressed(): boolean {
+    if (tryHandleProviderDetailInternalBack()) {
+      return true
+    }
+    if (this.showEmbeddedProviderDetailPage()) {
+      this.requestCloseProviderDetail()
+      return true
+    }
+    return false
+  }
+
+  private handlePageBackPressed(): boolean {
+    if (this.handleInternalBackPressed()) {
+      return true
+    }
+    return this.handleBackNavigation()
   }
 
   onLayoutSizeClassChanged(): void {
     this.ensureExpandedDetailSelection()
+  }
+
+  onBackPress(): boolean {
+    return this.handlePageBackPressed()
   }
 
   private isEmbeddedSettingsDetailPane(): boolean {
@@ -102,7 +130,7 @@ struct ModelManagePage {
       return
     }
     if (!this.isEmbeddedSettingsDetailPane()) {
-      this.requestOpenProviderSheet(providerId, false)
+      this.openProviderDetailPage(providerId, false)
       return
     }
     this.detailCreateMode = false
@@ -116,72 +144,38 @@ struct ModelManagePage {
       return
     }
     if (!this.isEmbeddedSettingsDetailPane()) {
-      this.requestOpenProviderSheet('', true)
+      this.openProviderDetailPage('', true)
       return
     }
     this.detailCreateMode = true
     this.selectedProviderId = ''
   }
 
-  private requestOpenProviderSheet(providerId: string, isCreateMode: boolean): void {
-    if (this.providerSheetClosing) {
-      this.pendingProviderSheetOpen = true
-      this.pendingProviderSheetProviderId = providerId
-      this.pendingProviderSheetCreateMode = isCreateMode
+  private openProviderDetailPage(providerId: string, isCreateMode: boolean): void {
+    if (modelManagePagePathStack === null) {
       return
     }
-    this.pendingProviderSheetOpen = false
-    this.pendingProviderSheetProviderId = ''
-    this.pendingProviderSheetCreateMode = false
-    this.detailCreateMode = isCreateMode
-    this.selectedProviderId = providerId
-    this.showProviderSheet = true
+    const routeParams: ProviderDetailRouteParams = {
+      providerId,
+      isCreateMode
+    }
+    modelManagePagePathStack.pushPath({
+      name: 'ProviderDetailPage',
+      param: routeParams
+    })
   }
 
   private requestCloseProviderDetail(): void {
-    if (this.isExpandedLayout() || this.isEmbeddedSettingsDetailPane()) {
-      this.finalizeProviderDetailClosed()
-      return
-    }
-    if (!this.showProviderSheet) {
-      return
-    }
-    this.providerSheetClosing = true
-    this.showProviderSheet = false
-  }
-
-  private handleProviderSheetDisappear(): void {
-    this.providerSheetClosing = false
-    if (this.pendingProviderSheetOpen) {
-      const nextProviderId = this.pendingProviderSheetProviderId
-      const nextCreateMode = this.pendingProviderSheetCreateMode
-      this.pendingProviderSheetOpen = false
-      this.pendingProviderSheetProviderId = ''
-      this.pendingProviderSheetCreateMode = false
-      this.detailCreateMode = nextCreateMode
-      this.selectedProviderId = nextProviderId
-      this.showProviderSheet = true
-      return
-    }
-    this.pendingProviderSheetProviderId = ''
-    this.pendingProviderSheetCreateMode = false
     this.finalizeProviderDetailClosed()
   }
 
   private finalizeProviderDetailClosed(): void {
     this.refreshFromCache()
     this.detailCreateMode = false
-    this.showProviderSheet = false
-    if (this.isExpandedLayout()) {
-      this.selectedProviderId = ''
-      this.ensureExpandedDetailSelection()
-      return
-    }
-    if (this.isEmbeddedSettingsDetailPane()) {
-      this.selectedProviderId = ''
-      return
-    }
     this.selectedProviderId = ''
+    if (this.isExpandedLayout()) {
+      this.ensureExpandedDetailSelection()
+    }
   }
 
   private showEmbeddedProviderDetailPage(): boolean {
@@ -189,6 +183,9 @@ struct ModelManagePage {
   }
 
   aboutToAppear(): void {
+    modelManageInternalBackHandler = (): boolean => {
+      return this.handleInternalBackPressed()
+    }
     if (this.layoutObserverDisposer === null) {
       this.layoutObserverDisposer = observeAppUiState(['layoutSizeClass', 'windowWidthVp', 'windowHeightVp',
         'settingsDetailPresentationMode'], (): void => {
@@ -199,6 +196,7 @@ struct ModelManagePage {
   }
 
   aboutToDisappear(): void {
+    modelManageInternalBackHandler = null
     if (this.layoutObserverDisposer !== null) {
       this.layoutObserverDisposer()
       this.layoutObserverDisposer = null
@@ -206,9 +204,7 @@ struct ModelManagePage {
   }
 
   onPageShow(): void {
-    // 只在已加载过且不是从 Sheet 返回时静默刷新
-    // Sheet 关闭由 onClose 回调处理，这里处理从其他页面返回的情况
-    if (this.hasLoaded && !this.showProviderSheet) {
+    if (this.hasLoaded) {
       this.refreshFromDatabase()
     }
   }
@@ -384,20 +380,6 @@ struct ModelManagePage {
         .layoutWeight(1)
         .backgroundColor($r('app.color.background'))
       }
-
-      // 单独的 Sheet 宿主，避免挂在动态重渲染主体上导致偶发收缩
-      Column()
-        .width(0)
-        .height(0)
-        .bindSheet($$this.showProviderSheet, this.ProviderDetailSheetBuilder(), {
-          height: SheetSize.LARGE,
-          showClose: false,
-          dragBar: true,
-          blurStyle: BlurStyle.Regular,
-          onDisappear: () => {
-            this.handleProviderSheetDisappear()
-          }
-        })
     }
     .width('100%')
     .height('100%')
@@ -568,7 +550,7 @@ struct ModelManagePage {
         List({ space: 8 }) {
           Repeat<ModelProvider>(this.getProviderListDataSource())
             .each((obj: RepeatItem<ModelProvider>) => {
-              ListItem() {
+              ListItem({ style: ListItemStyle.NONE }) {
                 ProviderCardItem({
                   provider: obj.item,
                   searchKeywords: this.searchKeywords,
@@ -672,7 +654,7 @@ struct ModelManagePage {
       isCreateMode: this.detailCreateMode,
       closeOnSave: true,
       closeOnModelsSelected: false,
-      presentationMode: ProviderDetailPresentationMode.PAGE,
+      presentationMode: ProviderDetailPresentationMode.DETAIL_PANE,
       onProviderChanged: (providerId: string, wasCreateMode: boolean) => {
         this.refreshFromCache()
         if (wasCreateMode) {
@@ -680,17 +662,6 @@ struct ModelManagePage {
           this.selectedProviderId = providerId
         }
       },
-      onClose: () => {
-        this.requestCloseProviderDetail()
-      }
-    })
-  }
-
-  @Builder
-  ProviderDetailSheetBuilder() {
-    ProviderDetailSheet({
-      providerId: this.selectedProviderId,
-      isCreateMode: this.detailCreateMode,
       onClose: () => {
         this.requestCloseProviderDetail()
       }
@@ -951,6 +922,8 @@ struct ProviderCardItem {
       })
     }
     .width('100%')
+    .borderRadius(16)
+    .clip(true)
     .backgroundColor(this.active ? this.themePrimaryLight : $r('app.color.surface'))
     .border(this.active ? { width: 1.5, color: this.themePrimary } : { width: 0, color: Color.Transparent })
   }
@@ -967,10 +940,20 @@ export function ModelManagePageBuilder(name: string, param: Object) {
     modelManagePagePathStack = context.pathStack
   })
   .onBackPressed((): boolean => {
+    if (tryHandleModelManageInternalBack()) {
+      return true
+    }
     if (modelManagePagePathStack !== null && modelManagePagePathStack.size() > 0) {
       modelManagePagePathStack.pop()
+      return true
     }
-    return true
+    return false
   })
 }
 
+export function tryHandleModelManageInternalBack(): boolean {
+  if (modelManageInternalBackHandler === null) {
+    return false
+  }
+  return modelManageInternalBackHandler()
+}

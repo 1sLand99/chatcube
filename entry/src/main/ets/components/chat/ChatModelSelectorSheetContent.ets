@@ -54,6 +54,7 @@ export struct ChatModelSelectorSheetContent {
         .width('100%')
         .height(56)
         .padding({ left: 16, right: 16 })
+        .backgroundColor($r('app.color.background'))
 
         ModelSelectorContent({
           providers: this.providers,

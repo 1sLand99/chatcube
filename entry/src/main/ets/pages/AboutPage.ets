@@ -1,5 +1,4 @@
 import { Want, common } from '@kit.AbilityKit'
-import { pasteboard } from '@kit.BasicServicesKit'
 import { bundleManager } from '@kit.AbilityKit'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
@@ -190,7 +189,7 @@ struct AboutPage {
             .padding({ left: 16, right: 16 })
             .alignItems(VerticalAlign.Center)
             .onClick(() => {
-              this.copyGitHubLink()
+              this.openGitHubInBrowser()
             })
           }
           .width('100%')
@@ -328,14 +327,17 @@ struct AboutPage {
     .alignItems(HorizontalAlign.Center)
   }
 
-  private copyGitHubLink(): void {
+  private async openGitHubInBrowser(): Promise<void> {
     try {
-      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, GITHUB_URL)
-      const systemPasteboard = pasteboard.getSystemPasteboard()
-      systemPasteboard.setDataSync(pasteData)
-      this.pageToast($r('app.string.about_link_copied'))
+      const hostContext = this.getUIContext().getHostContext()
+      if (!hostContext) {
+        throw new Error('UI context unavailable')
+      }
+      const context = hostContext as common.UIAbilityContext
+      await this.startBrowsableAbility(context, GITHUB_URL)
     } catch (err) {
-      hilog.error(0x0000, TAG, 'Copy link failed: %{public}s', JSON.stringify(err))
+      hilog.error(0x0000, TAG, 'Open GitHub failed: %{public}s', JSON.stringify(err))
+      this.pageToast($r('app.string.about_open_qq_group_failed'))
     }
   }
 

@@ -28,11 +28,13 @@ export struct ModelPickerSheet {
   @Local searchKeywords: string = ''
   @Local selectedIds: Set<string> = new Set<string>()
   @Local showSelectedOnly: boolean = false
+  @Local activeGroupFilter: number = -1
 
   @Event onConfirm: (selectedIds: string[]) => void = () => {}
   @Event onCancel: () => void = () => {}
 
   @Local private groups: PickerModelGroup[] = []
+  @Local private displayedGroups: PickerModelGroup[] = []
   private existingModelIdSet: Set<string> = new Set<string>()
   private filteredModelIds: string[] = []
   private visibleModelIds: string[] = []
@@ -67,12 +69,20 @@ export struct ModelPickerSheet {
       this.searchKeywords,
       this.showSelectedOnly
     )
-    this.filteredModelIds = result.filteredModelIds
-    this.visibleModelIds = result.visibleModelIds
     this.groups = result.groups
+    if (this.activeGroupFilter >= 0 && this.activeGroupFilter < result.groups.length) {
+      const filteredGroup = result.groups[this.activeGroupFilter]
+      const filteredModelIdSet = new Set<string>(filteredGroup.modelIds)
+      this.visibleModelIds = result.visibleModelIds.filter((id: string) => filteredModelIdSet.has(id))
+      this.displayedGroups = [filteredGroup]
+    } else {
+      this.visibleModelIds = result.visibleModelIds
+      this.displayedGroups = result.groups
+    }
+    this.filteredModelIds = result.filteredModelIds
     console.info(
       'ModelPickerSheet',
-      `[rebuildRows] available=${this.availableModels.length}, visible=${this.visibleModelIds.length}, groups=${result.groups.length}, filtered=${this.filteredModelIds.length}, cost=${Date.now() - startAt}ms`
+      `[rebuildRows] available=${this.availableModels.length}, visible=${this.visibleModelIds.length}, groups=${this.groups.length}, filtered=${this.filteredModelIds.length}, cost=${Date.now() - startAt}ms`
     )
   }
 
@@ -286,6 +296,7 @@ export struct ModelPickerSheet {
       .padding({ left: 16, right: 16 })
       .onChange((value: string) => {
         this.searchKeywords = value
+        this.activeGroupFilter = -1
         this.rebuildRows()
       })
   }
@@ -360,16 +371,21 @@ export struct ModelPickerSheet {
                 Text(group.name)
                   .fontSize(13)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor($r('app.color.text_secondary'))
+                  .fontColor(this.activeGroupFilter === index
+                    ? Color.White
+                    : $r('app.color.text_secondary'))
               }
               .type(ButtonType.Normal)
               .stateEffect(false)
               .height(32)
               .padding({ left: 12, right: 12 })
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(this.activeGroupFilter === index
+                ? this.themePrimary
+                : $r('app.color.surface'))
               .borderRadius(16)
               .onClick(() => {
-                this.scrollToGroup(index)
+                this.activeGroupFilter = this.activeGroupFilter === index ? -1 : index
+                this.rebuildRows()
               })
             }, (group: PickerModelGroup) => `jump::${group.name}`)
           }
@@ -408,11 +424,11 @@ export struct ModelPickerSheet {
 
   @Builder
   ModelList() {
-    if (this.groups.length === 0) {
+    if (this.displayedGroups.length === 0) {
       this.EmptyState()
     } else {
       List({ scroller: this.listScroller }) {
-        ForEach(this.groups, (group: PickerModelGroup) => {
+        ForEach(this.displayedGroups, (group: PickerModelGroup) => {
           ListItemGroup({
             header: this.GroupHeader(group)
           }) {

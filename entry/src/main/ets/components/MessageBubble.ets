@@ -233,13 +233,16 @@ export struct MessageBubble {
     const latexTextColorSecondary = 0xFF999999
 
     // 配置主内容 Markdown
+    const fs = this.chatFontSize
     this.markdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(this.chatFontSize - 1)
-      .setTextLineHeight(this.chatFontSize + 7)
-      .setTitleSize([this.chatFontSize + 7, this.chatFontSize + 5, this.chatFontSize + 3,
-        this.chatFontSize + 1, this.chatFontSize, this.chatFontSize - 1])
+      .setTextSize(fs - 1)
+      .setTextLineHeight(Math.round((fs - 1) * 1.4))
+      .setTitleSize([fs + 7, fs + 5, fs + 3, fs + 1, fs, fs - 1])
+      .setTitleLineHeight([
+        Math.round((fs + 7) * 1.3), Math.round((fs + 5) * 1.3), Math.round((fs + 3) * 1.3),
+        Math.round((fs + 1) * 1.3), Math.round(fs * 1.3), Math.round((fs - 1) * 1.3)])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -248,7 +251,7 @@ export struct MessageBubble {
       .setInlineCodeBackgroundColor(inlineCodeBgColor)
       .setCodeBlockTheme(codeTheme)
       .setLatexMathTextColor(latexTextColor)
-      .setLatexMathTextSize(this.chatFontSize + 2)
+      .setLatexMathTextSize(fs + 2)
       .setTableBackgroundColor(tableBgColor)
       .setTableTitleBackgroundColor(tableHeaderBgColor)
       .setTableInterleaveBackgroundColor(tableAltBgColor)
@@ -268,10 +271,12 @@ export struct MessageBubble {
     this.reasoningMarkdownController
       .setTitleColor(reasoningTextColor)
       .setTextColor(reasoningTextColor)
-      .setTextSize(this.chatFontSize - 2)
-      .setTextLineHeight(this.chatFontSize + 5)
-      .setTitleSize([this.chatFontSize + 3, this.chatFontSize + 1, this.chatFontSize,
-        this.chatFontSize - 1, this.chatFontSize - 2, this.chatFontSize - 2])
+      .setTextSize(fs - 2)
+      .setTextLineHeight(Math.round((fs - 2) * 1.35))
+      .setTitleSize([fs + 3, fs + 1, fs, fs - 1, fs - 2, fs - 2])
+      .setTitleLineHeight([
+        Math.round((fs + 3) * 1.3), Math.round((fs + 1) * 1.3), Math.round(fs * 1.3),
+        Math.round((fs - 1) * 1.3), Math.round((fs - 2) * 1.3), Math.round((fs - 2) * 1.3)])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -280,7 +285,7 @@ export struct MessageBubble {
       .setInlineCodeBackgroundColor(inlineCodeBgColor)
       .setCodeBlockTheme(codeTheme)
       .setLatexMathTextColor(latexTextColorSecondary)
-      .setLatexMathTextSize(this.chatFontSize)
+      .setLatexMathTextSize(fs)
       .setTableBackgroundColor(tableBgColor)
       .setTableTitleBackgroundColor(tableHeaderBgColor)
       .setTableInterleaveBackgroundColor(tableAltBgColor)
@@ -300,10 +305,12 @@ export struct MessageBubble {
     this.translationMarkdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(this.chatFontSize - 2)
-      .setTextLineHeight(this.chatFontSize + 5)
-      .setTitleSize([this.chatFontSize + 5, this.chatFontSize + 3, this.chatFontSize + 1,
-        this.chatFontSize, this.chatFontSize - 1, this.chatFontSize - 2])
+      .setTextSize(fs - 2)
+      .setTextLineHeight(Math.round((fs - 2) * 1.35))
+      .setTitleSize([fs + 5, fs + 3, fs + 1, fs, fs - 1, fs - 2])
+      .setTitleLineHeight([
+        Math.round((fs + 5) * 1.3), Math.round((fs + 3) * 1.3), Math.round((fs + 1) * 1.3),
+        Math.round(fs * 1.3), Math.round((fs - 1) * 1.3), Math.round((fs - 2) * 1.3)])
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
       .setHyperlinkTextColor(linkColor)
@@ -683,7 +690,7 @@ export struct MessageBubble {
               Text(this.getDisplayContent())
                 .fontSize(this.chatFontSize)
                 .fontColor(this.themeUserBubbleText)
-                .lineHeight(this.chatFontSize + 7)
+                .lineHeight(Math.round(this.chatFontSize * 1.4))
             }
           }
           .padding(this.hasDisplayAttachments() ? { left: 8, right: 8, top: 8, bottom: 8 } : { left: 14, right: 14, top: 10, bottom: 10 })
@@ -832,6 +839,7 @@ export struct MessageBubble {
   CompactSingleImage(attachment: MessageAttachment, attachmentIndex: number, bottomMargin: number) {
     if (this.getAttachmentImageSource(attachment) !== '') {
       Image(this.getAttachmentImageSource(attachment))
+        .id('img_' + attachment.id)
         .width(this.compactImageContainerWidth)
         .height(this.compactImageMaxHeight)
         .objectFit(ImageFit.Contain)
@@ -852,6 +860,7 @@ export struct MessageBubble {
   CompactGridImage(attachment: MessageAttachment, attachmentIndex: number) {
     if (this.getAttachmentImageSource(attachment) !== '') {
       Image(this.getAttachmentImageSource(attachment))
+        .id('img_' + attachment.id)
         .width('100%')
         .height(this.compactImageMaxHeight)
         .objectFit(ImageFit.Contain)
@@ -897,7 +906,7 @@ export struct MessageBubble {
               }
             }
             .width(this.compactImageContainerWidth)
-          }, (rowIndex: number) => rowIndex.toString())
+          }, (rowIndex: number) => `${this.message.id}_user_${rowIndex}`)
         }
         .margin({ bottom: this.hasMessageTextContent() ? 6 : 0 })
       }
@@ -954,7 +963,7 @@ export struct MessageBubble {
               }
             }
             .width(this.compactImageContainerWidth)
-          }, (rowIndex: number) => rowIndex.toString())
+          }, (rowIndex: number) => `${this.message.id}_ai_${rowIndex}`)
         }
         .margin({ bottom: 8 })
       }
@@ -1464,8 +1473,8 @@ export struct MessageBubble {
           .fontColor([this.message.isGenerating ? this.themePrimary : $r('app.color.text_secondary')])
 
         // 标题文本：根据生成状态显示不同内容
-        if (this.message.isGenerating) {
-          // 正在思考状态：显示跳动点动画
+        if (this.message.isGenerating && this.message.content.length === 0) {
+          // 正在思考状态：显示跳动点动画（仅在内容尚未开始生成时）
           Row({ space: 4 }) {
             Text($r('app.string.reasoning_thinking'))
               .fontSize(12)

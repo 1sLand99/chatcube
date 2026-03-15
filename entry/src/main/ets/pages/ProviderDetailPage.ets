@@ -1,91 +1,43 @@
-import { ProviderDetailPanel, ProviderDetailPresentationMode } from '../components/ProviderDetailSheet'
-import { getCenteredPageMaxWidth, LayoutSizeClass } from '../config/LayoutProfile'
-import { getAppUiState } from '../state/AppUiState'
+import {
+  ProviderDetailPanel,
+  ProviderDetailPresentationMode,
+  tryHandleProviderDetailInternalBack
+} from '../components/ProviderDetailSheet'
 
-@Entry
+export interface ProviderDetailRouteParams {
+  providerId?: string
+  isCreateMode?: boolean
+}
+
+function resolveProviderDetailRouteParams(param: Object): ProviderDetailRouteParams {
+  return param as ProviderDetailRouteParams
+}
+
+let providerDetailPagePathStack: NavPathStack | null = null
+
+function popProviderDetailPage(): boolean {
+  if (providerDetailPagePathStack === null || providerDetailPagePathStack.size() <= 0) {
+    return false
+  }
+  providerDetailPagePathStack.pop()
+  return true
+}
+
 @ComponentV2
-struct ProviderDetailPage {
-  private get layoutSizeClass(): string {
-    return getAppUiState().layoutSizeClass
-  }
-  private get windowWidthVp(): number {
-    return getAppUiState().windowWidthVp
-  }
-  private get themePrimary(): string {
-    return getAppUiState().themePrimary
-  }
-
-  @Local providerId: string = ''
-  @Local routeReady: boolean = false
-
-  private isExpandedLayout(): boolean {
-    return this.layoutSizeClass === LayoutSizeClass.EXPANDED
-  }
-
-  private getContentMaxWidth(): number {
-    if (!this.isExpandedLayout()) {
-      return 99999
-    }
-    return getCenteredPageMaxWidth(this.windowWidthVp)
-  }
-
-  private closePage(): void {
-    this.getUIContext().getRouter().back()
-  }
-
-  aboutToAppear(): void {
-    const routerObj = this.getUIContext().getRouter()
-    const params = routerObj.getParams() as Record<string, string>
-    if (params !== null && params !== undefined && params['providerId'] !== undefined) {
-      this.providerId = params['providerId']
-    }
-    this.routeReady = true
-  }
-
-  @Builder
-  RouteLoadingView() {
-    Column() {
-      LoadingProgress()
-        .width(48)
-        .height(48)
-        .color(this.themePrimary)
-
-      Text($r('app.string.loading'))
-        .fontSize(14)
-        .fontColor($r('app.color.text_secondary'))
-        .margin({ top: 16 })
-    }
-    .width('100%')
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center)
-  }
+struct ProviderDetailPageContent {
+  @Param providerId: string = ''
+  @Param isCreateMode: boolean = false
+  @Event onClose: () => void = () => {}
 
   build() {
     Column() {
-      Row() {
-        Column() {
-          if (this.routeReady) {
-            ProviderDetailPanel({
-              providerId: this.providerId,
-              closeOnModelsSelected: false,
-              presentationMode: ProviderDetailPresentationMode.PAGE,
-              onClose: () => {
-                this.closePage()
-              }
-            })
-          } else {
-            this.RouteLoadingView()
-          }
-        }
-        .width('100%')
-        .height('100%')
-        .constraintSize({ maxWidth: this.getContentMaxWidth() })
-      }
-      .width('100%')
-      .height('100%')
-      .justifyContent(FlexAlign.Center)
-      .padding({ left: 16, right: 16 })
+      ProviderDetailPanel({
+        providerId: this.providerId,
+        isCreateMode: this.isCreateMode,
+        closeOnModelsSelected: false,
+        presentationMode: ProviderDetailPresentationMode.PAGE,
+        onClose: this.onClose
+      })
     }
     .width('100%')
     .height('100%')
@@ -93,3 +45,26 @@ struct ProviderDetailPage {
   }
 }
 
+@Builder
+export function ProviderDetailPageBuilder(name: string, param: Object) {
+  NavDestination() {
+    ProviderDetailPageContent({
+      providerId: resolveProviderDetailRouteParams(param).providerId ?? '',
+      isCreateMode: resolveProviderDetailRouteParams(param).isCreateMode ?? false,
+      onClose: () => {
+        popProviderDetailPage()
+      }
+    })
+  }
+  .hideTitleBar(true)
+  .hideBackButton(true)
+  .onReady((context: NavDestinationContext) => {
+    providerDetailPagePathStack = context.pathStack
+  })
+  .onBackPressed((): boolean => {
+    if (tryHandleProviderDetailInternalBack()) {
+      return true
+    }
+    return popProviderDetailPage()
+  })
+}

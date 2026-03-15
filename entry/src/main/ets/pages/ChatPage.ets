@@ -932,7 +932,6 @@ export struct ChatPage {
       getIsAtBottom: (): boolean => this.isAtBottom,
       getIsInputBarVisible: (): boolean => this.isInputBarVisible,
       getIsSending: (): boolean => this.isSending,
-      getIsInputFocused: (): boolean => this.isInputFocused,
       getIsEditingMessage: (): boolean => this.isEditingMessage,
       getEditingMessageId: (): string => this.editingMessageId,
       hasDraftContent: (): boolean => this.inputText.trim() !== '' || this.pendingAttachments.length > 0,
@@ -944,6 +943,10 @@ export struct ChatPage {
       },
       onSetInputBarVisibleState: (value: boolean): void => {
         this.isInputBarVisible = value
+        if (!value) {
+          this.isInputFocused = false
+          inputMethod.getController().stopInputSession()
+        }
       },
       onAnimate: (duration: number, curve: Curve, updater: () => void): void => {
         this.getUIContext().animateTo({
@@ -1231,7 +1234,7 @@ export struct ChatPage {
         })
           .position({ x: 0, y: 0 })
           .bindSheet($$this.isModelSelectorVisible, this.ModelSelectorSheetBuilder(), {
-            height: this.modelSheetActivePanel === 'selector' ? SheetSize.MEDIUM : SheetSize.LARGE,
+            height: SheetSize.LARGE,
             dragBar: true,
             showClose: false,
             blurStyle: BlurStyle.Thick,
@@ -1343,9 +1346,7 @@ export struct ChatPage {
               }
             },
             onInputBlur: (): void => {
-              if (!this.hasDraftContent()) {
-                this.isInputFocused = false
-              }
+              this.isInputFocused = false
             },
             onComposerContentChanged: (): void => {
               this.handleComposerContentChanged()
