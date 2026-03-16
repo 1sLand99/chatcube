@@ -200,19 +200,29 @@ export class ProviderViewModel {
   // 测试服务商连接
   async testConnection(provider: ModelProvider): Promise<AIApiResult> {
     const config = this.providerToApiConfig(provider)
-    const testModelId = this.getPreferredModelId(provider)
+    let testModelId = this.getPreferredModelId(provider)
 
-    // 没有可用模型时，使用模型列表接口测试连接
     if (testModelId === '') {
       const modelsResult = await this.aiApiService.getModels(config)
-      const result: AIApiResult = {
-        success: modelsResult.success,
-        content: modelsResult.success ? 'Connection successful' : '',
-        errorMessage: modelsResult.errorMessage,
-        usage: null,
-        reasoningContent: ''
+      if (!modelsResult.success) {
+        return {
+          success: false,
+          content: '',
+          errorMessage: modelsResult.errorMessage,
+          usage: null,
+          reasoningContent: ''
+        }
       }
-      return result
+      if (modelsResult.models.length === 0) {
+        return {
+          success: false,
+          content: '',
+          errorMessage: '请先添加一个模型后再测试连接',
+          usage: null,
+          reasoningContent: ''
+        }
+      }
+      testModelId = this.selectConnectionTestModel(provider, modelsResult.models)
     }
 
     return await this.aiApiService.testConnection(config, testModelId)
@@ -221,7 +231,26 @@ export class ProviderViewModel {
   // 获取服务商的模型列表
   async refreshModels(provider: ModelProvider): Promise<ModelsListResult> {
     const config = this.providerToApiConfig(provider)
-    return await this.aiApiService.getModels(config)
+    const modelsResult = await this.aiApiService.getModels(config)
+    if (!modelsResult.success || !this.shouldVerifyStaticModelCatalog(provider) || modelsResult.models.length === 0) {
+      return modelsResult
+    }
+
+    const testModelId = this.selectConnectionTestModel(provider, modelsResult.models)
+    if (testModelId === '') {
+      return modelsResult
+    }
+
+    const testResult = await this.aiApiService.testConnection(config, testModelId)
+    if (!testResult.success) {
+      return {
+        success: false,
+        models: [],
+        errorMessage: testResult.errorMessage
+      }
+    }
+
+    return modelsResult
   }
 
   // 将 ProviderConfig 转换为 ModelProvider
@@ -383,6 +412,64 @@ export class ProviderViewModel {
     return ''
   }
 
+  private selectConnectionTestModel(provider: ModelProvider, modelIds: string[]): string {
+    if (modelIds.length === 0) {
+      return ''
+    }
+
+    if (this.isMiniMaxCompatibleProvider(provider)) {
+      return modelIds[0]
+    }
+
+    const preferredKeywords = this.getPreferredConnectionModelKeywords(provider.apiStyle)
+    for (let i = 0; i < modelIds.length; i++) {
+      const modelId = modelIds[i]
+      const normalizedModelId = modelId.toLowerCase()
+      for (let j = 0; j < preferredKeywords.length; j++) {
+        if (normalizedModelId.includes(preferredKeywords[j])) {
+          return modelId
+        }
+      }
+    }
+
+    for (let i = 0; i < modelIds.length; i++) {
+      const normalizedModelId = modelIds[i].toLowerCase()
+      if (!normalizedModelId.includes('embedding') &&
+        !normalizedModelId.includes('rerank') &&
+        !normalizedModelId.includes('tts') &&
+        !normalizedModelId.includes('speech') &&
+        !normalizedModelId.includes('audio')) {
+        return modelIds[i]
+      }
+    }
+
+    return modelIds[0]
+  }
+
+  private shouldVerifyStaticModelCatalog(provider: ModelProvider): boolean {
+    return this.isMiniMaxCompatibleProvider(provider)
+  }
+
+  private isMiniMaxCompatibleProvider(provider: ModelProvider): boolean {
+    const normalizedBaseUrl = provider.baseUrl.trim().toLowerCase()
+    return provider.id === 'minimax' ||
+      normalizedBaseUrl.includes('api.minimaxi.com') ||
+      normalizedBaseUrl.includes('api.minimax.io')
+  }
+
+  private getPreferredConnectionModelKeywords(apiStyle: ApiStyle): string[] {
+    if (apiStyle === ApiStyle.OPENAI) {
+      return ['gpt', 'chat']
+    }
+    if (apiStyle === ApiStyle.ANTHROPIC) {
+      return ['claude']
+    }
+    if (apiStyle === ApiStyle.GOOGLE) {
+      return ['gemini']
+    }
+    return []
+  }
+
   // 获取默认的服务商列表（用于首次启动）
   getDefaultProviders(): ModelProvider[] {
     // 返回默认的硅基流动服务商
@@ -421,6 +508,14 @@ export class ProviderViewModel {
     const existingIds = new Set<string>()
     for (let i = 0; i < existingProviders.length; i++) {
       existingIds.add(existingProviders[i].id)
+    }
+
+    // 修复历史错误 URL
+    for (let i = 0; i < existingProviders.length; i++) {
+      const p = existingProviders[i]
+      if (p.id === 'minimax' && p.baseUrl === 'https://api.minimax.chat/v1') {
+        await this.databaseService.updateProviderBaseUrl('minimax', 'https://api.minimaxi.com/v1')
+      }
     }
 
     // 所有预置服务商 ID（硅基流动放在最前面）

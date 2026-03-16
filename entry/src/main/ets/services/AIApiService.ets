@@ -1,4 +1,4 @@
-import { getHttpService, HttpService } from './HttpService'
+import { getHttpService, HttpResponse, HttpService } from './HttpService'
 import { util } from '@kit.ArkTS'
 import { http } from '@kit.NetworkKit'
 import {
@@ -338,6 +338,31 @@ export interface ModelsListResult {
   errorMessage: string
 }
 
+enum ModelDiscoveryStrategy {
+  REMOTE_ENDPOINT = 'remote_endpoint',
+  STATIC_CATALOG = 'static_catalog'
+}
+
+enum AnthropicAuthStrategy {
+  API_KEY = 'api_key',
+  BEARER = 'bearer'
+}
+
+interface ProviderCompatibilityProfile {
+  modelDiscoveryStrategy: ModelDiscoveryStrategy
+  staticModels: string[]
+  defaultTestModel: string
+  anthropicAuthStrategy: AnthropicAuthStrategy
+}
+
+const MINIMAX_COMPATIBLE_MODELS: string[] = [
+  'MiniMax-M2.5',
+  'MiniMax-M2.5-highspeed',
+  'MiniMax-M2.1',
+  'MiniMax-M2.1-highspeed',
+  'MiniMax-M2'
+]
+
 // Anthropic 图片来源接口
 interface AnthropicImageSource {
   type: string
@@ -647,13 +672,12 @@ export class AIApiService {
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   ): Promise<AIApiResult> {
     const url = this.buildChatUrl(config, model)
-    const headers = this.buildHeaders(config)
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel)
 
-    const response = await this.httpService.postWithTimeout(
+    const response = await this.postWithResolvedAuth(
+      config,
       url,
       JSON.stringify(requestBody),
-      headers,
       120000 // 2分钟超时
     )
 
@@ -661,7 +685,7 @@ export class AIApiService {
       const result: AIApiResult = {
         success: false,
         content: '',
-        errorMessage: response.errorMessage,
+        errorMessage: this.extractHttpErrorMessage(response, '请求失败'),
         usage: null,
         reasoningContent: ''
       }
@@ -677,9 +701,17 @@ export class AIApiService {
       new RequestMessage('user', 'Hi')
     ]
 
-    const testModel = modelId !== '' ? modelId : this.getDefaultModel(config.apiStyle)
+    const testModel = modelId !== '' ? modelId : this.resolveDefaultTestModel(config)
+    if (testModel === '') {
+      return {
+        success: false,
+        content: '',
+        errorMessage: '请先添加一个模型后再测试连接',
+        usage: null,
+        reasoningContent: ''
+      }
+    }
     const url = this.buildChatUrl(config, testModel)
-    const headers = this.buildHeaders(config)
 
     // 根据 API 风格构建测试请求
     let requestBodyStr: string
@@ -706,72 +738,55 @@ export class AIApiService {
       requestBodyStr = JSON.stringify(openaiBody)
     }
 
-    const response = await this.httpService.postWithTimeout(
+    const response = await this.postWithResolvedAuth(
+      config,
       url,
       requestBodyStr,
-      headers,
       15000 // 15秒超时
     )
 
     if (!response.success) {
-      const result: AIApiResult = {
+      return {
         success: false,
         content: '',
-        errorMessage: response.errorMessage,
+        errorMessage: this.extractHttpErrorMessage(response, '测试连接失败'),
         usage: null,
         reasoningContent: ''
       }
-      return result
     }
 
-    // 检查响应是否为有效的 JSON
-    try {
-      const errorData = JSON.parse(response.data) as ApiErrorResponse
-      // 检查是否有错误字段
-      if (errorData.error !== undefined && errorData.error !== null) {
-        const result: AIApiResult = {
-          success: false,
-          content: '',
-          errorMessage: errorData.error.message,
-          usage: null,
-          reasoningContent: ''
-        }
-        return result
-      }
-      const successResult: AIApiResult = {
-        success: true,
-        content: 'Connection successful',
-        errorMessage: '',
-        usage: null,
-        reasoningContent: ''
-      }
-      return successResult
-    } catch (error) {
-      const errorResult: AIApiResult = {
-        success: false,
-        content: '',
-        errorMessage: 'Invalid response format',
-        usage: null,
-        reasoningContent: ''
-      }
-      return errorResult
+    // 2xx 响应 — 连接成功
+    return {
+      success: true,
+      content: 'Connection successful',
+      errorMessage: '',
+      usage: null,
+      reasoningContent: ''
     }
   }
 
   // 获取模型列表
   async getModels(config: AIApiConfig): Promise<ModelsListResult> {
+    const compatibilityProfile = this.resolveCompatibilityProfile(config)
+    if (compatibilityProfile.modelDiscoveryStrategy === ModelDiscoveryStrategy.STATIC_CATALOG) {
+      return {
+        success: true,
+        models: compatibilityProfile.staticModels.slice(),
+        errorMessage: ''
+      }
+    }
+
     const url = this.buildModelsUrl(config)
     const headers = this.buildHeaders(config)
 
     const response = await this.httpService.get(url, headers)
 
     if (!response.success) {
-      const result: ModelsListResult = {
+      return {
         success: false,
         models: [],
-        errorMessage: response.errorMessage
+        errorMessage: this.extractHttpErrorMessage(response, '获取模型列表失败')
       }
-      return result
     }
 
     try {
@@ -822,6 +837,9 @@ export class AIApiService {
     }
 
     if (config.apiStyle === ApiStyle.ANTHROPIC) {
+      if (/\/v\d+\w*/.test(baseUrl)) {
+        return `${baseUrl}/messages`
+      }
       return `${baseUrl}/v1/messages`
     }
 
@@ -855,13 +873,21 @@ export class AIApiService {
   }
 
   // 构建请求头
-  private buildHeaders(config: AIApiConfig): Record<string, string> {
+  private buildHeaders(
+    config: AIApiConfig,
+    anthropicAuthStrategy?: AnthropicAuthStrategy
+  ): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
 
     if (config.apiStyle === ApiStyle.ANTHROPIC) {
-      headers['x-api-key'] = config.apiKey
+      const resolvedAuthStrategy = anthropicAuthStrategy ?? this.resolveCompatibilityProfile(config).anthropicAuthStrategy
+      if (resolvedAuthStrategy === AnthropicAuthStrategy.BEARER && config.apiKey !== '') {
+        headers['Authorization'] = `Bearer ${config.apiKey}`
+      } else {
+        headers['x-api-key'] = config.apiKey
+      }
       headers['anthropic-version'] = '2023-06-01'
     } else if (config.apiStyle === ApiStyle.GOOGLE) {
       // Google API key 通过 URL 参数传递，不需要额外的 header
@@ -872,6 +898,133 @@ export class AIApiService {
     }
 
     return headers
+  }
+
+  private async postWithResolvedAuth(
+    config: AIApiConfig,
+    url: string,
+    requestBody: string,
+    timeout: number
+  ): Promise<HttpResponse> {
+    let response = await this.httpService.postWithTimeout(
+      url,
+      requestBody,
+      this.buildHeaders(config),
+      timeout
+    )
+
+    if (!this.shouldRetryMiniMaxAnthropicWithBearer(config, response.statusCode)) {
+      return response
+    }
+
+    console.warn('AIApiService', `Retrying MiniMax Anthropic request with Bearer auth: ${url}`)
+    response = await this.httpService.postWithTimeout(
+      url,
+      requestBody,
+      this.buildHeaders(config, AnthropicAuthStrategy.BEARER),
+      timeout
+    )
+    return response
+  }
+
+  private shouldRetryMiniMaxAnthropicWithBearer(config: AIApiConfig, statusCode: number): boolean {
+    return config.apiStyle === ApiStyle.ANTHROPIC &&
+      this.isMiniMaxCompatibleProvider(config) &&
+      (statusCode === 401 || statusCode === 403)
+  }
+
+  private resolveCompatibilityProfile(config: AIApiConfig): ProviderCompatibilityProfile {
+    if (this.isMiniMaxCompatibleProvider(config) &&
+      (config.apiStyle === ApiStyle.OPENAI || config.apiStyle === ApiStyle.ANTHROPIC)) {
+      return {
+        modelDiscoveryStrategy: ModelDiscoveryStrategy.STATIC_CATALOG,
+        staticModels: MINIMAX_COMPATIBLE_MODELS,
+        defaultTestModel: MINIMAX_COMPATIBLE_MODELS[0],
+        anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY
+      }
+    }
+
+    return {
+      modelDiscoveryStrategy: ModelDiscoveryStrategy.REMOTE_ENDPOINT,
+      staticModels: [],
+      defaultTestModel: '',
+      anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY
+    }
+  }
+
+  private isMiniMaxCompatibleProvider(config: AIApiConfig): boolean {
+    const normalizedBaseUrl = this.normalizeBaseUrl(config.baseUrl)
+    return config.providerId === 'minimax' ||
+      normalizedBaseUrl.includes('api.minimaxi.com') ||
+      normalizedBaseUrl.includes('api.minimax.io')
+  }
+
+  private normalizeBaseUrl(baseUrl: string): string {
+    let normalized = baseUrl.trim().toLowerCase()
+    if (normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1)
+    }
+    return normalized
+  }
+
+  private resolveDefaultTestModel(config: AIApiConfig): string {
+    return this.resolveCompatibilityProfile(config).defaultTestModel
+  }
+
+  private extractHttpErrorMessage(response: HttpResponse, fallbackMessage: string): string {
+    if (response.statusCode === 0) {
+      return response.errorMessage !== '' ? response.errorMessage : fallbackMessage
+    }
+
+    const apiErrorMessage = this.extractApiErrorMessage(response.data)
+    if (apiErrorMessage !== '') {
+      return apiErrorMessage
+    }
+
+    if (response.statusCode === 401 || response.statusCode === 403) {
+      return 'API Key 认证失败'
+    }
+    if (response.statusCode >= 500) {
+      return `服务器错误 (${response.statusCode})`
+    }
+    if (response.errorMessage !== '') {
+      return response.errorMessage
+    }
+    return `${fallbackMessage} (${response.statusCode})`
+  }
+
+  private extractApiErrorMessage(responseData: string): string {
+    if (responseData.trim() === '') {
+      return ''
+    }
+
+    try {
+      const parsed = JSON.parse(responseData) as ApiErrorResponse
+      if (parsed.error !== undefined && parsed.error !== null && parsed.error.message !== '') {
+        return parsed.error.message
+      }
+    } catch (_error) {}
+
+    try {
+      const parsed = JSON.parse(responseData) as Record<string, Object | string>
+      if (typeof parsed.message === 'string' && parsed.message !== '') {
+        return parsed.message
+      }
+      if (typeof parsed.detail === 'string' && parsed.detail !== '') {
+        return parsed.detail
+      }
+      if (parsed.base_resp !== undefined && parsed.base_resp !== null) {
+        const baseResp = parsed.base_resp as Record<string, Object | string>
+        if (typeof baseResp.status_msg === 'string' && baseResp.status_msg !== '') {
+          return baseResp.status_msg
+        }
+      }
+    } catch (_error) {}
+
+    if (responseData.length <= 200) {
+      return responseData
+    }
+    return ''
   }
 
   // 构建请求体
@@ -1383,18 +1536,6 @@ export class AIApiService {
       reasoningContent: ''
     }
     return result
-  }
-
-  // 获取默认模型
-  private getDefaultModel(apiStyle: ApiStyle): string {
-    if (apiStyle === ApiStyle.OPENAI) {
-      return 'gpt-3.5-turbo'
-    } else if (apiStyle === ApiStyle.ANTHROPIC) {
-      return 'claude-3-haiku-20240307'
-    } else if (apiStyle === ApiStyle.GOOGLE) {
-      return 'gemini-pro'
-    }
-    return 'gpt-3.5-turbo'
   }
 
   // 获取 Anthropic 思考预算（token 数量）

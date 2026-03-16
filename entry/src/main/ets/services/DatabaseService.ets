@@ -1709,6 +1709,24 @@ export class DatabaseService {
     }
   }
 
+  // 更新服务商 baseUrl
+  async updateProviderBaseUrl(providerId: string, baseUrl: string): Promise<void> {
+    await this.waitForInitialization()
+    if (this.rdbStore === null) {
+      return
+    }
+    const valueBucket: relationalStore.ValuesBucket = {
+      base_url: baseUrl
+    }
+    const predicates = new relationalStore.RdbPredicates(TableNames.PROVIDERS)
+    predicates.equalTo('id', providerId)
+    try {
+      await this.rdbStore.update(valueBucket, predicates)
+    } catch (error) {
+      console.error('DatabaseService', `Failed to update provider baseUrl: ${JSON.stringify(error)}`)
+    }
+  }
+
   // 获取单个服务商的 API Key
   async getProviderApiKey(providerId: string): Promise<string> {
     await this.waitForInitialization()

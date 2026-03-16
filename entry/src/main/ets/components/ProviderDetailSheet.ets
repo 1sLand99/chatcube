@@ -294,7 +294,7 @@ export struct ProviderDetailPanel {
         this.showProviderToast($r('app.string.connection_success'), 2000)
       } else {
         console.error('ProviderDetailSheet', `[testConnection] failed: ${result.errorMessage}`)
-        this.showProviderToast($r('app.string.connection_failed'), 3000)
+        this.showProviderToast(result.errorMessage !== '' ? result.errorMessage : $r('app.string.connection_failed'), 3000)
       }
     } finally {
       this.isTesting = false
@@ -314,7 +314,7 @@ export struct ProviderDetailPanel {
       const result = await this.providerViewModel.refreshModels(this.provider)
       if (!result.success) {
         console.error('ProviderDetailSheet', `[fetchModels] failed: ${result.errorMessage}`)
-        this.showProviderToast($r('app.string.provider_fetch_models_failed'), 3000)
+        this.showProviderToast(result.errorMessage !== '' ? result.errorMessage : $r('app.string.provider_fetch_models_failed'), 3000)
         return
       }
 
@@ -1170,7 +1170,8 @@ export struct ProviderDetailPanel {
                   .fontWeight(FontWeight.Bold)
                   .fontColor($r('app.color.text_primary'))
                   .backgroundColor(Color.Transparent)
-                  .padding({ left: 0, right: 0, top: 0, bottom: 0 })
+                  .borderRadius(0)
+                  .padding({ left: 8, right: 4, top: 0, bottom: 0 })
                   .onChange((value: string) => {
                     if (this.provider !== null) {
                       this.provider.name = value
@@ -1186,7 +1187,8 @@ export struct ProviderDetailPanel {
                   .fontWeight(FontWeight.Bold)
                   .fontColor($r('app.color.text_primary'))
                   .backgroundColor(Color.Transparent)
-                  .padding({ left: 0, right: 0, top: 0, bottom: 0 })
+                  .borderRadius(0)
+                  .padding({ left: 8, right: 4, top: 0, bottom: 0 })
                   .onChange((value: string) => {
                     if (this.provider !== null) {
                       this.provider.name = value
@@ -1197,12 +1199,14 @@ export struct ProviderDetailPanel {
                   .fontSize(20)
                   .fontWeight(FontWeight.Bold)
                   .fontColor($r('app.color.text_primary'))
+                  .margin({ left: 8 })
                   .maxLines(1)
               }
 
               Text(this.provider?.baseUrl ?? '')
                 .fontSize(12)
                 .fontColor($r('app.color.text_secondary'))
+                .margin({ left: 8 })
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
@@ -1310,7 +1314,8 @@ export struct ProviderDetailPanel {
                 .fontWeight(FontWeight.Bold)
                 .fontColor($r('app.color.text_primary'))
                 .backgroundColor(Color.Transparent)
-                .padding({ left: 4, right: 4, top: 0, bottom: 0 })
+                .borderRadius(0)
+                .padding({ left: 8, right: 4, top: 0, bottom: 0 })
                 .onChange((value: string) => {
                   if (this.provider !== null) {
                     this.provider.name = value
@@ -1327,7 +1332,8 @@ export struct ProviderDetailPanel {
                 .fontWeight(FontWeight.Bold)
                 .fontColor($r('app.color.text_primary'))
                 .backgroundColor(Color.Transparent)
-                .padding({ left: 4, right: 4, top: 0, bottom: 0 })
+                .borderRadius(0)
+                .padding({ left: 8, right: 4, top: 0, bottom: 0 })
                 .onChange((value: string) => {
                   if (this.provider !== null) {
                     this.provider.name = value
@@ -1338,12 +1344,13 @@ export struct ProviderDetailPanel {
                 .fontSize(18)
                 .fontWeight(FontWeight.Bold)
                 .fontColor($r('app.color.text_primary'))
+                .margin({ left: 8 })
             }
 
             Text(this.provider?.baseUrl ?? '')
               .fontSize(12)
               .fontColor($r('app.color.text_secondary'))
-              .margin({ top: 2 })
+              .margin({ left: 8, top: 2 })
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
           }
@@ -1400,8 +1407,8 @@ export struct ProviderDetailPanel {
         .width('100%')
         .padding({ left: 16, top: 16, bottom: 12 })
 
-      // API 风格选择（仅自定义类型服务商显示）
-      if (this.provider !== null && !this.provider.isPreset) {
+      // API 风格选择
+      if (this.provider !== null) {
         Column() {
           Text($r('app.string.api_style'))
             .fontSize(13)

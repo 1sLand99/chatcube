@@ -126,7 +126,7 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     name: 'MiniMax',
     type: ProviderType.CUSTOM,
     apiStyle: ApiStyle.OPENAI,
-    baseUrl: 'https://api.minimax.chat/v1',
+    baseUrl: 'https://api.minimaxi.com/v1',
     iconPath: '',
     brandColorHex: '#00A876',
     textIcon: 'M',
