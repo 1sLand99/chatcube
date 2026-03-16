@@ -114,6 +114,25 @@ export class ChatSessionStore {
     return true
   }
 
+  async updateCurrentSessionModelSelection(modelId: string, providerId: string): Promise<boolean> {
+    if (this.currentSession === null) {
+      return false
+    }
+
+    if (this.currentSession.modelId === modelId && this.currentSession.providerId === providerId) {
+      return true
+    }
+
+    this.currentSession.modelId = modelId
+    this.currentSession.providerId = providerId
+    if (this.pendingSession !== null && this.pendingSession.id === this.currentSession.id) {
+      return true
+    }
+
+    await this.databaseService.updateSessionModelSelection(this.currentSession.id, modelId, providerId)
+    return true
+  }
+
   getCurrentSession(): ChatSession | null {
     return this.currentSession
   }

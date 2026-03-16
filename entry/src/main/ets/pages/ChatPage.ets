@@ -63,6 +63,16 @@ import { applyModelDraft } from '../utils/ModelDraftUtils'
 const DOMAIN = 0x0003
 const TAG = 'ChatPage'
 
+class ProviderModelSelection {
+  provider: ModelProvider
+  model: ModelInfo
+
+  constructor(provider: ModelProvider, model: ModelInfo) {
+    this.provider = provider
+    this.model = model
+  }
+}
+
 @ComponentV2
 export struct ChatPage {
   @Local navPathStack: NavPathStack = new NavPathStack()
@@ -359,8 +369,8 @@ export struct ChatPage {
       `[loadData] 联网可用=${this.webSearchAvailable}, 联网会话开关=${this.webSearchEnabled}`
     )
 
-    this.applyLoadedProviders(loadResult.providers)
     this.applyLoadedSessionData(loadResult)
+    await this.applyLoadedProviders(loadResult.providers)
 
     this.isLoading = false
 
@@ -371,7 +381,7 @@ export struct ChatPage {
     this.activateCurrentSessionRuntimeState()
   }
 
-  private applyLoadedProviders(providers: ModelProvider[]): void {
+  private async applyLoadedProviders(providers: ModelProvider[]): Promise<void> {
     this.providers = providers
     console.info('ChatPage', `[loadData] Loaded ${this.providers.length} providers`)
 
@@ -381,7 +391,7 @@ export struct ChatPage {
       this.currentProvider = null
       return
     }
-    this.validateAndSetCurrentModel()
+    await this.validateAndSetCurrentModel()
   }
 
   private replaceMessages(nextMessages: ChatMessage[]): void {
@@ -978,39 +988,71 @@ export struct ChatPage {
     await this.sendMessage()
   }
 
-  // 验证当前模型是否有效，如果无效则自动选择第一个可用模型
-  private validateAndSetCurrentModel(): void {
-    const savedModelId = this.appStateManager.getCurrentModelId()
-    const savedProviderId = this.appStateManager.getCurrentProviderId()
-
-    // 检查保存的供应商和模型是否仍然有效
-    let isValid = false
+  private findProviderModelSelection(
+    providerId: string,
+    modelId: string
+  ): ProviderModelSelection | null {
+    if (providerId === '' || modelId === '') {
+      return null
+    }
     for (let i = 0; i < this.providers.length; i++) {
       const provider = this.providers[i]
-      if (provider.id === savedProviderId) {
-        // 供应商存在，检查模型是否启用
-        for (let j = 0; j < provider.models.length; j++) {
-          const model = provider.models[j]
-          if (model.id === savedModelId && model.isEnabled) {
-            // 模型有效
-            isValid = true
-            this.currentProvider = provider
-            this.currentModelId = savedModelId
-            this.currentModel = this.appStateManager.getCurrentModelName()
-            break
-          }
+      if (provider.id !== providerId) {
+        continue
+      }
+      for (let j = 0; j < provider.models.length; j++) {
+        const model = provider.models[j]
+        if (model.id === modelId) {
+          return new ProviderModelSelection(provider, model)
         }
-        break
+      }
+      break
+    }
+    return null
+  }
+
+  private findEnabledProviderModelSelection(
+    providerId: string,
+    modelId: string
+  ): ProviderModelSelection | null {
+    const selection = this.findProviderModelSelection(providerId, modelId)
+    if (selection === null || !selection.model.isEnabled) {
+      return null
+    }
+    return selection
+  }
+
+  private async applyModelSelection(provider: ModelProvider, model: ModelInfo, preferredName: string = ''): Promise<void> {
+    const modelName = model.name !== '' ? model.name : (preferredName !== '' ? preferredName : model.id)
+    this.currentProvider = provider
+    this.currentModelId = model.id
+    this.currentModel = modelName
+    this.syncReasoningAvailabilityWithCurrentModel()
+    await this.appStateManager.setCurrentModel(model.id, modelName, provider.id)
+    await this.chatViewModel.updateCurrentSessionModelSelection(model.id, provider.id)
+  }
+
+  // 验证当前模型是否有效，如果无效则自动选择第一个可用模型
+  private async validateAndSetCurrentModel(): Promise<void> {
+    const currentSession = this.chatViewModel.getCurrentSession()
+    if (currentSession !== null && currentSession.id === this.sessionId) {
+      const sessionSelection = this.findEnabledProviderModelSelection(currentSession.providerId, currentSession.modelId)
+      if (sessionSelection !== null) {
+        await this.applyModelSelection(sessionSelection.provider, sessionSelection.model)
+        return
       }
     }
 
-    // 如果保存的模型无效，自动选择第一个可用模型
-    if (!isValid) {
-      this.selectFirstAvailableModel()
+    const savedSelection = this.findEnabledProviderModelSelection(
+      this.appStateManager.getCurrentProviderId(),
+      this.appStateManager.getCurrentModelId()
+    )
+    if (savedSelection !== null) {
+      await this.applyModelSelection(savedSelection.provider, savedSelection.model)
       return
     }
 
-    this.syncReasoningAvailabilityWithCurrentModel()
+    await this.selectFirstAvailableModel()
   }
 
   // 选择第一个可用的模型（优先使用默认聊天模型）
@@ -1028,11 +1070,7 @@ export struct ChatPage {
             const model = provider.models[j]
             if (model.id === defaultChatModel.modelId && model.isEnabled) {
               // 默认模型可用，使用它
-              this.currentProvider = provider
-              this.currentModelId = model.id
-              this.currentModel = model.name
-              await this.appStateManager.setCurrentModel(model.id, model.name, provider.id)
-              this.syncReasoningAvailabilityWithCurrentModel()
+              await this.applyModelSelection(provider, model)
               console.info('ChatPage', `Using default chat model: ${model.name} from ${provider.name}`)
               return
             }
@@ -1050,11 +1088,7 @@ export struct ChatPage {
       for (let j = 0; j < provider.models.length; j++) {
         const model = provider.models[j]
         if (model.isEnabled) {
-          this.currentProvider = provider
-          this.currentModelId = model.id
-          this.currentModel = model.name
-          await this.appStateManager.setCurrentModel(model.id, model.name, provider.id)
-          this.syncReasoningAvailabilityWithCurrentModel()
+          await this.applyModelSelection(provider, model)
           console.info('ChatPage', `Auto-selected fallback model: ${model.name} from ${provider.name}`)
           return
         }
@@ -1085,7 +1119,7 @@ export struct ChatPage {
       this.syncReasoningAvailabilityWithCurrentModel()
     } else {
       // 验证并设置当前模型
-      this.validateAndSetCurrentModel()
+      await this.validateAndSetCurrentModel()
     }
   }
 
@@ -1558,14 +1592,10 @@ export struct ChatPage {
     for (let i = 0; i < refreshedProviders.length; i++) {
       const provider = refreshedProviders[i]
       if (this.currentProvider !== null && provider.id === this.currentProvider.id) {
-        this.currentProvider = provider
         for (let j = 0; j < provider.models.length; j++) {
           const model = provider.models[j]
           if (model.id === this.currentModelId) {
-            const modelName = model.name !== '' ? model.name : model.id
-            this.currentModel = modelName
-            await this.appStateManager.setCurrentModel(model.id, modelName, provider.id)
-            this.syncReasoningAvailabilityWithCurrentModel()
+            await this.applyModelSelection(provider, model)
             break
           }
         }
@@ -1810,20 +1840,14 @@ export struct ChatPage {
 
   // 处理模型选择
   handleModelSelect(providerId: string, modelId: string, modelName: string): void {
-    // 更新当前模型
-    this.currentModel = modelName
-    this.currentModelId = modelId
-    this.appStateManager.setCurrentModel(modelId, modelName, providerId)
-
-    // 更新当前服务商
-    for (let i = 0; i < this.providers.length; i++) {
-      if (this.providers[i].id === providerId) {
-        this.currentProvider = this.providers[i]
-        break
-      }
+    const selection = this.findProviderModelSelection(providerId, modelId)
+    if (selection === null) {
+      console.warn('ChatPage', `[handleModelSelect] Model not found: ${providerId}/${modelId}`)
+      return
     }
-
-    this.syncReasoningAvailabilityWithCurrentModel()
+    this.applyModelSelection(selection.provider, selection.model, modelName).catch((error: Object) => {
+      console.error('ChatPage', `[handleModelSelect] Failed to persist model selection: ${JSON.stringify(error)}`)
+    })
 
     // 关闭模型选择器
     this.isModelSelectorVisible = false

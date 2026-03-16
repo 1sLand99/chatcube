@@ -481,6 +481,12 @@ export class ChatViewModel {
     return isFavorite
   }
 
+  async updateCurrentSessionModelSelection(modelId: string, providerId: string): Promise<boolean> {
+    const updated = await this.sessionStore.updateCurrentSessionModelSelection(modelId, providerId)
+    this.currentSession = this.sessionStore.getCurrentSession()
+    return updated
+  }
+
   // 发送消息并获取 AI 回复
   async sendMessage(
     content: string,

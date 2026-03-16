@@ -804,6 +804,7 @@ export class DatabaseService {
     const valueBucket: relationalStore.ValuesBucket = {
       title: session.title,
       model_id: session.modelId,
+      provider_id: session.providerId,
       updated_at: Date.now()
     }
     const predicates = new relationalStore.RdbPredicates(TableNames.SESSIONS)
@@ -812,6 +813,25 @@ export class DatabaseService {
       await this.rdbStore.update(valueBucket, predicates)
     } catch (error) {
       console.error('DatabaseService', `Failed to update session: ${JSON.stringify(error)}`)
+    }
+  }
+
+  // 仅更新会话当前模型选择（不修改 updated_at，避免切模型时打乱会话排序）
+  async updateSessionModelSelection(sessionId: string, modelId: string, providerId: string): Promise<void> {
+    await this.waitForInitialization()
+    if (this.rdbStore === null || sessionId === '') {
+      return
+    }
+    const valueBucket: relationalStore.ValuesBucket = {
+      model_id: modelId,
+      provider_id: providerId
+    }
+    const predicates = new relationalStore.RdbPredicates(TableNames.SESSIONS)
+    predicates.equalTo('id', sessionId)
+    try {
+      await this.rdbStore.update(valueBucket, predicates)
+    } catch (error) {
+      console.error('DatabaseService', `Failed to update session model selection: ${JSON.stringify(error)}`)
     }
   }
 
