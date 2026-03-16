@@ -452,8 +452,8 @@ export class ProviderViewModel {
 
   private isMiniMaxCompatibleProvider(provider: ModelProvider): boolean {
     const normalizedBaseUrl = provider.baseUrl.trim().toLowerCase()
-    return provider.id === 'minimax' ||
-      normalizedBaseUrl.includes('api.minimaxi.com') ||
+    return normalizedBaseUrl.includes('api.minimaxi.com') ||
+      normalizedBaseUrl.includes('api.minimax.chat') ||
       normalizedBaseUrl.includes('api.minimax.io')
   }
 

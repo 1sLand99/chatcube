@@ -954,8 +954,8 @@ export class AIApiService {
 
   private isMiniMaxCompatibleProvider(config: AIApiConfig): boolean {
     const normalizedBaseUrl = this.normalizeBaseUrl(config.baseUrl)
-    return config.providerId === 'minimax' ||
-      normalizedBaseUrl.includes('api.minimaxi.com') ||
+    return normalizedBaseUrl.includes('api.minimaxi.com') ||
+      normalizedBaseUrl.includes('api.minimax.chat') ||
       normalizedBaseUrl.includes('api.minimax.io')
   }
 
