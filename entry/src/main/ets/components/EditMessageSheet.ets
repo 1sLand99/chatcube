@@ -1,6 +1,6 @@
 /**
  * 编辑消息半模态面板组件（重构版）
- * 支持完整输入功能：联网查询状态展示、推理级别选择、附件管理
+ * 支持完整输入功能：联网查询状态展示、推理开关、附件管理
  */
 
 import { ReasoningLevel, MessageAttachment, AttachmentType } from '../models/ChatModels'
@@ -83,28 +83,28 @@ export struct EditMessageSheet {
         .backgroundColor(this.themePrimary)
       }
 
-      // 推理级别按钮
+      // 推理开关按钮
       Button({ type: ButtonType.Capsule, stateEffect: false }) {
         Row() {
           SymbolGlyph($r('sys.symbol.lightbulb'))
             .fontSize(14)
-            .fontColor([this.reasoningLevel !== ReasoningLevel.OFF ? Color.White : $r('app.color.text_secondary')])
-          Text(this.getReasoningText())
+            .fontColor([this.isReasoningEnabled() ? Color.White : $r('app.color.text_secondary')])
+          Text($r('app.string.chat_toolbar_reasoning'))
             .fontSize(13)
-            .fontColor(this.reasoningLevel !== ReasoningLevel.OFF ? Color.White : $r('app.color.text_secondary'))
+            .fontColor(this.isReasoningEnabled() ? Color.White : $r('app.color.text_secondary'))
             .margin({ left: 4 })
         }
       }
       .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-      .backgroundColor(this.reasoningLevel !== ReasoningLevel.OFF ? this.themePrimary : $r('app.color.surface'))
+      .backgroundColor(this.isReasoningEnabled() ? this.themePrimary : $r('app.color.surface'))
       .margin({ left: this.webSearchEnabled ? 8 : 0 })
-      .border(this.reasoningLevel !== ReasoningLevel.OFF ? undefined : {
+      .border(this.isReasoningEnabled() ? undefined : {
         width: 0.5,
         color: $r('app.color.divider')
       })
       .animation({ duration: 200, curve: Curve.EaseOut })
-      .bindMenu(this.ReasoningMenuBuilder(), {
-        placement: Placement.TopLeft
+      .onClick(() => {
+        this.$reasoningLevel(this.isReasoningEnabled() ? ReasoningLevel.OFF : ReasoningLevel.MEDIUM)
       })
 
       Blank()
@@ -125,65 +125,8 @@ export struct EditMessageSheet {
     .padding({ left: 12, right: 12 })
   }
 
-  // 获取推理级别显示文本
-  private getReasoningText(): string | Resource {
-    switch (this.reasoningLevel) {
-      case ReasoningLevel.OFF:
-        return $r('app.string.chat_toolbar_reasoning')
-      case ReasoningLevel.LOW:
-        return $r('app.string.chat_toolbar_reasoning_low')
-      case ReasoningLevel.MEDIUM:
-        return $r('app.string.chat_toolbar_reasoning_medium')
-      case ReasoningLevel.HIGH:
-        return $r('app.string.chat_toolbar_reasoning_high')
-      default:
-        return $r('app.string.chat_toolbar_reasoning')
-    }
-  }
-
-  // 推理级别菜单构建器
-  @Builder
-  ReasoningMenuBuilder() {
-    Column() {
-      // 关闭选项
-      this.ReasoningMenuItem(ReasoningLevel.OFF, $r('app.string.chat_toolbar_reasoning_off'))
-      Divider().color($r('app.color.divider')).margin({ left: 16, right: 16 })
-      // 轻度推理
-      this.ReasoningMenuItem(ReasoningLevel.LOW, $r('app.string.chat_toolbar_reasoning_low'))
-      Divider().color($r('app.color.divider')).margin({ left: 16, right: 16 })
-      // 中度推理
-      this.ReasoningMenuItem(ReasoningLevel.MEDIUM, $r('app.string.chat_toolbar_reasoning_medium'))
-      Divider().color($r('app.color.divider')).margin({ left: 16, right: 16 })
-      // 重度推理
-      this.ReasoningMenuItem(ReasoningLevel.HIGH, $r('app.string.chat_toolbar_reasoning_high'))
-    }
-    .width(160)
-    .backgroundColor($r('app.color.surface'))
-    .borderRadius(12)
-    .padding({ top: 8, bottom: 8 })
-  }
-
-  @Builder
-  ReasoningMenuItem(level: ReasoningLevel, label: string | Resource) {
-    Row() {
-      Text(label)
-        .fontSize(15)
-        .fontColor(this.reasoningLevel === level ? this.themePrimary : $r('app.color.text_primary'))
-
-      Blank()
-
-      if (this.reasoningLevel === level) {
-        SymbolGlyph($r('sys.symbol.checkmark'))
-          .fontSize(16)
-          .fontColor([this.themePrimary])
-      }
-    }
-    .width('100%')
-    .height(44)
-    .padding({ left: 16, right: 16 })
-    .onClick(() => {
-      this.$reasoningLevel(level)
-    })
+  private isReasoningEnabled(): boolean {
+    return this.reasoningLevel !== ReasoningLevel.OFF
   }
 
   @Builder

@@ -513,6 +513,10 @@
       "value": "关闭"
     },
     {
+      "name": "chat_toolbar_reasoning_on",
+      "value": "开启"
+    },
+    {
       "name": "chat_toolbar_reasoning_low",
       "value": "轻度推理"
     },

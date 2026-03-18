@@ -153,6 +153,10 @@ export struct MessageBubble {
     return buildIconResourcePath(iconPath)
   }
 
+  private getBubbleHitTestMode(): HitTestMode {
+    return this.isMultiSelectMode ? HitTestMode.Block : HitTestMode.Default
+  }
+
   aboutToAppear(): void {
     this.syncMessageScopedState()
     // 翻译内容动态变化，使用新的 Controller
@@ -583,7 +587,32 @@ export struct MessageBubble {
   }
 
   private hasMessageTextContent(): boolean {
-    return this.message.content.length > 0
+    return this.message.content.trim().length > 0
+  }
+
+  private hasToolbarPayload(): boolean {
+    return this.hasMessageTextContent() || this.message.hasAttachments()
+  }
+
+  private shouldShowUserToolbar(): boolean {
+    return !this.isMultiSelectMode && !this.isEditing && this.hasToolbarPayload()
+  }
+
+  private shouldShowAssistantToolbar(): boolean {
+    return !this.message.isSearching && !this.isMultiSelectMode &&
+      (this.hasToolbarPayload() || !this.message.isGenerating)
+  }
+
+  private canCopyMessageContent(): boolean {
+    return this.hasMessageTextContent()
+  }
+
+  private canTranslateMessageContent(): boolean {
+    return this.hasMessageTextContent()
+  }
+
+  private canReadMessageContent(): boolean {
+    return this.hasMessageTextContent()
   }
 
   // 生成两列网格行索引
@@ -733,26 +762,29 @@ export struct MessageBubble {
             this.onSelect(this.message.id)
           }
         })
+        .hitTestBehavior(this.getBubbleHitTestMode())
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
 
       // 用户消息工具栏
-      if (!this.isMultiSelectMode && !this.isEditing && this.message.content.length > 0) {
+      if (this.shouldShowUserToolbar()) {
         Row() {
           Blank()
 
           // 复制
-          SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
-            .fontSize(14)
-            .fontColor([$r('app.color.text_tertiary')])
-            .onClick(() => { this.handleCopy() })
+          if (this.canCopyMessageContent()) {
+            SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
+              .fontSize(14)
+              .fontColor([$r('app.color.text_tertiary')])
+              .onClick(() => { this.handleCopy() })
+          }
 
           // 重新生成
           SymbolGlyph($r('sys.symbol.arrow_clockwise'))
             .fontSize(14)
             .fontColor([$r('app.color.text_tertiary')])
-            .margin({ left: 16 })
+            .margin({ left: this.canCopyMessageContent() ? 16 : 0 })
             .onClick(() => { this.onRegenerate() })
 
           // 编辑
@@ -1211,36 +1243,42 @@ export struct MessageBubble {
             }
 
             // ========== 工具栏 ==========
-            if ((this.message.content.length > 0 || !this.message.isGenerating) && !this.message.isSearching && !this.isMultiSelectMode) {
+            if (this.shouldShowAssistantToolbar()) {
               Row() {
                 // 复制
-                SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
-                  .fontSize(14)
-                  .fontColor([$r('app.color.text_tertiary')])
-                  .onClick(() => { this.handleCopy() })
+                if (this.canCopyMessageContent()) {
+                  SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
+                    .fontSize(14)
+                    .fontColor([$r('app.color.text_tertiary')])
+                    .onClick(() => { this.handleCopy() })
+                }
 
                 // 重新生成
                 SymbolGlyph($r('sys.symbol.arrow_clockwise'))
                   .fontSize(14)
                   .fontColor([$r('app.color.text_tertiary')])
-                  .margin({ left: 16 })
+                  .margin({ left: this.canCopyMessageContent() ? 16 : 0 })
                   .onClick(() => { this.onRegenerate() })
 
                 // 朗读
-                SymbolGlyph((this.speakingMessageId === this.message.id) ? $r('sys.symbol.pause') : $r('sys.symbol.speaker_wave_2'))
-                  .fontSize(14)
-                  .fontColor([(this.speakingMessageId === this.message.id) ? this.themePrimary : $r('app.color.text_tertiary')])
-                  .margin({ left: 16 })
-                  .onClick(() => {
-                    if ((this.speakingMessageId === this.message.id)) { this.onTTSStop() } else { this.onTTS(this.message.id, this.message.content) }
-                  })
+                if (this.canReadMessageContent()) {
+                  SymbolGlyph((this.speakingMessageId === this.message.id) ? $r('sys.symbol.pause') : $r('sys.symbol.speaker_wave_2'))
+                    .fontSize(14)
+                    .fontColor([(this.speakingMessageId === this.message.id) ? this.themePrimary : $r('app.color.text_tertiary')])
+                    .margin({ left: 16 })
+                    .onClick(() => {
+                      if ((this.speakingMessageId === this.message.id)) { this.onTTSStop() } else { this.onTTS(this.message.id, this.message.content) }
+                    })
+                }
 
                 // 翻译
-                SymbolGlyph($r('sys.symbol.translate'))
-                  .fontSize(14)
-                  .fontColor([$r('app.color.text_tertiary')])
-                  .margin({ left: 16 })
-                  .bindMenu(this.TranslateSubMenu())
+                if (this.canTranslateMessageContent()) {
+                  SymbolGlyph($r('sys.symbol.translate'))
+                    .fontSize(14)
+                    .fontColor([$r('app.color.text_tertiary')])
+                    .margin({ left: 16 })
+                    .bindMenu(this.TranslateSubMenu())
+                }
 
                 // 更多
                 SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
@@ -1276,6 +1314,7 @@ export struct MessageBubble {
           this.onTTSStop()
         }
       })
+      .hitTestBehavior(this.getBubbleHitTestMode())
     }
     .width('100%')
     .constraintSize({ maxWidth: '92%' })

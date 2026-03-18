@@ -7,10 +7,8 @@ import { ShareService, ShareMode, getShareService } from '../services/ShareServi
 import { ShareMessageCard } from './ShareMessageCard'
 import { showToast } from '../utils/ToastUtil'
 import { common } from '@kit.AbilityKit'
-import { image } from '@kit.ImageKit'
-import { fileIo as fs } from '@kit.CoreFileKit'
-import { fileUri } from '@kit.CoreFileKit'
 import { getAppUiState } from '../state/AppUiState'
+import { preloadModelIcon, resolveShareModelIdentity } from '../utils/ProviderIconUtils'
 
 @ComponentV2
 export struct SharePreviewSheet {
@@ -19,6 +17,7 @@ export struct SharePreviewSheet {
   @Local selectedMode: ShareMode = ShareMode.IMAGE
   @Local isSharing: boolean = false
   @Local previewText: string = ''
+  @Local iconRenderVersion: number = 0
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
@@ -28,6 +27,7 @@ export struct SharePreviewSheet {
   @Event onClose: () => void = () => {}
 
   private shareService: ShareService = getShareService()
+  private iconPreloadTask: Promise<void> | null = null
 
   private showShareToast(message: string | Resource, duration: number = 2000): void {
     showToast(this.getUIContext(), message, duration)
@@ -37,6 +37,7 @@ export struct SharePreviewSheet {
     console.info('SharePreviewSheet', `[aboutToAppear] 消息数量: ${this.messages.length}, 分享模式: ${this.selectedMode}`)
     // 初始化预览文本
     this.updatePreviewText()
+    void this.ensureShareModelIconsReady()
   }
 
   // 更新预览文本
@@ -46,6 +47,18 @@ export struct SharePreviewSheet {
     } else if (this.selectedMode === ShareMode.TEXT) {
       this.previewText = this.shareService.convertToPlainText(this.messages)
     }
+  }
+
+  private extractErrorText(error: Object): string {
+    const text = `${error}`
+    if (text !== '' && text !== '[object Object]') {
+      return text
+    }
+    const json = JSON.stringify(error)
+    if (json !== '' && json !== '{}') {
+      return json
+    }
+    return 'unknown error'
   }
 
   build() {
@@ -104,15 +117,13 @@ export struct SharePreviewSheet {
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
         } else if (this.selectedMode === ShareMode.IMAGE) {
-          // 图片预览
+          // 预览仍然允许滚动，但截图不再依赖这个滚动容器。
           Scroll() {
-            ShareMessageCard({
-              messages: this.messages,
-              appName: 'ChatCube',
-              currentModelId: this.currentModelId
-            })
-              .margin(16)
-              .id('share_card_preview')
+            Column() {
+              this.ShareSnapshotCard()
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
           }
           .width('100%')
           .layoutWeight(1)
@@ -159,6 +170,65 @@ export struct SharePreviewSheet {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.background'))
+  }
+
+  @Builder
+  private ShareSnapshotCard() {
+    ShareMessageCard({
+      messages: this.messages,
+      appName: 'ChatCube',
+      currentModelId: this.currentModelId,
+      iconRenderVersion: this.iconRenderVersion
+    })
+      .margin(16)
+  }
+
+  private collectShareModelIds(): string[] {
+    const ids: string[] = []
+    for (let i = 0; i < this.messages.length; i++) {
+      const message = this.messages[i]
+      const id = resolveShareModelIdentity(message.modelId, this.currentModelId, message.modelName)
+      if (id !== '' && !ids.includes(id)) {
+        ids.push(id)
+      }
+    }
+    return ids
+  }
+
+  private async ensureShareModelIconsReady(): Promise<void> {
+    if (this.iconPreloadTask !== null) {
+      await this.iconPreloadTask
+      return
+    }
+
+    const modelIds = this.collectShareModelIds()
+    if (modelIds.length === 0) {
+      return
+    }
+
+    this.iconPreloadTask = this.preloadShareModelIcons(modelIds)
+    try {
+      await this.iconPreloadTask
+    } finally {
+      this.iconPreloadTask = null
+    }
+  }
+
+  private async preloadShareModelIcons(modelIds: string[]): Promise<void> {
+    console.info('SharePreviewSheet', `[preloadShareModelIcons] start, model count: ${modelIds.length}`)
+    try {
+      await Promise.all(modelIds.map(async (modelId) => {
+        const result = await preloadModelIcon(modelId)
+        if (result === '') {
+          console.warn('SharePreviewSheet', `[preloadShareModelIcons] model icon unavailable: ${modelId}`)
+        }
+      }))
+    } catch (error) {
+      console.warn('SharePreviewSheet', `[preloadShareModelIcons] preload failed: ${this.extractErrorText(error)}`)
+    } finally {
+      this.iconRenderVersion += 1
+      console.info('SharePreviewSheet', `[preloadShareModelIcons] done, iconRenderVersion=${this.iconRenderVersion}`)
+    }
   }
 
   @Builder
@@ -212,7 +282,7 @@ export struct SharePreviewSheet {
 
       if (this.selectedMode === ShareMode.IMAGE) {
         // 图片分享：截取卡片组件
-        await this.shareAsImage(context)
+        await this.shareAsImage()
       } else if (this.selectedMode === ShareMode.MARKDOWN) {
         // Markdown 分享
         const content = this.shareService.convertToMarkdown(this.messages)
@@ -245,63 +315,14 @@ export struct SharePreviewSheet {
   }
 
   // 图片分享
-  private async shareAsImage(context: common.UIAbilityContext): Promise<void> {
+  private async shareAsImage(): Promise<void> {
     try {
       console.info('SharePreviewSheet', '[shareAsImage] start snapshot sharing flow')
-
-      // 等待组件完全渲染（Sheet 动画完成 + 足够时间让 Scroll 内容渲染）
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          resolve()
-        }, 800)
-      })
-
-      // 使用 componentSnapshot 截取预览卡片
-      const snapshot = this.getUIContext().getComponentSnapshot()
-      console.info('SharePreviewSheet', '[shareAsImage] snapshot start, componentId=share_card_preview')
-
-      // 检查组件是否存在
-      let pixelMap: image.PixelMap
-      try {
-        pixelMap = await snapshot.get('share_card_preview', { scale: 2 })
-        const imageInfo = pixelMap.getImageInfoSync()
-        console.info('SharePreviewSheet', `[shareAsImage] 截图成功，尺寸: ${imageInfo.size.width}x${imageInfo.size.height}`)
-      } catch (snapshotError) {
-        console.error('SharePreviewSheet', `[shareAsImage] 截图失败: ${JSON.stringify(snapshotError)}`)
-        this.showShareToast($r('app.string.share_snapshot_failed'))
-        return
-      }
-
-      // 创建图片打包器
-      const packer = image.createImagePacker()
-      const packOpts: image.PackingOption = {
-        format: 'image/png',
-        quality: 100
-      }
-      const arrayBuffer = await packer.packToData(pixelMap, packOpts)
-      console.info('SharePreviewSheet', `[shareAsImage] 图片打包完成，大小: ${arrayBuffer.byteLength} 字节`)
-
-      // 保存到缓存目录
-      const fileName = `share_${Date.now()}.png`
-      const cacheDir = context.cacheDir
-      const filePath = `${cacheDir}/${fileName}`
-      console.info('SharePreviewSheet', `[shareAsImage] 保存图片到: ${filePath}`)
-
-      // 确保目录存在
-      try {
-        fs.accessSync(cacheDir)
-      } catch (e) {
-        fs.mkdirSync(cacheDir, true)
-      }
-
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
-      fs.writeSync(file.fd, arrayBuffer)
-      fs.closeSync(file)
-      console.info('SharePreviewSheet', '[shareAsImage] image saved')
-
-      // 释放资源
-      packer.release()
-      pixelMap.release()
+      await this.ensureShareModelIconsReady()
+      const filePath = await this.shareService.captureBuilderAsImage((): void => {
+        this.ShareSnapshotCard()
+      }, this.getUIContext())
+      console.info('SharePreviewSheet', `[shareAsImage] image saved: ${filePath}`)
 
       // 分享图片
       console.info('SharePreviewSheet', '[shareAsImage] start share image')
@@ -318,8 +339,13 @@ export struct SharePreviewSheet {
         console.info('SharePreviewSheet', '[shareAsImage] shared')
       }
     } catch (e) {
-      console.error('SharePreviewSheet', `[shareAsImage] 图片分享失败: ${JSON.stringify(e)}`)
-      this.showShareToast($r('app.string.share_failed'))
+      const errorMessage = this.extractErrorText(e)
+      console.error('SharePreviewSheet', `[shareAsImage] 图片分享失败: ${errorMessage}`)
+      if (errorMessage.indexOf('截图失败') >= 0) {
+        this.showShareToast($r('app.string.share_snapshot_failed'))
+      } else {
+        this.showShareToast($r('app.string.share_failed'))
+      }
     }
   }
 }

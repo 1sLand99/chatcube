@@ -12,6 +12,23 @@ import { IconDownloadCache } from '../services/IconDownloadCache'
 // 默认图标路径
 const DEFAULT_ICON_PATH = ''
 
+function resolveModelLogoUrl(modelId: string): string {
+  return ModelCapabilityMatcher.getInstance().getLogoUrl(modelId)
+}
+
+export function resolveShareModelIdentity(modelId: string, currentModelId: string, modelName: string): string {
+  if (modelId !== undefined && modelId !== '') {
+    return modelId
+  }
+  if (currentModelId !== undefined && currentModelId !== '') {
+    return currentModelId
+  }
+  if (modelName !== undefined && modelName !== '') {
+    return modelName
+  }
+  return ''
+}
+
 /**
  * 获取供应商图标路径
  * @param providerId 供应商 ID
@@ -37,8 +54,7 @@ export function getProviderIconPath(providerId: string, customIconPath?: string)
  * @returns 图标路径（网络 URL 或沙箱路径）
  */
 export function getModelIconPath(modelId: string, providerId: string, providerIconPath?: string): string {
-  const matcher = ModelCapabilityMatcher.getInstance()
-  const logoUrl = matcher.getLogoUrl(modelId)
+  const logoUrl = resolveModelLogoUrl(modelId)
   if (logoUrl !== '') {
     const cachedUri = IconDownloadCache.getInstance().getCachedIconUri(logoUrl)
     if (cachedUri !== '') {
@@ -49,6 +65,26 @@ export function getModelIconPath(modelId: string, providerId: string, providerIc
     return logoUrl
   }
   return ''
+}
+
+/**
+ * 仅返回本地已缓存的模型图标，不触发后台下载。
+ * 适合截图、离屏渲染等不能容忍异步资源未就绪的场景。
+ */
+export function getCachedModelIconPath(modelId: string): string {
+  const logoUrl = resolveModelLogoUrl(modelId)
+  if (logoUrl === '') {
+    return ''
+  }
+  return IconDownloadCache.getInstance().getCachedIconUri(logoUrl)
+}
+
+export async function preloadModelIcon(modelId: string): Promise<string> {
+  const logoUrl = resolveModelLogoUrl(modelId)
+  if (logoUrl === '') {
+    return ''
+  }
+  return await IconDownloadCache.getInstance().downloadAndCache(logoUrl)
 }
 
 /**

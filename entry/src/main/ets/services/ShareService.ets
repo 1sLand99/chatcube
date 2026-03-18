@@ -25,6 +25,10 @@ export interface ShareResult {
 
 export class ShareService {
   private context: common.UIAbilityContext | null = null
+  private readonly snapshotRetryCount: number = 5
+  private readonly snapshotRetryDelayMs: number = 200
+  private readonly snapshotScale: number = 1
+  private readonly snapshotBuilderDelayMs: number = 600
 
   // 初始化服务
   init(context: common.UIAbilityContext): void {
@@ -51,8 +55,7 @@ export class ShareService {
         lines.push('')
       }
 
-      // 如果有推理内容，添加折叠块
-      if (msg.reasoningContent.length > 0) {
+      if (msg.reasoningContent.trim().length > 0) {
         lines.push('<details>')
         lines.push('<summary>💭 思考过程</summary>\n')
         lines.push(msg.reasoningContent)
@@ -78,11 +81,14 @@ export class ShareService {
       const time = this.formatTime(msg.timestamp)
 
       lines.push(`${roleLabel} ${time}`)
-      lines.push(msg.content)
+      if (msg.content.length > 0) {
+        lines.push(msg.content)
+      }
 
-      // 如果有推理内容
-      if (msg.reasoningContent.length > 0) {
-        lines.push('')
+      if (msg.reasoningContent.trim().length > 0) {
+        if (msg.content.length > 0) {
+          lines.push('')
+        }
         lines.push('[思考过程]')
         lines.push(msg.reasoningContent)
       }
@@ -158,42 +164,126 @@ export class ShareService {
     }
   }
 
-  // 截取组件为图片并保存
-  async captureComponentAsImage(componentId: string, uiContext: UIContext): Promise<string> {
+  // 通过离屏 Builder 渲染长图并保存，避免受当前页面滚动区域和父布局裁剪影响。
+  async captureBuilderAsImage(builder: CustomBuilder, uiContext: UIContext): Promise<string> {
+    let pixelMap: image.PixelMap | null = null
     try {
-      // 使用 componentSnapshot 截取组件
       const snapshot = uiContext.getComponentSnapshot()
-      const pixelMap = await snapshot.get(componentId, { scale: 2 })
+      let lastSnapshotError: Object | null = null
 
-      // 创建图片打包器
-      const packer = image.createImagePacker()
+      for (let attempt = 0; attempt < this.snapshotRetryCount; attempt++) {
+        try {
+          pixelMap = await snapshot.createFromBuilder(
+            builder,
+            this.snapshotBuilderDelayMs,
+            true,
+            {
+              scale: this.snapshotScale,
+              waitUntilRenderFinished: true
+            })
+          break
+        } catch (error) {
+          lastSnapshotError = error
+          console.error('ShareService',
+            `[captureBuilderAsImage] snapshot attempt ${(attempt + 1).toString()} failed: ${this.describeError(error)}`)
+          if (attempt < this.snapshotRetryCount - 1) {
+            await this.sleep(this.snapshotRetryDelayMs)
+          }
+        }
+      }
 
-      // 打包为 PNG
+      if (pixelMap === null && this.isImageNotReadyError(lastSnapshotError)) {
+        console.warn('ShareService',
+          '[captureBuilderAsImage] falling back to snapshot without image-ready check')
+        try {
+          pixelMap = await snapshot.createFromBuilder(
+            builder,
+            this.snapshotBuilderDelayMs,
+            false,
+            {
+              scale: this.snapshotScale,
+              waitUntilRenderFinished: true
+            })
+        } catch (error) {
+          lastSnapshotError = error
+          console.error('ShareService',
+            `[captureBuilderAsImage] fallback snapshot failed: ${this.describeError(error)}`)
+        }
+      }
+
+      if (pixelMap === null) {
+        throw new Error(`snapshot.createFromBuilder failed: ${this.describeError(lastSnapshotError)}`)
+      }
+      return await this.writePixelMapToImageFile(pixelMap)
+    } catch (e) {
+      const errorMsg = `截图失败: ${this.describeError(e)}`
+      console.error('ShareService', errorMsg)
+      throw new Error(errorMsg)
+    } finally {
+      if (pixelMap !== null) {
+        pixelMap.release()
+      }
+    }
+  }
+
+  private async writePixelMapToImageFile(pixelMap: image.PixelMap): Promise<string> {
+    let packer: image.ImagePacker | null = null
+    try {
+      packer = image.createImagePacker()
       const packOpts: image.PackingOption = {
         format: 'image/png',
         quality: 100
       }
       const arrayBuffer = await packer.packToData(pixelMap, packOpts)
 
-      // 保存到临时目录
       const fileName = `share_${Date.now()}.png`
-      const tempDir = this.context?.tempDir ?? ''
-      const filePath = `${tempDir}/${fileName}`
+      const imageDir = this.context?.cacheDir ?? this.context?.tempDir ?? ''
+      const filePath = `${imageDir}/${fileName}`
+
+      if (imageDir === '') {
+        throw new Error('share image directory unavailable')
+      }
+
+      try {
+        fs.accessSync(imageDir)
+      } catch (_error) {
+        fs.mkdirSync(imageDir, true)
+      }
 
       const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
       fs.writeSync(file.fd, arrayBuffer)
       fs.closeSync(file)
-
-      // 释放资源
-      packer.release()
-      pixelMap.release()
-
       return filePath
-    } catch (e) {
-      const errorMsg = `截图失败: ${JSON.stringify(e)}`
-      console.error('ShareService', errorMsg)
-      throw new Error(errorMsg)
+    } finally {
+      if (packer !== null) {
+        packer.release()
+      }
     }
+  }
+
+  private async sleep(delayMs: number): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), delayMs)
+    })
+  }
+
+  private describeError(error: Object | null): string {
+    if (error === null) {
+      return 'unknown error'
+    }
+    const text = `${error}`
+    if (text !== '' && text !== '[object Object]') {
+      return text
+    }
+    const json = JSON.stringify(error)
+    if (json !== '' && json !== '{}') {
+      return json
+    }
+    return 'unknown error'
+  }
+
+  private isImageNotReadyError(error: Object | null): boolean {
+    return this.describeError(error).indexOf('160001') >= 0
   }
 
   // 格式化时间

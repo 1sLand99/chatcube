@@ -285,7 +285,9 @@ export class ChatViewModel {
       if (msg.role === MessageRole.SYSTEM) {
         continue
       }
-      historyMessages.push(new RequestMessage(msg.role, msg.content, this.cloneAttachments(msg.attachments)))
+      const requestMessage = new RequestMessage(msg.role, msg.content, this.cloneAttachments(msg.attachments))
+      requestMessage.reasoningContent = msg.reasoningContent
+      historyMessages.push(requestMessage)
     }
     return historyMessages
   }

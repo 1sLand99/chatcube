@@ -513,6 +513,10 @@
       "value": "Off"
     },
     {
+      "name": "chat_toolbar_reasoning_on",
+      "value": "On"
+    },
+    {
       "name": "chat_toolbar_reasoning_low",
       "value": "Light Reasoning"
     },

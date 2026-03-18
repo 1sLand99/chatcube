@@ -21,6 +21,11 @@ import {
   getPresetProviderById,
   isPresetProviderApiKeyRequired
 } from '../config/PresetProviders'
+import {
+  CompatibilityProviderInfo,
+  ModelDiscoveryStrategy,
+  resolveProviderCompatibilityProfile
+} from '../services/ProviderCompatibilityRegistry'
 
 // 服务商状态管理 - 单例模式
 export class ProviderViewModel {
@@ -412,12 +417,21 @@ export class ProviderViewModel {
     return ''
   }
 
+  private toCompatibilityInfo(provider: ModelProvider): CompatibilityProviderInfo {
+    return {
+      providerId: provider.id,
+      baseUrl: provider.baseUrl,
+      apiStyle: provider.apiStyle
+    }
+  }
+
   private selectConnectionTestModel(provider: ModelProvider, modelIds: string[]): string {
     if (modelIds.length === 0) {
       return ''
     }
 
-    if (this.isMiniMaxCompatibleProvider(provider)) {
+    const compatibilityProfile = resolveProviderCompatibilityProfile(this.toCompatibilityInfo(provider))
+    if (compatibilityProfile.modelDiscoveryStrategy === ModelDiscoveryStrategy.STATIC_CATALOG) {
       return modelIds[0]
     }
 
@@ -447,14 +461,8 @@ export class ProviderViewModel {
   }
 
   private shouldVerifyStaticModelCatalog(provider: ModelProvider): boolean {
-    return this.isMiniMaxCompatibleProvider(provider)
-  }
-
-  private isMiniMaxCompatibleProvider(provider: ModelProvider): boolean {
-    const normalizedBaseUrl = provider.baseUrl.trim().toLowerCase()
-    return normalizedBaseUrl.includes('api.minimaxi.com') ||
-      normalizedBaseUrl.includes('api.minimax.chat') ||
-      normalizedBaseUrl.includes('api.minimax.io')
+    const compatibilityProfile = resolveProviderCompatibilityProfile(this.toCompatibilityInfo(provider))
+    return compatibilityProfile.modelDiscoveryStrategy === ModelDiscoveryStrategy.STATIC_CATALOG
   }
 
   private getPreferredConnectionModelKeywords(apiStyle: ApiStyle): string[] {

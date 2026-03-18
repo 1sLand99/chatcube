@@ -11,6 +11,17 @@ import {
   ToolCall,
   ToolResult
 } from '../models/ChatModels'
+import {
+  AnthropicAuthStrategy,
+  CompatibilityProviderInfo,
+  ModelDiscoveryStrategy,
+  OpenAIStreamContentMode,
+  ProviderCompatibilityProfile,
+  ReasoningRequestStrategy,
+  normalizeReasoningLevelForControl,
+  resolveProviderCompatibilityProfile,
+  resolveReasoningRequestStrategy
+} from './ProviderCompatibilityRegistry'
 
 // URL 解析工具类
 class ApiUrlResolver {
@@ -58,6 +69,7 @@ class ApiUrlResolver {
 export class RequestMessage {
   role: string = ''
   content: string = ''
+  reasoningContent: string = ''
   // 图片附件（用于多模态请求）
   attachments: MessageAttachment[] = []
   // Function Calling 相关字段
@@ -132,6 +144,7 @@ interface MultimodalMessageContent {
 interface MessageContent {
   role: string
   content: string
+  reasoning_details?: MiniMaxReasoningDetail[]
 }
 
 // 测试请求接口
@@ -338,31 +351,6 @@ export interface ModelsListResult {
   errorMessage: string
 }
 
-enum ModelDiscoveryStrategy {
-  REMOTE_ENDPOINT = 'remote_endpoint',
-  STATIC_CATALOG = 'static_catalog'
-}
-
-enum AnthropicAuthStrategy {
-  API_KEY = 'api_key',
-  BEARER = 'bearer'
-}
-
-interface ProviderCompatibilityProfile {
-  modelDiscoveryStrategy: ModelDiscoveryStrategy
-  staticModels: string[]
-  defaultTestModel: string
-  anthropicAuthStrategy: AnthropicAuthStrategy
-}
-
-const MINIMAX_COMPATIBLE_MODELS: string[] = [
-  'MiniMax-M2.5',
-  'MiniMax-M2.5-highspeed',
-  'MiniMax-M2.1',
-  'MiniMax-M2.1-highspeed',
-  'MiniMax-M2'
-]
-
 // Anthropic 图片来源接口
 interface AnthropicImageSource {
   type: string
@@ -389,6 +377,8 @@ interface AnthropicResponse {
 interface GoogleContentPart {
   text?: string
   inline_data?: GoogleInlineData
+  thought?: boolean
+  thoughtSignature?: string
 }
 
 interface GoogleInlineData {
@@ -401,19 +391,32 @@ interface GoogleContent {
   parts: GoogleContentPart[]
 }
 
+interface GoogleSystemInstruction {
+  parts: GoogleContentPart[]
+}
+
+interface GoogleThinkingConfig {
+  includeThoughts?: boolean
+  thinkingBudget?: number
+  thinkingLevel?: string
+}
+
 interface GoogleGenerationConfig {
   temperature: number
   maxOutputTokens: number
+  thinkingConfig?: GoogleThinkingConfig
 }
 
 interface GoogleRequestBody {
   contents: GoogleContent[]
   generationConfig: GoogleGenerationConfig
+  systemInstruction?: GoogleSystemInstruction
 }
 
 // Google Gemini 响应接口
 interface GoogleCandidate {
   content: GoogleContent
+  finishReason?: string
 }
 
 interface GoogleResponse {
@@ -424,6 +427,7 @@ interface GoogleResponse {
 // MiniMax reasoning_details 项
 interface MiniMaxReasoningDetail {
   text?: string
+  type?: string
 }
 
 // 流式响应中的工具调用增量
@@ -483,6 +487,8 @@ interface AnthropicStreamChunk {
 interface GoogleStreamPart {
   text?: string
   inline_data?: GoogleStreamInlineData
+  thought?: boolean
+  thoughtSignature?: string
 }
 
 // Google 流式响应块内联数据（图片等）
@@ -499,6 +505,7 @@ interface GoogleStreamContent {
 // Google 流式响应块候选
 interface GoogleStreamCandidate {
   content: GoogleStreamContent
+  finishReason?: string
 }
 
 // Google 流式响应块
@@ -535,6 +542,8 @@ export class AIApiService {
   private httpService: HttpService
   // DeepSeek-R1 <think> 标签解析状态
   private isInThinkingBlock: boolean = false
+  // 当前 OpenAI 流是否使用 MiniMax 的累计 content 语义
+  private currentOpenAIStreamUsesCumulativeContent: boolean = false
   // MiniMax reasoning_details 累积内容缓冲区（用于计算增量）
   private minimaxReasoningBuffer: string = ''
   // MiniMax content 累积内容缓冲区（用于计算增量，因为 MiniMax 的 content 也是累积的）
@@ -551,10 +560,45 @@ export class AIApiService {
   // 重置 thinking 状态（每次新请求前调用）
   resetThinkingState(): void {
     this.isInThinkingBlock = false
+    this.currentOpenAIStreamUsesCumulativeContent = false
     this.minimaxReasoningBuffer = ''
     this.minimaxContentBuffer = ''
     this.partialTagBuffer = ''
     this.streamToolCalls = new Map()
+  }
+
+  private toCompatibilityInfo(config: AIApiConfig): CompatibilityProviderInfo {
+    return {
+      providerId: config.providerId,
+      baseUrl: config.baseUrl,
+      apiStyle: config.apiStyle
+    }
+  }
+
+  private getCompatibilityProfile(config: AIApiConfig): ProviderCompatibilityProfile {
+    return resolveProviderCompatibilityProfile(this.toCompatibilityInfo(config))
+  }
+
+  private getReasoningRequestStrategy(config: AIApiConfig, model: string): ReasoningRequestStrategy {
+    return resolveReasoningRequestStrategy(this.toCompatibilityInfo(config), model)
+  }
+
+  private configureStreamState(config: AIApiConfig, model: string): void {
+    const compatibilityProfile = this.getCompatibilityProfile(config)
+    const usesMiniMaxReasoningSplit = this.getReasoningRequestStrategy(config, model) ===
+      ReasoningRequestStrategy.OPENAI_REASONING_SPLIT
+    this.currentOpenAIStreamUsesCumulativeContent =
+      compatibilityProfile.openAIStreamContentMode === OpenAIStreamContentMode.CUMULATIVE &&
+      usesMiniMaxReasoningSplit
+  }
+
+  private getMiniMaxIncrementalContent(rawContent: string): string {
+    if (rawContent === '' || rawContent.length <= this.minimaxContentBuffer.length) {
+      return ''
+    }
+    const incrementalContent = rawContent.substring(this.minimaxContentBuffer.length)
+    this.minimaxContentBuffer = rawContent
+    return incrementalContent
   }
 
   // 获取累积的工具调用（流式响应完成后调用）
@@ -673,6 +717,7 @@ export class AIApiService {
   ): Promise<AIApiResult> {
     const url = this.buildChatUrl(config, model)
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel)
+    this.configureStreamState(config, model)
 
     const response = await this.postWithResolvedAuth(
       config,
@@ -701,7 +746,7 @@ export class AIApiService {
       new RequestMessage('user', 'Hi')
     ]
 
-    const testModel = modelId !== '' ? modelId : this.resolveDefaultTestModel(config)
+    const testModel = modelId !== '' ? modelId : this.getCompatibilityProfile(config).defaultTestModel
     if (testModel === '') {
       return {
         success: false,
@@ -767,7 +812,7 @@ export class AIApiService {
 
   // 获取模型列表
   async getModels(config: AIApiConfig): Promise<ModelsListResult> {
-    const compatibilityProfile = this.resolveCompatibilityProfile(config)
+    const compatibilityProfile = this.getCompatibilityProfile(config)
     if (compatibilityProfile.modelDiscoveryStrategy === ModelDiscoveryStrategy.STATIC_CATALOG) {
       return {
         success: true,
@@ -882,7 +927,7 @@ export class AIApiService {
     }
 
     if (config.apiStyle === ApiStyle.ANTHROPIC) {
-      const resolvedAuthStrategy = anthropicAuthStrategy ?? this.resolveCompatibilityProfile(config).anthropicAuthStrategy
+      const resolvedAuthStrategy = anthropicAuthStrategy ?? this.getCompatibilityProfile(config).anthropicAuthStrategy
       if (resolvedAuthStrategy === AnthropicAuthStrategy.BEARER && config.apiKey !== '') {
         headers['Authorization'] = `Bearer ${config.apiKey}`
       } else {
@@ -929,46 +974,8 @@ export class AIApiService {
 
   private shouldRetryMiniMaxAnthropicWithBearer(config: AIApiConfig, statusCode: number): boolean {
     return config.apiStyle === ApiStyle.ANTHROPIC &&
-      this.isMiniMaxCompatibleProvider(config) &&
+      this.getCompatibilityProfile(config).anthropicBearerRetryOnAuthFailure &&
       (statusCode === 401 || statusCode === 403)
-  }
-
-  private resolveCompatibilityProfile(config: AIApiConfig): ProviderCompatibilityProfile {
-    if (this.isMiniMaxCompatibleProvider(config) &&
-      (config.apiStyle === ApiStyle.OPENAI || config.apiStyle === ApiStyle.ANTHROPIC)) {
-      return {
-        modelDiscoveryStrategy: ModelDiscoveryStrategy.STATIC_CATALOG,
-        staticModels: MINIMAX_COMPATIBLE_MODELS,
-        defaultTestModel: MINIMAX_COMPATIBLE_MODELS[0],
-        anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY
-      }
-    }
-
-    return {
-      modelDiscoveryStrategy: ModelDiscoveryStrategy.REMOTE_ENDPOINT,
-      staticModels: [],
-      defaultTestModel: '',
-      anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY
-    }
-  }
-
-  private isMiniMaxCompatibleProvider(config: AIApiConfig): boolean {
-    const normalizedBaseUrl = this.normalizeBaseUrl(config.baseUrl)
-    return normalizedBaseUrl.includes('api.minimaxi.com') ||
-      normalizedBaseUrl.includes('api.minimax.chat') ||
-      normalizedBaseUrl.includes('api.minimax.io')
-  }
-
-  private normalizeBaseUrl(baseUrl: string): string {
-    let normalized = baseUrl.trim().toLowerCase()
-    if (normalized.endsWith('/')) {
-      normalized = normalized.slice(0, -1)
-    }
-    return normalized
-  }
-
-  private resolveDefaultTestModel(config: AIApiConfig): string {
-    return this.resolveCompatibilityProfile(config).defaultTestModel
   }
 
   private extractHttpErrorMessage(response: HttpResponse, fallbackMessage: string): string {
@@ -1038,9 +1045,13 @@ export class AIApiService {
     tools?: ToolDefinition[],
     toolChoice?: string
   ): OpenAIRequestBody | AnthropicRequestBody | GoogleRequestBody {
+    const reasoningRequestStrategy = this.getReasoningRequestStrategy(config, model)
+    const normalizedReasoningLevel = normalizeReasoningLevelForControl(reasoningLevel)
+
     if (config.apiStyle === ApiStyle.GOOGLE) {
       // Google Gemini 格式
       const googleContents: GoogleContent[] = []
+      const googleSystemInstruction = this.buildGoogleSystemInstruction(messages)
 
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i]
@@ -1087,6 +1098,13 @@ export class AIApiService {
           temperature: temperature,
           maxOutputTokens: maxTokens
         }
+      }
+      if (googleSystemInstruction !== undefined) {
+        googleBody.systemInstruction = googleSystemInstruction
+      }
+      const googleThinkingConfig = this.getGoogleThinkingConfig(model, reasoningRequestStrategy, normalizedReasoningLevel)
+      if (googleThinkingConfig !== undefined) {
+        googleBody.generationConfig.thinkingConfig = googleThinkingConfig
       }
       return googleBody
     }
@@ -1166,10 +1184,11 @@ export class AIApiService {
           system: systemPrompt
         }
         // 添加 Anthropic 推理配置
-        if (reasoningLevel !== ReasoningLevel.OFF) {
+        if (reasoningRequestStrategy === ReasoningRequestStrategy.ANTHROPIC_THINKING &&
+          normalizedReasoningLevel !== ReasoningLevel.OFF) {
           bodyWithSystem.thinking = {
             type: 'enabled',
-            budget_tokens: this.getAnthropicThinkingBudget(reasoningLevel)
+            budget_tokens: this.getAnthropicThinkingBudget(normalizedReasoningLevel)
           }
         }
         return bodyWithSystem
@@ -1182,10 +1201,11 @@ export class AIApiService {
         temperature: temperature
       }
       // 添加 Anthropic 推理配置
-      if (reasoningLevel !== ReasoningLevel.OFF) {
+      if (reasoningRequestStrategy === ReasoningRequestStrategy.ANTHROPIC_THINKING &&
+        normalizedReasoningLevel !== ReasoningLevel.OFF) {
         body.thinking = {
           type: 'enabled',
-          budget_tokens: this.getAnthropicThinkingBudget(reasoningLevel)
+          budget_tokens: this.getAnthropicThinkingBudget(normalizedReasoningLevel)
         }
       }
       return body
@@ -1283,6 +1303,14 @@ export class AIApiService {
           role: msg.role,
           content: msg.content
         }
+        if (msg.role === 'assistant' && msg.reasoningContent.trim() !== '' &&
+          this.getCompatibilityProfile(config).preserveAssistantReasoningDetails) {
+          const reasoningDetail: MiniMaxReasoningDetail = {
+            text: msg.reasoningContent,
+            type: 'text'
+          }
+          msgContent.reasoning_details = [reasoningDetail]
+        }
         openaiMessages.push(msgContent)
       }
     }
@@ -1305,30 +1333,15 @@ export class AIApiService {
       requestBody.frequency_penalty = config.frequencyPenalty
     }
 
-    // 添加 OpenAI 推理配置（适用于 o1/o3 系列模型）
-    if (reasoningLevel !== ReasoningLevel.OFF) {
-      requestBody.reasoning_effort = this.getOpenAIReasoningEffort(reasoningLevel)
-    }
-    // 通过模型 ID 检测特定供应商，添加对应的推理参数
-    const modelLower = model.toLowerCase()
-    // MiniMax API: 添加 reasoning_split 参数以启用 reasoning_details 字段
-    // MiniMax 模型 ID 通常以 abab 或 minimax 开头
-    if (modelLower.startsWith('abab') || modelLower.startsWith('minimax')) {
+    if (reasoningRequestStrategy === ReasoningRequestStrategy.OPENAI_REASONING_EFFORT &&
+      normalizedReasoningLevel !== ReasoningLevel.OFF) {
+      requestBody.reasoning_effort = this.getOpenAIReasoningEffort(normalizedReasoningLevel)
+    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.OPENAI_REASONING_SPLIT &&
+      normalizedReasoningLevel !== ReasoningLevel.OFF) {
       requestBody.reasoning_split = true
-    }
-    // 小米 MiMo / 智谱 GLM API: 添加 thinking 参数以启用思维链
-    // MiMo 模型 ID 以 mimo 开头（如 mimo-v2-flash）
-    // GLM 模型 ID 以 glm 开头（如 glm-4.7）
-    const isMiMo = modelLower.startsWith('mimo')
-    const isGLM = modelLower.startsWith('glm')
-    if (isMiMo || isGLM) {
-      if (reasoningLevel !== ReasoningLevel.OFF) {
-        // GLM 需要 clear_thinking: false 以保留历史推理内容，提高缓存命中率
-        if (isGLM) {
-          requestBody.thinking = { type: 'enabled', clear_thinking: false }
-        } else {
-          requestBody.thinking = { type: 'enabled' }
-        }
+    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.ZHIPU_THINKING) {
+      if (normalizedReasoningLevel !== ReasoningLevel.OFF) {
+        requestBody.thinking = { type: 'enabled', clear_thinking: false }
       } else {
         requestBody.thinking = { type: 'disabled' }
       }
@@ -1515,15 +1528,33 @@ export class AIApiService {
       const candidate = response.candidates[0]
       if (candidate.content !== undefined && candidate.content.parts !== undefined && candidate.content.parts.length > 0) {
         let content = ''
+        let reasoningContent = ''
+        let imageData = ''
+        let imageMimeType = ''
         for (let i = 0; i < candidate.content.parts.length; i++) {
-          content += candidate.content.parts[i].text
+          const part = candidate.content.parts[i]
+          if (part.text !== undefined && part.text !== '') {
+            if (part.thought === true) {
+              reasoningContent += part.text
+            } else {
+              content += part.text
+            }
+          } else if (part.inline_data !== undefined) {
+            imageData = part.inline_data.data
+            imageMimeType = part.inline_data.mime_type
+          }
         }
         const result: AIApiResult = {
           success: true,
           content: content,
           errorMessage: '',
           usage: null,
-          reasoningContent: ''
+          reasoningContent: reasoningContent,
+          finishReason: candidate.finishReason
+        }
+        if (imageData !== '' && imageMimeType !== '') {
+          result.imageData = imageData
+          result.imageMimeType = imageMimeType
         }
         return result
       }
@@ -1566,6 +1597,96 @@ export class AIApiService {
     }
   }
 
+  private collectGoogleSystemPrompt(messages: RequestMessage[]): string {
+    const parts: string[] = []
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
+      if (msg.role === 'system' && msg.content.trim() !== '') {
+        parts.push(msg.content.trim())
+      }
+    }
+    return parts.join('\n\n')
+  }
+
+  private buildGoogleSystemInstruction(messages: RequestMessage[]): GoogleSystemInstruction | undefined {
+    const systemPrompt = this.collectGoogleSystemPrompt(messages)
+    if (systemPrompt === '') {
+      return undefined
+    }
+    return {
+      parts: [{ text: systemPrompt }]
+    }
+  }
+
+  private normalizeGoogleModelId(model: string): string {
+    return model.trim().toLowerCase().replace(/^models\//, '')
+  }
+
+  private isGeminiThreeThinkingModel(model: string): boolean {
+    return this.normalizeGoogleModelId(model).startsWith('gemini-3')
+  }
+
+  private isGeminiTwoFiveThinkingModel(model: string): boolean {
+    const normalizedModel = this.normalizeGoogleModelId(model)
+    return normalizedModel.startsWith('gemini-2.5') ||
+      normalizedModel.startsWith('gemini-robotics')
+  }
+
+  private getGoogleThinkingLevel(level: ReasoningLevel): string {
+    switch (level) {
+      case ReasoningLevel.OFF:
+        return 'minimal'
+      case ReasoningLevel.LOW:
+        return 'low'
+      case ReasoningLevel.HIGH:
+        return 'high'
+      case ReasoningLevel.MEDIUM:
+      default:
+        return 'medium'
+    }
+  }
+
+  private getGoogleThinkingBudget(level: ReasoningLevel): number | undefined {
+    switch (level) {
+      case ReasoningLevel.OFF:
+        return 0
+      case ReasoningLevel.LOW:
+        return 1024
+      default:
+        return undefined
+    }
+  }
+
+  private getGoogleThinkingConfig(
+    model: string,
+    reasoningRequestStrategy: ReasoningRequestStrategy,
+    reasoningLevel: ReasoningLevel
+  ): GoogleThinkingConfig | undefined {
+    if (reasoningRequestStrategy !== ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG) {
+      return undefined
+    }
+
+    if (this.isGeminiThreeThinkingModel(model)) {
+      return {
+        includeThoughts: reasoningLevel !== ReasoningLevel.OFF,
+        thinkingLevel: this.getGoogleThinkingLevel(reasoningLevel)
+      }
+    }
+
+    if (this.isGeminiTwoFiveThinkingModel(model)) {
+      const thinkingBudget = this.getGoogleThinkingBudget(reasoningLevel)
+      const config: GoogleThinkingConfig = {
+        includeThoughts: reasoningLevel !== ReasoningLevel.OFF
+      }
+      if (thinkingBudget !== undefined) {
+        config.thinkingBudget = thinkingBudget
+      }
+      return config
+    }
+
+    return undefined
+  }
+
   // 流式发送聊天请求
   streamChatRequest(
     config: AIApiConfig,
@@ -1589,6 +1710,7 @@ export class AIApiService {
       headers['Accept'] = 'text/event-stream'
     }
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel)
+    this.configureStreamState(config, model)
 
     // 添加流式请求标志
     if (config.apiStyle === ApiStyle.OPENAI) {
@@ -1673,6 +1795,7 @@ export class AIApiService {
       headers['Accept'] = 'text/event-stream'
     }
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel, tools, toolChoice)
+    this.configureStreamState(config, model)
 
     // 添加流式请求标志
     if (config.apiStyle === ApiStyle.OPENAI) {
@@ -1942,9 +2065,8 @@ export class AIApiService {
             }
           }
           // MiniMax 的 content 字段也是累积的，需要计算增量并过滤 <think> 标签
-          if (rawContent !== '' && rawContent.length > this.minimaxContentBuffer.length) {
-            const incrementalContent = rawContent.substring(this.minimaxContentBuffer.length)
-            this.minimaxContentBuffer = rawContent
+          const incrementalContent = this.getMiniMaxIncrementalContent(rawContent)
+          if (incrementalContent !== '') {
             const parsed = this.parseThinkingTags(incrementalContent)
             result.content = parsed.content
             // 如果 reasoning_details 为空但 content 中有 <think> 标签，也提取推理内容
@@ -1967,13 +2089,10 @@ export class AIApiService {
           result.reasoningIsStructured = true
           result.content = rawContent || ''
         }
-        // 3. MiniMax 后续 chunk（没有 reasoning_details 但之前已处理过）
-        // 通过 minimaxReasoningBuffer 不为空来判断是 MiniMax 响应
-        else if (this.minimaxReasoningBuffer !== '' && rawContent !== '') {
-          // MiniMax 的 content 字段也是累积的，需要计算增量并过滤 <think> 标签
-          if (rawContent.length > this.minimaxContentBuffer.length) {
-            const incrementalContent = rawContent.substring(this.minimaxContentBuffer.length)
-            this.minimaxContentBuffer = rawContent
+        // 3. MiniMax OpenAI content 使用累计全文语义，即使没有 reasoning_details 也要做 diff。
+        else if (this.currentOpenAIStreamUsesCumulativeContent && rawContent !== '') {
+          const incrementalContent = this.getMiniMaxIncrementalContent(rawContent)
+          if (incrementalContent !== '') {
             const parsed = this.parseThinkingTags(incrementalContent)
             result.content = parsed.content
             // 如果 content 中有 <think> 标签内容，也提取推理内容
@@ -2068,12 +2187,17 @@ export class AIApiService {
       const chunk = json as GoogleStreamChunk
       if (chunk.candidates && chunk.candidates.length > 0) {
         const candidate = chunk.candidates[0]
+        result.finishReason = candidate.finishReason
         if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
           // 遍历所有 parts，处理文本和图片
           for (let i = 0; i < candidate.content.parts.length; i++) {
             const part = candidate.content.parts[i]
             if (part.text) {
-              result.content += part.text
+              if (part.thought === true) {
+                result.reasoningContent += part.text
+              } else {
+                result.content += part.text
+              }
             } else if (part.inline_data) {
               // Gemini 生成的图片
               result.imageData = part.inline_data.data
@@ -2084,7 +2208,8 @@ export class AIApiService {
         }
       }
     }
-    if (result.reasoningIsStructured === true && result.reasoningContent !== '' && result.content !== '') {
+    if (!hasReasoningDetails && result.reasoningIsStructured === true &&
+      result.reasoningContent !== '' && result.content !== '') {
       result.content = this.stripReasoningOverlap(result.content, result.reasoningContent, hasReasoningDetails)
     }
     return result

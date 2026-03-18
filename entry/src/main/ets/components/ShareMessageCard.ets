@@ -3,7 +3,8 @@
  * 用于渲染分享图片的卡片样式
  */
 import { ChatMessage, MessageRole, MessageAttachment, AttachmentType } from '../models/ChatModels'
-import { getModelIconPath, buildIconResourcePath } from '../utils/ProviderIconUtils'
+import { getPresetProviderById } from '../config/PresetProviders'
+import { getCachedModelIconPath, buildIconResourcePath, resolveShareModelIdentity } from '../utils/ProviderIconUtils'
 import { Markdown, MarkdownController } from '@luvi/lv-markdown-in'
 import { getAppUiState } from '../state/AppUiState'
 
@@ -12,6 +13,7 @@ export struct ShareMessageCard {
   @Param messages: ChatMessage[] = []
   @Param appName: string = 'ChatCube'
   @Param currentModelId: string = ''
+  @Param iconRenderVersion: number = 0
   private markdownControllers: Map<string, MarkdownController> = new Map()
   private get isDarkMode(): boolean {
     return getAppUiState().isDarkMode
@@ -122,20 +124,69 @@ export struct ShareMessageCard {
     return this.themeUserBubbleText
   }
 
-  // 获取消息模型图标文件名（空字符串表示无可用图标）
+  // 分享长图只允许使用本地已缓存图标，避免离屏渲染时回退到网络资源。
   private getMessageModelIconPath(message: ChatMessage): string {
-    // 优先用 modelId → 回退到当前会话模型 ID → 最后回退到 modelName
-    let id = message.modelId
-    if (id === '' || id === undefined) {
-      id = this.currentModelId
-    }
-    if (id === '' || id === undefined) {
-      id = message.modelName
-    }
+    const id = resolveShareModelIdentity(message.modelId, this.currentModelId, message.modelName)
     if (id === '' || id === undefined) {
       return ''
     }
-    return getModelIconPath(id, '', '')
+    return getCachedModelIconPath(id)
+  }
+
+  private resolveModelBrandKey(message: ChatMessage): string {
+    const id = resolveShareModelIdentity(message.modelId, this.currentModelId, message.modelName)
+    const lower = id.toLowerCase()
+
+    if (lower.includes('gpt') || lower.includes('o1') || lower.includes('o3') || lower.includes('o4') ||
+      lower.includes('chatgpt')) {
+      return 'openai'
+    }
+    if (lower.includes('claude')) {
+      return 'anthropic'
+    }
+    if (lower.includes('gemini')) {
+      return 'gemini'
+    }
+    if (lower.includes('deepseek')) {
+      return 'deepseek'
+    }
+    if (lower.includes('qwen') || lower.includes('qwq') || lower.includes('qvq')) {
+      return 'qwen'
+    }
+    if (lower.includes('glm') || lower.includes('zhipu') || lower.includes('bigmodel') || lower.includes('cogview') ||
+      lower.includes('codegeex') || lower.includes('charglm') || lower.includes('characterglm')) {
+      return 'zhipu'
+    }
+    if (lower.includes('grok')) {
+      return 'grok'
+    }
+    if (lower.includes('moonshot') || lower.includes('kimi')) {
+      return 'moonshotai'
+    }
+    if (lower.includes('minimax') || lower.includes('abab')) {
+      return 'minimax'
+    }
+    return ''
+  }
+
+  private getModelBadgeText(message: ChatMessage): string {
+    const preset = getPresetProviderById(this.resolveModelBrandKey(message))
+    if (preset !== null && preset.textIcon !== '') {
+      return preset.textIcon
+    }
+    const modelName = message.modelName.trim()
+    if (modelName !== '') {
+      return modelName.substring(0, 1).toUpperCase()
+    }
+    return 'AI'
+  }
+
+  private getModelBadgeBgColor(message: ChatMessage): string {
+    const preset = getPresetProviderById(this.resolveModelBrandKey(message))
+    if (preset !== null && preset.textIconBgColor !== '') {
+      return preset.textIconBgColor
+    }
+    return this.themePrimary
   }
 
   // 获取消息模型图标资源路径（空字符串表示无可用图标）
@@ -159,6 +210,7 @@ export struct ShareMessageCard {
             .width(24)
             .height(24)
             .borderRadius(6)
+            .syncLoad(true)
 
           Text(this.appName)
             .fontSize(14)
@@ -249,16 +301,20 @@ export struct ShareMessageCard {
                 .width(20)
                 .height(20)
                 .objectFit(ImageFit.Contain)
+                .syncLoad(true)
+                .borderRadius(10)
             } else {
-              SymbolGlyph($r('sys.symbol.ai_edit'))
-                .fontSize(16)
-                .fontColor([this.themePrimary])
+              Text(this.getModelBadgeText(message))
+                .fontSize(12)
+                .fontColor(Color.White)
+                .fontWeight(FontWeight.Bold)
             }
           }
           .width(32)
           .height(32)
           .borderRadius(16)
-          .backgroundColor($r('app.color.model_icon_bg'))
+          .backgroundColor(this.getMessageModelIconResourcePath(message) !== '' ?
+            $r('app.color.model_icon_bg') : this.getModelBadgeBgColor(message))
           .justifyContent(FlexAlign.Center)
           .alignItems(HorizontalAlign.Center)
           .flexShrink(0)
@@ -304,6 +360,7 @@ export struct ShareMessageCard {
     .width('100%')
   }
 
+
   // 分享卡片中的附件展示（无交互手势，纯静态展示）
   @Builder
   ShareAttachments(message: ChatMessage, isUserMessage: boolean) {
@@ -320,6 +377,7 @@ export struct ShareMessageCard {
               .objectFit(ImageFit.Contain)
               .borderRadius(isUserMessage ? 12 : 8)
               .margin({ bottom: 4 })
+              .syncLoad(true)
           } else if (attachment.base64Data !== '') {
             Image(`data:${attachment.mimeType};base64,${attachment.base64Data}`)
               .constraintSize({
@@ -329,6 +387,7 @@ export struct ShareMessageCard {
               .objectFit(ImageFit.Contain)
               .borderRadius(isUserMessage ? 12 : 8)
               .margin({ bottom: 4 })
+              .syncLoad(true)
           }
         } else {
           // 文件附件：图标+文件名
