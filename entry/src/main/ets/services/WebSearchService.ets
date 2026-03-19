@@ -75,6 +75,8 @@ export class SearchRuntimeConfigSnapshot {
   maxResults: number = 10
   timeout: number = 5000
   autoTestConnection: boolean = true
+  braveApiKey: string = ''
+  tavilyApiKey: string = ''
   exaApiKey: string = ''
   exaBaseUrl: string = 'https://api.exa.ai'
 }
@@ -147,6 +149,8 @@ export class WebSearchService {
 
   // 保留旧字段，兼容现有调用方
   private config: SearchServiceConfig = new SearchServiceConfig()
+  private braveApiKey: string = ''
+  private tavilyApiKey: string = ''
   private exaApiKey: string = ''
   private exaBaseUrl: string = 'https://api.exa.ai'
 
@@ -175,14 +179,14 @@ export class WebSearchService {
   }
 
   private parseSearchEngine(raw: string): SearchEngine {
-    if (raw === SearchEngine.EXA) {
-      return SearchEngine.EXA
-    }
-    if (raw === SearchEngine.DUCKDUCKGO) {
-      return SearchEngine.DUCKDUCKGO
+    if (raw === SearchEngine.BRAVE) {
+      return SearchEngine.BRAVE
     }
     if (raw === SearchEngine.TAVILY) {
       return SearchEngine.TAVILY
+    }
+    if (raw === SearchEngine.EXA) {
+      return SearchEngine.EXA
     }
     if (raw === SearchEngine.CUSTOM) {
       return SearchEngine.CUSTOM
@@ -216,6 +220,8 @@ export class WebSearchService {
     this.config.maxResults = snapshot.maxResults
     this.config.timeout = snapshot.timeout
     this.config.autoTestConnection = snapshot.autoTestConnection
+    this.braveApiKey = snapshot.braveApiKey
+    this.tavilyApiKey = snapshot.tavilyApiKey
     this.exaApiKey = snapshot.exaApiKey
     this.exaBaseUrl = snapshot.exaBaseUrl
   }
@@ -236,6 +242,8 @@ export class WebSearchService {
     const maxResults = await prefsService.getNumber(PreferenceKeys.SEARCH_MAX_RESULTS, 10)
     const timeout = await prefsService.getNumber(PreferenceKeys.SEARCH_TIMEOUT, 5000)
     const autoTest = await prefsService.getBoolean(PreferenceKeys.SEARCH_AUTO_TEST, true)
+    const braveApiKey = await prefsService.getString(PreferenceKeys.SEARCH_BRAVE_API_KEY, '')
+    const tavilyApiKey = await prefsService.getString(PreferenceKeys.SEARCH_TAVILY_API_KEY, '')
     const exaApiKey = await prefsService.getString(PreferenceKeys.SEARCH_EXA_API_KEY, '')
     const exaBaseUrl = await prefsService.getString(PreferenceKeys.SEARCH_EXA_BASE_URL, 'https://api.exa.ai')
 
@@ -244,6 +252,8 @@ export class WebSearchService {
     snapshot.maxResults = this.normalizeResultCount(maxResults)
     snapshot.timeout = this.normalizeTimeout(timeout)
     snapshot.autoTestConnection = autoTest
+    snapshot.braveApiKey = braveApiKey.trim()
+    snapshot.tavilyApiKey = tavilyApiKey.trim()
     snapshot.exaApiKey = exaApiKey.trim()
     snapshot.exaBaseUrl = this.normalizeExaBaseUrl(exaBaseUrl)
 
@@ -253,6 +263,12 @@ export class WebSearchService {
   }
 
   private resolvePreferredEngineName(runtime: SearchRuntimeConfigSnapshot): string {
+    if (runtime.searchEngine === SearchEngine.BRAVE) {
+      return 'Brave Search'
+    }
+    if (runtime.searchEngine === SearchEngine.TAVILY) {
+      return 'Tavily'
+    }
     if (runtime.searchEngine === SearchEngine.EXA && runtime.exaApiKey !== '') {
       return 'Exa'
     }
@@ -399,6 +415,14 @@ export class WebSearchService {
           return bingFallback
         }
         return exaResult
+      }
+
+      if (runtime.searchEngine === SearchEngine.BRAVE) {
+        return await this.braveSearchEnhanced(finalQuery, runtime, controller, cancelCheck)
+      }
+
+      if (runtime.searchEngine === SearchEngine.TAVILY) {
+        return await this.tavilySearchEnhanced(finalQuery, runtime, controller, cancelCheck)
       }
 
       return await this.bingSearchEnhanced(finalQuery, runtime, controller, cancelCheck)
@@ -552,6 +576,217 @@ export class WebSearchService {
     )
   }
 
+  private async braveSearchEnhanced(
+    query: string,
+    runtime: SearchRuntimeConfigSnapshot,
+    controller: HttpRequestController | null,
+    cancelCheck?: () => boolean
+  ): Promise<SearchResult> {
+    if (runtime.braveApiKey === '') {
+      return new SearchResult(
+        false,
+        query,
+        'Brave Search',
+        [],
+        '',
+        'Brave API Key 未配置'
+      )
+    }
+
+    const response = await this.braveSearch(query, runtime.maxResults, runtime, controller, cancelCheck)
+    if (!response.success) {
+      return new SearchResult(
+        false,
+        query,
+        'Brave Search',
+        [],
+        '',
+        response.errorMessage
+      )
+    }
+
+    if (this.isCancelled(controller, cancelCheck)) {
+      return this.buildCancelledSearchResult(query, 'Brave Search')
+    }
+
+    const references: SearchReference[] = []
+    for (let i = 0; i < response.results.length; i++) {
+      const item = response.results[i]
+      references.push(new SearchReference(
+        `ref_${Date.now()}_${i}`,
+        item.title,
+        item.url,
+        item.snippet
+      ))
+    }
+
+    return new SearchResult(
+      true,
+      query,
+      'Brave Search',
+      references,
+      this.limitPromptContent(this.buildContentForAI(response.results), 6000),
+      ''
+    )
+  }
+
+  private async tavilySearchEnhanced(
+    query: string,
+    runtime: SearchRuntimeConfigSnapshot,
+    controller: HttpRequestController | null,
+    cancelCheck?: () => boolean
+  ): Promise<SearchResult> {
+    if (runtime.tavilyApiKey === '') {
+      return new SearchResult(
+        false,
+        query,
+        'Tavily',
+        [],
+        '',
+        'Tavily API Key 未配置'
+      )
+    }
+
+    const response = await this.tavilySearch(query, runtime.maxResults, runtime, controller, cancelCheck)
+    if (!response.success) {
+      return new SearchResult(
+        false,
+        query,
+        'Tavily',
+        [],
+        '',
+        response.errorMessage
+      )
+    }
+
+    if (this.isCancelled(controller, cancelCheck)) {
+      return this.buildCancelledSearchResult(query, 'Tavily')
+    }
+
+    const references: SearchReference[] = []
+    for (let i = 0; i < response.results.length; i++) {
+      const item = response.results[i]
+      references.push(new SearchReference(
+        `ref_${Date.now()}_${i}`,
+        item.title,
+        item.url,
+        item.snippet
+      ))
+    }
+
+    return new SearchResult(
+      true,
+      query,
+      'Tavily',
+      references,
+      this.limitPromptContent(this.buildContentForAI(response.results), 6000),
+      ''
+    )
+  }
+
+  private async braveSearch(
+    query: string,
+    resultCount: number,
+    runtime: SearchRuntimeConfigSnapshot,
+    controller: HttpRequestController | null,
+    cancelCheck?: () => boolean
+  ): Promise<BingSearchResponse> {
+    try {
+      if (this.isCancelled(controller, cancelCheck)) {
+        return new BingSearchResponse(false, query, [], '请求已取消')
+      }
+
+      const searchUrl =
+        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${this.normalizeResultCount(resultCount)}`
+      const response = await this.httpService.get(
+        searchUrl,
+        {
+          'Accept': 'application/json',
+          'X-Subscription-Token': runtime.braveApiKey
+        },
+        this.buildHttpOptions(runtime.timeout, controller)
+      )
+
+      if (!response.success) {
+        return new BingSearchResponse(false, query, [], response.errorMessage)
+      }
+
+      if (this.isCancelled(controller, cancelCheck)) {
+        return new BingSearchResponse(false, query, [], '请求已取消')
+      }
+
+      const errorMessage = this.extractBraveErrorMessage(response.data)
+      if (errorMessage !== '') {
+        return new BingSearchResponse(false, query, [], errorMessage)
+      }
+
+      return new BingSearchResponse(
+        true,
+        query,
+        this.parseBraveSearchResults(response.data, this.normalizeResultCount(resultCount)),
+        ''
+      )
+    } catch (error) {
+      return new BingSearchResponse(false, query, [], `Brave 搜索失败: ${JSON.stringify(error)}`)
+    }
+  }
+
+  private async tavilySearch(
+    query: string,
+    resultCount: number,
+    runtime: SearchRuntimeConfigSnapshot,
+    controller: HttpRequestController | null,
+    cancelCheck?: () => boolean
+  ): Promise<BingSearchResponse> {
+    try {
+      if (this.isCancelled(controller, cancelCheck)) {
+        return new BingSearchResponse(false, query, [], '请求已取消')
+      }
+
+      const response = await this.httpService.postWithTimeout(
+        'https://api.tavily.com/search',
+        JSON.stringify({
+          query: query,
+          topic: 'general',
+          search_depth: 'basic',
+          max_results: this.normalizeResultCount(resultCount),
+          include_answer: false,
+          include_images: false,
+          include_raw_content: false
+        }),
+        {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${runtime.tavilyApiKey}`
+        },
+        runtime.timeout,
+        this.buildHttpOptions(runtime.timeout, controller)
+      )
+
+      if (!response.success) {
+        return new BingSearchResponse(false, query, [], response.errorMessage)
+      }
+
+      if (this.isCancelled(controller, cancelCheck)) {
+        return new BingSearchResponse(false, query, [], '请求已取消')
+      }
+
+      const errorMessage = this.extractTavilyErrorMessage(response.data)
+      if (errorMessage !== '') {
+        return new BingSearchResponse(false, query, [], errorMessage)
+      }
+
+      return new BingSearchResponse(
+        true,
+        query,
+        this.parseTavilySearchResults(response.data, this.normalizeResultCount(resultCount)),
+        ''
+      )
+    } catch (error) {
+      return new BingSearchResponse(false, query, [], `Tavily 搜索失败: ${JSON.stringify(error)}`)
+    }
+  }
+
   private async exaSearch(
     query: string,
     resultCount: number,
@@ -598,6 +833,135 @@ export class WebSearchService {
     } catch (error) {
       return new BingSearchResponse(false, query, [], `Exa 搜索失败: ${JSON.stringify(error)}`)
     }
+  }
+
+  private extractBraveErrorMessage(json: string): string {
+    if (json === '') {
+      return ''
+    }
+    try {
+      const parsed = JSON.parse(json) as Record<string, Object>
+      const error = parsed['error']
+      if (error === undefined || error === null) {
+        return ''
+      }
+      if (typeof error === 'string') {
+        return error
+      }
+      if (typeof error === 'object') {
+        const errorObj = error as Record<string, Object>
+        const message = this.readStringFromObject(errorObj, 'message')
+        if (message !== '') {
+          return message
+        }
+        return JSON.stringify(errorObj)
+      }
+      return JSON.stringify(error)
+    } catch (_error) {
+      return ''
+    }
+  }
+
+  private extractTavilyErrorMessage(json: string): string {
+    if (json === '') {
+      return ''
+    }
+    try {
+      const parsed = JSON.parse(json) as Record<string, Object>
+      const error = parsed['error']
+      if (error === undefined || error === null) {
+        return ''
+      }
+      if (typeof error === 'string') {
+        return error
+      }
+      if (typeof error === 'object') {
+        const errorObj = error as Record<string, Object>
+        const message = this.readStringFromObject(errorObj, 'message')
+        if (message !== '') {
+          return message
+        }
+        return JSON.stringify(errorObj)
+      }
+      return JSON.stringify(error)
+    } catch (_error) {
+      return ''
+    }
+  }
+
+  private parseBraveSearchResults(json: string, maxCount: number): SearchResultItem[] {
+    const results: SearchResultItem[] = []
+    if (json === '') {
+      return results
+    }
+
+    try {
+      const parsed = JSON.parse(json) as Record<string, Object>
+      const web = parsed['web']
+      if (web === undefined || web === null || typeof web !== 'object' || Array.isArray(web)) {
+        return results
+      }
+      const webObj = web as Record<string, Object>
+      const resultsValue = webObj['results']
+      if (resultsValue === undefined || resultsValue === null || !Array.isArray(resultsValue)) {
+        return results
+      }
+
+      const list = resultsValue as Object[]
+      for (let i = 0; i < list.length && results.length < maxCount; i++) {
+        const item = list[i]
+        if (item === null || item === undefined || typeof item !== 'object' || Array.isArray(item)) {
+          continue
+        }
+        const itemObj = item as Record<string, Object>
+        const title = this.readStringFromObject(itemObj, 'title').trim()
+        const url = this.readStringFromObject(itemObj, 'url').trim()
+        const snippet = this.normalizeSnippet(this.readStringFromObject(itemObj, 'description'))
+        if (title === '' || url === '') {
+          continue
+        }
+        results.push(new SearchResultItem(title, url, snippet))
+      }
+    } catch (error) {
+      console.error('WebSearchService', `Parse Brave results failed: ${JSON.stringify(error)}`)
+    }
+
+    return results
+  }
+
+  private parseTavilySearchResults(json: string, maxCount: number): SearchResultItem[] {
+    const results: SearchResultItem[] = []
+    if (json === '') {
+      return results
+    }
+
+    try {
+      const parsed = JSON.parse(json) as Record<string, Object>
+      const resultsValue = parsed['results']
+      if (resultsValue === undefined || resultsValue === null || !Array.isArray(resultsValue)) {
+        return results
+      }
+
+      const list = resultsValue as Object[]
+      for (let i = 0; i < list.length && results.length < maxCount; i++) {
+        const item = list[i]
+        if (item === null || item === undefined || typeof item !== 'object' || Array.isArray(item)) {
+          continue
+        }
+        const itemObj = item as Record<string, Object>
+        const title = this.readStringFromObject(itemObj, 'title').trim()
+        const url = this.readStringFromObject(itemObj, 'url').trim()
+        const snippet = this.normalizeSnippet(this.readStringFromObject(itemObj, 'content'))
+        if (title === '' || url === '') {
+          continue
+        }
+        results.push(new SearchResultItem(title, url, snippet))
+      }
+    } catch (error) {
+      console.error('WebSearchService', `Parse Tavily results failed: ${JSON.stringify(error)}`)
+    }
+
+    return results
   }
 
   private extractExaErrorMessage(json: string): string {

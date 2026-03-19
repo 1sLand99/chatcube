@@ -1,4 +1,12 @@
-import { ToolDefinition, ToolConfig, ToolParameters, ToolFunction, ToolParameterProperty } from '../models/ChatModels'
+import {
+  ToolDefinition,
+  ToolConfig,
+  ToolParameters,
+  ToolFunction,
+  ToolParameterProperty,
+  ToolPermissionLevel,
+  ToolSourceType
+} from '../models/ChatModels'
 import { ToolExecutor, RegisteredTool, getToolRegistry } from '../services/ToolRegistry'
 import { getWebSearchService, SearchResult } from '../services/WebSearchService'
 
@@ -121,7 +129,12 @@ function createWebSearchToolConfig(): ToolConfig {
     '搜索互联网获取最新信息',
     null,
     false,
-    false
+    false,
+    ToolSourceType.BUILTIN,
+    'builtin',
+    'web_search',
+    '内置工具',
+    ToolPermissionLevel.READ
   )
 }
 

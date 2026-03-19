@@ -12,8 +12,7 @@ export struct EditMessageSheet {
   @Event $editText: (value: string) => void = () => {}
   @Param attachments: MessageAttachment[] = []
   @Event $attachments: (value: MessageAttachment[]) => void = () => {}
-  @Param webSearchEnabled: boolean = false
-  @Event $webSearchEnabled: (value: boolean) => void = () => {}
+  @Param hasSelectedTools: boolean = false
   @Param reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   @Event $reasoningLevel: (value: ReasoningLevel) => void = () => {}
   @Param isUserMessage: boolean = true
@@ -67,13 +66,12 @@ export struct EditMessageSheet {
   @Builder
   Toolbar() {
     Row() {
-      // 联网查询状态胶囊（仅在工具中心启用时展示）
-      if (this.webSearchEnabled) {
+      if (this.hasSelectedTools) {
         Row() {
-          SymbolGlyph($r('sys.symbol.worldclock'))
+          SymbolGlyph($r('sys.symbol.gearshape'))
             .fontSize(14)
             .fontColor([Color.White])
-          Text($r('app.string.chat_toolbar_web_search'))
+          Text('工具')
             .fontSize(13)
             .fontColor(Color.White)
             .margin({ left: 4 })
@@ -97,7 +95,7 @@ export struct EditMessageSheet {
       }
       .padding({ left: 10, right: 10, top: 4, bottom: 4 })
       .backgroundColor(this.isReasoningEnabled() ? this.themePrimary : $r('app.color.surface'))
-      .margin({ left: this.webSearchEnabled ? 8 : 0 })
+      .margin({ left: this.hasSelectedTools ? 8 : 0 })
       .border(this.isReasoningEnabled() ? undefined : {
         width: 0.5,
         color: $r('app.color.divider')

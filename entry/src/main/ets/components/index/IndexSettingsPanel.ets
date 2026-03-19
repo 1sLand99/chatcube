@@ -210,7 +210,7 @@ export struct IndexSettingsPanel {
 
   @Builder
   private ItemText(item: SettingsListItemModel) {
-    if (item.subtitle !== '') {
+    if (this.hasSubtitle(item)) {
       Column() {
         Text(item.title)
           .fontSize(15)
@@ -238,13 +238,21 @@ export struct IndexSettingsPanel {
     }
   }
 
+  private hasSubtitle(item: SettingsListItemModel): boolean {
+    return item.subtitle !== undefined && item.subtitle !== ''
+  }
+
+  private hasRowAction(item: SettingsListItemModel): boolean {
+    return item.action !== null && item.action !== undefined
+  }
+
   @Builder
   private SettingsItemRow(item: SettingsListItemModel, isLast: boolean) {
     Column() {
       Row({ space: 12 }) {
         this.PrefixIcon(item.icon)
         this.ItemText(item)
-        if (item.action !== null) {
+        if (this.hasRowAction(item)) {
           this.ChevronSuffix()
         }
       }
@@ -252,14 +260,15 @@ export struct IndexSettingsPanel {
       .padding({
         left: this.sidebarMode ? 18 : 16,
         right: 12,
-        top: item.subtitle === '' ? (this.sidebarMode ? 15 : 16) : (this.sidebarMode ? 13 : 14),
-        bottom: item.subtitle === '' ? (this.sidebarMode ? 15 : 16) : (this.sidebarMode ? 13 : 14)
+        top: this.hasSubtitle(item) ? (this.sidebarMode ? 13 : 14) : (this.sidebarMode ? 15 : 16),
+        bottom: this.hasSubtitle(item) ? (this.sidebarMode ? 13 : 14) : (this.sidebarMode ? 15 : 16)
       })
       .backgroundColor(this.isSelectedItem(item) ? this.themePrimaryLight : Color.Transparent)
       .borderRadius(this.sidebarMode ? 16 : 14)
       .onClick(() => {
-        if (item.action !== null) {
-          item.action()
+        const rowAction = item.action
+        if (rowAction !== null && rowAction !== undefined) {
+          rowAction()
         }
       })
 

@@ -631,16 +631,7 @@ export class AIApiService {
     if (value === undefined || value === null) {
       return ''
     }
-    const trimmed = value.trim()
-    if (trimmed === '') {
-      return ''
-    }
-    const normalized = trimmed.toLowerCase().replace(/[\s\-]+/g, '_')
-    if (normalized === 'exa_search' || normalized === 'websearch' || normalized === 'search_web'
-      || normalized === 'internet_search' || normalized === 'web_search_exa') {
-      return 'web_search'
-    }
-    return trimmed
+    return value.trim()
   }
 
   private mergeToolFunctionName(previousName: string, incomingName: string): string {

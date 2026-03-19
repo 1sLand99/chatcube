@@ -125,7 +125,7 @@ export class HttpService {
     } else if (code === 2300035) {
       return 'SSL 连接失败，请检查服务地址是否支持 HTTPS'
     } else if (code === 2300060) {
-      return 'SSL 证书验证失败，请检查服务地址配置'
+      return 'SSL 证书验证失败，当前设备未信任该 HTTPS 证书链，请检查服务证书配置'
     } else if (message !== '') {
       return `请求失败: ${message} (${code})`
     } else if (code !== 0) {

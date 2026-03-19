@@ -1,7 +1,6 @@
 import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
-import { i18n } from '@kit.LocalizationKit';
 import { ThemeMode, AppLanguage } from '../services/PreferencesService';
 import { SettingsChangeCallback } from '../viewmodels/SettingsManager';
 import { WindowManager } from '@kit.SpeechKit';
@@ -91,6 +90,9 @@ export default class EntryAbility extends UIAbility {
       await ServiceRegistry.preferences().initialize(this.context);
       hilog.info(DOMAIN, 'testTag', 'PreferencesService initialized successfully');
 
+      await ServiceRegistry.language().migrateStoredLanguagePreference();
+      hilog.info(DOMAIN, 'testTag', 'Language preference migrated successfully');
+
       // 预加载模型图标持久化索引（用于冷启动恢复图标）
       await ModelCapabilityMatcher.getInstance().loadPersistedLogoIndex();
       hilog.info(DOMAIN, 'testTag', 'Model logo index loaded successfully');
@@ -161,8 +163,7 @@ export default class EntryAbility extends UIAbility {
 
   // 应用语言设置
   private async applyLanguageSettings(): Promise<void> {
-    const language = ServiceRegistry.settings().getLanguage();
-    this.setAppLanguage(language);
+    await ServiceRegistry.language().applyStoredLanguage(this.context);
   }
 
   // 设置应用颜色模式
@@ -172,24 +173,6 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, 'testTag', 'Color mode set to: %{public}s', colorMode.toString());
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
-    }
-  }
-
-  // 设置应用语言
-  private setAppLanguage(language: AppLanguage): void {
-    try {
-      if (language === AppLanguage.SYSTEM) {
-        // 跟随系统语言，获取系统语言并设置
-        const systemLanguage = i18n.System.getSystemLanguage();
-        i18n.System.setAppPreferredLanguage(systemLanguage);
-        hilog.info(DOMAIN, 'testTag', 'Language set to system: %{public}s', systemLanguage);
-      } else {
-        // 设置特定语言
-        i18n.System.setAppPreferredLanguage(language);
-        hilog.info(DOMAIN, 'testTag', 'Language set to: %{public}s', language);
-      }
-    } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to set language. Cause: %{public}s', JSON.stringify(err));
     }
   }
 
@@ -209,7 +192,7 @@ export default class EntryAbility extends UIAbility {
         this.updateWindowBackgroundColor();
       },
       onLanguageChanged: (language: AppLanguage): void => {
-        this.setAppLanguage(language);
+        ServiceRegistry.language().applyLanguage(this.context, language);
       }
     };
     ServiceRegistry.settings().registerCallback(this.settingsCallback);
@@ -386,6 +369,8 @@ export default class EntryAbility extends UIAbility {
     const latestColorMode = newConfig.colorMode ?? this.context.config.colorMode;
     this.updateWindowBackgroundColor(latestColorMode);
     this.updateColorModeStorage(latestColorMode);
+
+    void ServiceRegistry.language().handleSystemConfigurationUpdate(this.context);
 
     // 更新主题服务的深浅模式
     const themeMode = ServiceRegistry.settings().getThemeMode();

@@ -7,6 +7,13 @@ import { getPresetProviderById } from '../config/PresetProviders'
 import { getCachedModelIconPath, buildIconResourcePath, resolveShareModelIdentity } from '../utils/ProviderIconUtils'
 import { Markdown, MarkdownController } from '@luvi/lv-markdown-in'
 import { getAppUiState } from '../state/AppUiState'
+import {
+  getMarkdownBlockSpacing,
+  getMarkdownQuotePadding,
+  getMarkdownTextLineHeight,
+  getMarkdownTitleLineHeights,
+  getMarkdownTitleSizes
+} from '../utils/MarkdownTypographyUtils'
 
 @ComponentV2
 export struct ShareMessageCard {
@@ -45,6 +52,8 @@ export struct ShareMessageCard {
     const tableAltBgColor = $r('app.color.markdown_table_alt_bg')
     const tableBorderColor = $r('app.color.markdown_table_border')
     const codeTheme = this.isDarkMode ? 'dark' : 'light'
+    const textSize = 12
+    const titleSizes = getMarkdownTitleSizes(textSize)
 
     // 数学公式颜色接口需要 number（ARGB），不能直接传 ResourceColor
     const latexTextColor = this.isDarkMode ? 0xFFE0E0E0 : 0xFF333333
@@ -52,11 +61,13 @@ export struct ShareMessageCard {
     controller
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(12)
-      .setTextLineHeight(18)
-      .setTitleSize([18, 16, 14, 13, 12, 12])
+      .setTextSize(textSize)
+      .setTextLineHeight(getMarkdownTextLineHeight(textSize))
+      .setTitleSize(titleSizes)
+      .setTitleLineHeight(getMarkdownTitleLineHeights(titleSizes))
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
+      .setQuotePadding(getMarkdownQuotePadding(textSize))
       .setHyperlinkTextColor(linkColor)
       .setHyperlinkBackgroundColor(linkBgColor)
       .setInlineCodeColor(inlineCodeTextColor)
@@ -71,6 +82,7 @@ export struct ShareMessageCard {
       .setUlPointColor(textColor)
       .setLineColor(tableBorderColor)
       .setFootnoteTextColor(linkColor)
+    controller.setBlockSpacing(getMarkdownBlockSpacing(textSize))
   }
 
   // 获取或创建 MarkdownController
@@ -321,12 +333,6 @@ export struct ShareMessageCard {
 
           Column() {
             Column() {
-              // 模型名称
-              Text(message.modelName || 'AI')
-                .fontSize(11)
-                .fontColor(this.getSecondaryTextColor())
-                .margin({ bottom: 4 })
-
               // 附件展示（AI 生成的图片等）
               if (message.hasAttachments()) {
                 this.ShareAttachments(message, false)

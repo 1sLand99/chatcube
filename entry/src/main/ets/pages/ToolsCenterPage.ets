@@ -49,11 +49,13 @@ struct ToolsCenterPage {
         ToolsCenterPanel({ showHeader: false })
       }
       .width('100%')
+      .layoutWeight(1)
       .constraintSize({ maxWidth: this.getContentMaxWidth() })
     }
     .width('100%')
     .layoutWeight(1)
     .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Top)
     .padding({ left: 16, right: 16 })
   }
 

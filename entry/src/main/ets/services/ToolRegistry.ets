@@ -1,4 +1,4 @@
-import { ToolDefinition, ToolConfig, ToolParameters } from '../models/ChatModels'
+import { ToolDefinition, ToolConfig, ToolSourceType } from '../models/ChatModels'
 
 // 工具执行器接口
 export interface ToolExecutor {
@@ -42,7 +42,7 @@ export class ToolRegistry {
   // 注册工具
   registerTool(tool: RegisteredTool): void {
     this.tools.set(tool.id, tool)
-    console.info('ToolRegistry', `Registered tool: ${tool.id}`)
+    console.info('ToolRegistry', `Registered tool: ${tool.id} -> ${tool.definition.function.name}`)
   }
 
   // 注销工具
@@ -92,6 +92,14 @@ export class ToolRegistry {
     return ids
   }
 
+  getAllRegisteredTools(): RegisteredTool[] {
+    const result: RegisteredTool[] = []
+    this.tools.forEach((tool) => {
+      result.push(tool)
+    })
+    return result
+  }
+
   // 根据启用状态获取工具定义列表
   getEnabledToolDefinitions(enabledToolIds: string[]): ToolDefinition[] {
     const definitions: ToolDefinition[] = []
@@ -124,6 +132,47 @@ export class ToolRegistry {
       }
     })
     return foundId
+  }
+
+  unregisterToolsBySource(sourceType: string, sourceId: string = ''): string[] {
+    const removedIds: string[] = []
+    const toolIds = this.getAllToolIds()
+    for (let i = 0; i < toolIds.length; i++) {
+      const tool = this.tools.get(toolIds[i])
+      if (tool === undefined) {
+        continue
+      }
+      if (tool.config.sourceType !== sourceType) {
+        continue
+      }
+      if (sourceId !== '' && tool.config.sourceId !== sourceId) {
+        continue
+      }
+      this.tools.delete(tool.id)
+      removedIds.push(tool.id)
+    }
+    if (removedIds.length > 0) {
+      console.info('ToolRegistry', `Unregistered ${removedIds.length} tool(s) from ${sourceType}:${sourceId}`)
+    }
+    return removedIds
+  }
+
+  getToolsBySource(sourceType: string, sourceId: string = ''): RegisteredTool[] {
+    const result: RegisteredTool[] = []
+    this.tools.forEach((tool) => {
+      if (tool.config.sourceType !== sourceType) {
+        return
+      }
+      if (sourceId !== '' && tool.config.sourceId !== sourceId) {
+        return
+      }
+      result.push(tool)
+    })
+    return result
+  }
+
+  getBuiltinTools(): RegisteredTool[] {
+    return this.getToolsBySource(ToolSourceType.BUILTIN)
   }
 }
 

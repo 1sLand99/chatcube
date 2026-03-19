@@ -232,6 +232,43 @@ export class ChatViewModel {
       }
     }
     session.messages.push(message)
+    if (session.messageCount < session.messages.length) {
+      session.messageCount = session.messages.length
+      return
+    }
+    session.messageCount = session.messageCount + 1
+  }
+
+  private mergePendingAIMessagesIntoMessages(sessionId: string, messages: ChatMessage[]): ChatMessage[] {
+    this.pendingAIMessages.forEach((info: PendingAIMessageInfo) => {
+      if (info.sessionId !== sessionId) {
+        return
+      }
+      let exists = false
+      for (let i = 0; i < messages.length; i++) {
+        if (messages[i].id === info.message.id) {
+          exists = true
+          break
+        }
+      }
+      if (!exists) {
+        messages.push(info.message)
+      }
+    })
+    return messages
+  }
+
+  private finalizeLoadedSession(sessionId: string, session: ChatSession | null): ChatSession | null {
+    if (session === null) {
+      return null
+    }
+    session.messages = this.mergePendingAIMessagesIntoMessages(sessionId, session.messages)
+    if (session.messageCount < session.messages.length) {
+      session.messageCount = session.messages.length
+    }
+    this.currentSession = session
+    this.sessionStore.setCurrentSession(session)
+    return session
   }
 
   private isCancelled(snapshot: number): boolean {
@@ -433,31 +470,7 @@ export class ChatViewModel {
 
   // 加载会话
   async loadSession(sessionId: string): Promise<ChatSession | null> {
-    const session = await this.sessionStore.loadSession(sessionId)
-    if (session !== null) {
-      const messages = session.messages
-
-      // 如果有尚未落库的 AI 占位消息（例如用户在模型响应前退出页面），合并到会话消息中，避免”返回再进来没有模型信息”
-      this.pendingAIMessages.forEach((info: PendingAIMessageInfo) => {
-        if (info.sessionId === sessionId) {
-          let exists = false
-          for (let i = 0; i < messages.length; i++) {
-            if (messages[i].id === info.message.id) {
-              exists = true
-              break
-            }
-          }
-          if (!exists) {
-            messages.push(info.message)
-          }
-        }
-      })
-
-      session.messages = messages
-      this.currentSession = session
-      this.sessionStore.setCurrentSession(session)
-    }
-    return session
+    return this.finalizeLoadedSession(sessionId, await this.sessionStore.loadSession(sessionId))
   }
 
   // 获取所有会话
@@ -1489,12 +1502,13 @@ ${limitedSearchContext}
     const currentTime = this.getCurrentTimeContext()
     let toolUsageSystemPrompt = `当前时间: ${currentTime}
 
-你是一个智能助手，具备联网查询能力。你的首要任务是直接回答用户问题，只在确实需要实时信息时才调用工具。
+你是一个智能助手。你的首要任务是直接完成用户请求，只在确实需要访问外部信息或外部系统时才调用工具。
 
 工具使用规则(非常重要):
-- 绝大多数问题不需要调用工具，请优先用自身知识直接回答。
-- 仅当用户问题明确需要实时数据（如今日天气、最新新闻、实时股价等）时才调用工具。
-- 编程、写作、翻译、数学、创意等任务绝对不要调用任何工具，直接回答即可。`
+- 绝大多数普通问答不需要调用工具，请优先用自身知识直接回答。
+- 只有在用户请求明确依赖外部实时信息、外部文档、外部仓库、外部笔记或其他外部系统状态时才调用工具。
+- 对外部系统有副作用的工具（例如创建、修改、删除、提交、上传）必须先确认用户意图与目标对象，不要擅自操作。
+- 编程、写作、翻译、数学、创意等纯生成任务，若不依赖外部状态，绝对不要调用任何工具。`
     if (hasWebSearchTool) {
       toolUsageSystemPrompt += `
 - 针对同一个用户问题，最多调用 web_search 5 次;超过 5 次后不再调用，根据已获取的内容整理并返回结果。
@@ -1601,9 +1615,9 @@ ${limitedSearchContext}
 
     for (let i = aiMessage.toolResults.length - 1; i >= 0; i--) {
       try {
-        const data = JSON.parse(aiMessage.toolResults[i].content) as SearchResultData
-        if (data !== undefined && data.summary !== undefined && data.summary.trim() !== '') {
-          let preview = data.summary.trim()
+        const data = JSON.parse(aiMessage.toolResults[i].content) as Record<string, Object>
+        if (data !== undefined && data.summary !== undefined && `${data.summary}`.trim() !== '') {
+          let preview = `${data.summary}`.trim()
           const maxLen = 1200
           if (preview.length > maxLen) {
             preview = preview.substring(0, maxLen) + '...'
@@ -1886,12 +1900,16 @@ ${limitedSearchContext}
                 return
               }
               const result = i < toolResults.length ? toolResults[i] : null
-              const status = result !== null && result.content !== '' ? 'completed' : 'pending'
+              const status = result !== null ? (result.isError ? 'failed' : 'completed') : 'pending'
               await this.databaseService.saveToolEvent(
                 snapshotSessionId,
                 aiMessage.id,
                 toolCalls[i].id,
                 toolCalls[i].functionName,
+                toolCalls[i].displayName,
+                toolCalls[i].sourceLabel,
+                toolCalls[i].sourceType,
+                toolCalls[i].permissionLevel,
                 toolCalls[i].arguments,
                 result !== null ? result.content : '',
                 status
@@ -2199,6 +2217,7 @@ ${limitedSearchContext}
       const index = this.currentSession.messages.findIndex((m: ChatMessage) => m.id === messageId)
       if (index >= 0) {
         this.currentSession.messages.splice(index, 1)
+        this.currentSession.messageCount = Math.max(0, this.currentSession.messageCount - 1)
       }
     }
   }
@@ -2213,6 +2232,7 @@ ${limitedSearchContext}
         const index = this.currentSession.messages.findIndex((m: ChatMessage) => m.id === messageIds[i])
         if (index >= 0) {
           this.currentSession.messages.splice(index, 1)
+          this.currentSession.messageCount = Math.max(0, this.currentSession.messageCount - 1)
         }
       }
     }

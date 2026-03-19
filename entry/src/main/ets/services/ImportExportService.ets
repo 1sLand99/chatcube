@@ -198,12 +198,20 @@ interface ToolCallData {
   type: string
   functionName: string
   arguments: string
+  toolId?: string
+  displayName?: string
+  sourceType?: string
+  sourceLabel?: string
+  permissionLevel?: string
 }
 
 // 工具结果数据
 interface ToolResultData {
   toolCallId: string
   content: string
+  isError?: boolean
+  displayName?: string
+  sourceLabel?: string
 }
 
 // 附件元数据
@@ -570,7 +578,12 @@ export class ImportExportService {
               id: tc.id,
               type: tc.type,
               functionName: tc.functionName,
-              arguments: tc.arguments
+              arguments: tc.arguments,
+              toolId: tc.toolId,
+              displayName: tc.displayName,
+              sourceType: tc.sourceType,
+              sourceLabel: tc.sourceLabel,
+              permissionLevel: tc.permissionLevel
             })
           }
 
@@ -579,7 +592,10 @@ export class ImportExportService {
           for (const tr of m.toolResults) {
             toolResultsData.push({
               toolCallId: tr.toolCallId,
-              content: tr.content
+              content: tr.content,
+              isError: tr.isError,
+              displayName: tr.displayName,
+              sourceLabel: tr.sourceLabel
             })
           }
 
@@ -906,7 +922,12 @@ export class ImportExportService {
               const toolCall = new ToolCall(
                 tcData.id,
                 tcData.functionName,
-                tcData.arguments
+                tcData.arguments,
+                tcData.toolId || tcData.functionName,
+                tcData.displayName || tcData.functionName,
+                tcData.sourceType || '',
+                tcData.sourceLabel || '',
+                tcData.permissionLevel || ''
               )
               toolCall.type = tcData.type
               message.toolCalls.push(toolCall)
@@ -918,7 +939,10 @@ export class ImportExportService {
             for (const trData of msgData.toolResults) {
               const toolResult = new ToolResult(
                 trData.toolCallId,
-                trData.content
+                trData.content,
+                trData.isError === true,
+                trData.displayName || '',
+                trData.sourceLabel || ''
               )
               message.toolResults.push(toolResult)
             }

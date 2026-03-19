@@ -1971,22 +1971,6 @@ struct Index {
   }
 
   @Builder
-  LanguageSheetBuilder() {
-    IndexSettingsSheetContent({
-      settingsSheetType: SettingsSheetType.LANGUAGE,
-      currentThemeMode: this.currentThemeMode,
-      currentLanguage: this.currentLanguage,
-      notifyEnabled: this.notifyEnabled,
-      notifyOnComplete: this.notifyOnComplete,
-      notifyOnFailed: this.notifyOnFailed,
-      handAdaptiveEnabled: this.handAdaptiveEnabled,
-      handAdaptiveNewChat: this.handAdaptiveNewChat,
-      handAdaptiveUnsupported: this.handAdaptiveUnsupported,
-      callbacks: this.buildSettingsSheetCallbacks()
-    })
-  }
-
-  @Builder
   NotificationSheetBuilder() {
     IndexSettingsSheetContent({
       settingsSheetType: SettingsSheetType.NOTIFICATION,

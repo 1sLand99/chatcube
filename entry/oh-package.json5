@@ -6,7 +6,7 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@luvi/lv-markdown-in": "^3.2.8"
+    "@luvi/lv-markdown-in": "^3.3.0"
   },
   "devDependencies": {},
   "dynamicDependencies": {}

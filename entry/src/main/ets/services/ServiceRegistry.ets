@@ -9,6 +9,8 @@ import { getToolExecutionService, ToolExecutionService } from './ToolExecutionSe
 import { getWebSearchService, WebSearchService } from './WebSearchService'
 import { getShareService, ShareService } from './ShareService'
 import { getToolRegistry, ToolRegistry } from './ToolRegistry'
+import { getMcpService, McpService } from './McpService'
+import { getLanguageService, LanguageService } from './LanguageService'
 import { getChatTaskOrchestratorService, ChatTaskOrchestratorService } from './ChatTaskOrchestratorService'
 import { getBackgroundRunGuardService, BackgroundRunGuardService } from './BackgroundRunGuardService'
 import { getChatNotificationService, ChatNotificationService } from './ChatNotificationService'
@@ -62,6 +64,14 @@ export class ServiceRegistry {
 
   static toolRegistry(): ToolRegistry {
     return getToolRegistry()
+  }
+
+  static mcp(): McpService {
+    return getMcpService()
+  }
+
+  static language(): LanguageService {
+    return getLanguageService()
   }
 
   static share(): ShareService {

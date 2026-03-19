@@ -36,7 +36,10 @@ export class ChatPageLoadFlow {
     this.deps = deps
   }
 
-  async loadPageData(routeParams: ChatPageRouteParams | null, fallbackTitle: string): Promise<ChatPageLoadResult> {
+  async loadPageData(
+    routeParams: ChatPageRouteParams | null,
+    fallbackTitle: string
+  ): Promise<ChatPageLoadResult> {
     const result = new ChatPageLoadResult()
     result.sessionTitle = fallbackTitle
 

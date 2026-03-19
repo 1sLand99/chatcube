@@ -9,6 +9,7 @@ export interface ChatInlineEditFlowDependencies {
     content: string,
     attachments: MessageAttachment[],
     webSearchEnabled: boolean,
+    selectedToolIds: string[],
     reasoningLevel: ReasoningLevel
   ) => boolean
   onSyncMessages: () => void
@@ -17,12 +18,14 @@ export interface ChatInlineEditFlowDependencies {
     content: string,
     attachments: MessageAttachment[],
     webSearchEnabled: boolean,
+    selectedToolIds: string[],
     reasoningLevel: ReasoningLevel
   ) => void
   onTriggerSend: (
     content: string,
     attachments: MessageAttachment[],
     webSearchEnabled: boolean,
+    selectedToolIds: string[],
     reasoningLevel: ReasoningLevel
   ) => Promise<void>
   onShowToast: (message: string | Resource) => void
@@ -40,6 +43,7 @@ export class ChatInlineEditFlow {
     inputText: string,
     pendingAttachments: MessageAttachment[],
     editingWebSearchEnabled: boolean,
+    editingSelectedToolIds: string[],
     editingReasoningLevel: ReasoningLevel
   ): Promise<void> {
     if (editingMessageId === '') {
@@ -64,7 +68,8 @@ export class ChatInlineEditFlow {
     try {
       const savedAttachments = pendingAttachments.slice()
       const savedContent = inputText.trim()
-      const savedWebSearch = editingWebSearchEnabled
+      const savedWebSearchEnabled = editingWebSearchEnabled
+      const savedToolIds = [...editingSelectedToolIds]
       const savedReasoningLevel = editingReasoningLevel
 
       // 在真正改写消息链之前，先复用正常发送链路做一次前置校验。
@@ -72,7 +77,8 @@ export class ChatInlineEditFlow {
       const canCommit = this.deps.onValidateBeforeCommit(
         savedContent,
         savedAttachments,
-        savedWebSearch,
+        savedWebSearchEnabled,
+        savedToolIds,
         savedReasoningLevel
       )
       if (!canCommit) {
@@ -86,8 +92,20 @@ export class ChatInlineEditFlow {
       this.deps.onSyncMessages()
 
       this.deps.onResetEditState()
-      this.deps.onApplySavedDraft(savedContent, savedAttachments, savedWebSearch, savedReasoningLevel)
-      await this.deps.onTriggerSend(savedContent, savedAttachments, savedWebSearch, savedReasoningLevel)
+      this.deps.onApplySavedDraft(
+        savedContent,
+        savedAttachments,
+        savedWebSearchEnabled,
+        savedToolIds,
+        savedReasoningLevel
+      )
+      await this.deps.onTriggerSend(
+        savedContent,
+        savedAttachments,
+        savedWebSearchEnabled,
+        savedToolIds,
+        savedReasoningLevel
+      )
     } catch (error) {
       console.error('ChatInlineEditFlow', `[saveAndSendInline] Error: ${JSON.stringify(error)}`)
       this.deps.onShowToast($r('app.string.action_failed_retry'))

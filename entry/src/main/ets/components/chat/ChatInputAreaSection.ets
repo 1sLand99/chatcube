@@ -24,7 +24,10 @@ export struct ChatInputAreaSection {
   @Param isEditing: boolean = false
   @Param webSearchAvailable: boolean = false
   @Param webSearchEnabled: boolean = false
-  @Event onWebSearchEnabledChange: (value: boolean) => void = (_value: boolean): void => {}
+  @Event onToggleWebSearch: () => void = (): void => {}
+  @Param toolSelectionAvailable: boolean = false
+  @Param hasSelectedTools: boolean = false
+  @Event onOpenTools: () => void = (): void => {}
   @Param reasoningAvailable: boolean = false
   @Param reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   @Event onReasoningLevelChange: (value: ReasoningLevel) => void = (_value: ReasoningLevel): void => {}
@@ -64,8 +67,13 @@ export struct ChatInputAreaSection {
         ChatToolbar({
           webSearchAvailable: this.webSearchAvailable,
           webSearchEnabled: this.webSearchEnabled,
-          onWebSearchEnabledChange: (value: boolean): void => {
-            this.onWebSearchEnabledChange(value)
+          onToggleWebSearch: (): void => {
+            this.onToggleWebSearch()
+          },
+          toolSelectionAvailable: this.toolSelectionAvailable,
+          hasSelectedTools: this.hasSelectedTools,
+          onOpenTools: (): void => {
+            this.onOpenTools()
           },
           reasoningAvailable: this.reasoningAvailable,
           reasoningLevel: this.reasoningLevel,

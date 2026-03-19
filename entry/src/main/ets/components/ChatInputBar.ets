@@ -29,7 +29,7 @@ export struct ChatInputBar {
   @Param attachments: MessageAttachment[] = []
   @Event onAttachmentsChange: (value: MessageAttachment[]) => void = (_value: MessageAttachment[]): void => {}
   @Param isSending: boolean = false
-  // isSending 为 true 且 AI 尚未开始输出时，pause 显示轻微呼吸感
+  // isSending 为 true 时，pause 在整个发送期都保留轻微呼吸感
   @Param isAwaitingResponse: boolean = false
   @Param currentModelId: string = ''
   @Param currentProviderId: string = ''
@@ -506,7 +506,7 @@ export struct ChatInputBar {
   }
 
   private updateBreathing(): void {
-    if (this.isSending && this.isAwaitingResponse) {
+    if (this.isSending) {
       this.startBreathing()
       return
     }

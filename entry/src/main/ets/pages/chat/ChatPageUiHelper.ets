@@ -1,9 +1,20 @@
-export function shouldShowScrollToTopButtonForChat(isMultiSelectMode: boolean, totalMessages: number, isAtTop: boolean):
-  boolean {
+export function shouldShowScrollToTopButtonForChat(
+  isMultiSelectMode: boolean,
+  totalMessages: number,
+  isAtTop: boolean,
+  currentScrollOffsetVp: number,
+  viewportHeightVp: number
+): boolean {
   if (isMultiSelectMode) {
     return false
   }
   if (totalMessages <= 0) {
+    return false
+  }
+  if (viewportHeightVp <= 0) {
+    return false
+  }
+  if (currentScrollOffsetVp <= viewportHeightVp) {
     return false
   }
   return !isAtTop

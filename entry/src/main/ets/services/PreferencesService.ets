@@ -46,8 +46,12 @@ export class PreferenceKeys {
   static readonly SEARCH_TIMEOUT: string = 'search_timeout'
   static readonly SEARCH_AUTO_TEST: string = 'search_auto_test'
   static readonly SEARCH_QUERY_OPTIMIZATION_ENABLED: string = 'search_query_optimization_enabled'
+  static readonly SEARCH_BRAVE_API_KEY: string = 'search_brave_api_key'
+  static readonly SEARCH_TAVILY_API_KEY: string = 'search_tavily_api_key'
   static readonly SEARCH_EXA_API_KEY: string = 'search_exa_api_key'
   static readonly SEARCH_EXA_BASE_URL: string = 'search_exa_base_url'
+  static readonly MCP_SERVER_CONFIGS_JSON: string = 'mcp_server_configs_json'
+  static readonly CHAT_SELECTED_TOOL_IDS_JSON: string = 'chat_selected_tool_ids_json'
 
   // 主题配色
   static readonly COLOR_THEME: string = 'color_theme'
@@ -82,6 +86,24 @@ export enum AppLanguage {
   SYSTEM = 'system',
   ZH_CN = 'zh-CN',
   EN_US = 'en-US'
+}
+
+export function normalizeAppLanguageValue(value: string): AppLanguage {
+  if (value === '' || value === AppLanguage.SYSTEM || value === 'default') {
+    return AppLanguage.SYSTEM
+  }
+
+  const normalizedValue = value.replace(/_/g, '-').toLowerCase()
+  if (normalizedValue === 'default' || normalizedValue === 'system') {
+    return AppLanguage.SYSTEM
+  }
+  if (normalizedValue.startsWith('zh')) {
+    return AppLanguage.ZH_CN
+  }
+  if (normalizedValue.startsWith('en')) {
+    return AppLanguage.EN_US
+  }
+  return AppLanguage.SYSTEM
 }
 
 // 偏好设置服务 - 单例模式
@@ -342,7 +364,7 @@ export class PreferencesService {
   // 获取语言设置
   async getLanguage(): Promise<AppLanguage> {
     const lang = await this.getString(PreferenceKeys.LANGUAGE, AppLanguage.SYSTEM)
-    return lang as AppLanguage
+    return normalizeAppLanguageValue(lang)
   }
 
   // 设置语言

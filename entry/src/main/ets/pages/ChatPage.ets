@@ -8,7 +8,11 @@ import {
   ModelInfoExtendedJson,
   MessageAttachment,
   ReasoningLevel,
-  ModelRole
+  ModelRole,
+  ToolCall,
+  ToolConfig,
+  ToolPermissionLevel,
+  ToolSourceType
 } from '../models/ChatModels'
 import { AttachmentPicker } from '../components/AttachmentPicker'
 import { ImagePreview } from '../components/ImagePreview'
@@ -25,6 +29,7 @@ import { WebSearchService } from '../services/WebSearchService'
 import { DefaultModelService } from '../services/DefaultModelService'
 import { PreferenceKeys, PreferencesService } from '../services/PreferencesService'
 import { TTSService } from '../services/TTSService'
+import { McpService } from '../services/McpService'
 import { ToolRegistry } from '../services/ToolRegistry'
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { registerBuiltinTools } from '../config/BuiltinTools'
@@ -45,7 +50,7 @@ import {
 } from './chat/ChatPageUiHelper'
 import { parseToolIdsFromRouteRaw } from './chat/ChatToolIdHelper'
 import { ChatManualSearchFlow, ChatManualSearchFlowDependencies } from './chat/ChatManualSearchFlow'
-import { ChatSendFlow, ChatSendFlowDependencies, ChatExecutionMode } from './chat/ChatSendFlow'
+import { ChatSendFlow, ChatSendFlowDependencies } from './chat/ChatSendFlow'
 import { ChatStopFlow, ChatStopFlowDependencies } from './chat/ChatStopFlow'
 import { ChatInlineEditFlow, ChatInlineEditFlowDependencies } from './chat/ChatInlineEditFlow'
 import { ChatSelectionFlow, ChatSelectionFlowDependencies } from './chat/ChatSelectionFlow'
@@ -62,6 +67,8 @@ import { ChatPageRouteParams } from './chat/ChatPageRouteTypes'
 import { getChatContentMaxWidth, LayoutSizeClass } from '../config/LayoutProfile'
 import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/AppUiState'
 import { applyModelDraft } from '../utils/ModelDraftUtils'
+import { ToolPreviewEntry, buildToolArgumentsPreview } from '../utils/ToolPayloadSummaryUtils'
+import { pickLocalizedText } from '../utils/LocalizedTextUtils'
 
 const DOMAIN = 0x0003
 const TAG = 'ChatPage'
@@ -74,6 +81,24 @@ class ProviderModelSelection {
     this.provider = provider
     this.model = model
   }
+}
+
+class McpToolGroup {
+  sourceId: string = ''
+  displayName: string = ''
+  toolIds: string[] = []
+  toolCount: number = 0
+  hasWriteTool: boolean = false
+
+  constructor(sourceId: string, displayName: string) {
+    this.sourceId = sourceId
+    this.displayName = displayName
+  }
+}
+
+class EditedMessageToolContext {
+  webSearchEnabled: boolean = false
+  selectedToolIds: string[] = []
 }
 
 @ComponentV2
@@ -111,16 +136,20 @@ export struct ChatPage {
   @Local isAtBottom: boolean = false
   // 是否在列表顶部
   @Local isAtTop: boolean = false
+  @Local scrollProgress: number = 0
   // 输入框显示状态（true=显示，false=隐藏）
   @Local isInputBarVisible: boolean = true
+  @Local inputAreaHeightVp: number = 0
+  @Local multiSelectToolbarHeightVp: number = 0
   // 输入框是否处于焦点状态（用于控制预览气泡显示）
   @Local isInputFocused: boolean = false
   // 计算滚动偏移
   private lastScrollOffset: number = 0
   private readonly inputBarShowThreshold: number = 6
   private readonly inputBarHideThreshold: number = 18
+  @Local pendingInitialBottomAlignment: boolean = false
   // 会话标题相关状态
-  @Local sessionTitle: string = '新对话'
+  @Local sessionTitle: string = ''
   @Local isTitleGenerating: boolean = false
   @Local titleGenerateFailed: boolean = false
   // 更多菜单显示状态
@@ -138,10 +167,22 @@ export struct ChatPage {
   private isNewEmptySession: boolean = false
   // 搜索取消标志（用于取消正在进行的联网查询）
   private isSearchCancelled: boolean = false
+  private pendingToolExecutionApprovalResolver: ((approved: boolean) => void) | null = null
   // 联网查询全局可用状态（工具中心控制）
   @Local webSearchAvailable: boolean = false
-  // 联网查询本会话开关状态（聊天页控制）
-  @Local webSearchEnabled: boolean = false
+  @Local webSearchConversationEnabled: boolean = false
+  @Local selectedToolIds: string[] = []
+  @Local availableChatTools: ToolConfig[] = []
+  @Local isRefreshingMcpToolAvailability: boolean = false
+  @Local showToolPickerSheet: boolean = false
+  @Local showToolExecutionApprovalSheet: boolean = false
+  @Local toolExecutionApprovalSourceLabel: string = ''
+  @Local toolExecutionApprovalName: string = ''
+  @Local toolExecutionApprovalArgumentSummary: string = ''
+  @Local toolExecutionApprovalArgumentEntries: ToolPreviewEntry[] = []
+  @Local toolExecutionApprovalArgumentsPreview: string = '{}'
+  @Local toolExecutionApprovalArgumentsTruncated: boolean = false
+  @Local showRawToolExecutionApprovalArguments: boolean = false
   // 推理级别状态
   @Local reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   // 最近截图检测状态（由 ChatInputBar 回调设置，ScreenshotBanner 独立渲染）
@@ -163,9 +204,15 @@ export struct ChatPage {
   private get windowWidthVp(): number {
     return getAppUiState().windowWidthVp
   }
+  private get windowHeightVp(): number {
+    return getAppUiState().windowHeightVp
+  }
   // 主题颜色
   private get themePrimary(): string {
     return getAppUiState().themePrimary
+  }
+  private get themePrimaryLight(): string {
+    return getAppUiState().themePrimaryLight
   }
   private get themeUserBubble(): string {
     return getAppUiState().themeUserBubble
@@ -199,9 +246,13 @@ export struct ChatPage {
   @Local editingOriginalAttachments: MessageAttachment[] = [] // 原始附件
   @Local editingMessageIsUser: boolean = true // 是否为用户消息（决定是否显示"保存并发送"）
   @Local editingWebSearchEnabled: boolean = false
+  @Local editingSelectedToolIds: string[] = []
   @Local editingReasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   @Local otherSessionUnreadCount: number = 0
   private scroller: Scroller = new Scroller()
+  private maxScrollOffset: number = 0
+  private readonly floatingScrollButtonBottomOffsetVp: number = 128
+  private mcpToolAvailabilityRefreshTask: Promise<void> | null = null
   private chatViewModel: ChatViewModel = ServiceRegistry.chat()
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
   private appStateManager: AppStateManager = ServiceRegistry.appState()
@@ -210,6 +261,7 @@ export struct ChatPage {
   private preferencesService: PreferencesService = ServiceRegistry.preferences()
   private aiTaskService: AITaskService = ServiceRegistry.aiTask()
   private toolRegistry: ToolRegistry = ServiceRegistry.toolRegistry()
+  private mcpService: McpService = ServiceRegistry.mcp()
   private chatTaskOrchestrator = ServiceRegistry.chatTaskOrchestrator()
   private ttsService: TTSService = new TTSService()
   // 当前服务商配置
@@ -236,6 +288,8 @@ export struct ChatPage {
   private draftAutosaveTimerId: number = -1
   private readonly draftAutosaveDelayMs: number = 400
   private appUiStateDisposers: Array<() => void> = []
+  private initialBottomAlignmentRetryTimerIds: number[] = []
+  private initialBottomAlignmentCompletionTimerId: number = -1
 
   private showChatSnack(message: string | Resource, duration: number = 2000,
     tone: SnackBarTone = SnackBarTone.DEFAULT): void {
@@ -247,12 +301,21 @@ export struct ChatPage {
   }
 
   aboutToAppear(): void {
+    if (this.sessionTitle === '') {
+      this.sessionTitle = this.getDefaultSessionTitle()
+    }
+    if (this.toolExecutionApprovalArgumentSummary === '') {
+      this.toolExecutionApprovalArgumentSummary = this.getNoToolArgumentsText()
+    }
     this.registerAppUiStateObservers()
     // 设置键盘避让模式
     this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE)
 
     // 注册内置工具
     registerBuiltinTools()
+    ServiceRegistry.toolExecution().setApprovalCallback(async (toolCall, tool) => {
+      return await this.requestToolExecutionApproval(tool.config.name, tool.config.sourceLabel, toolCall.arguments)
+    })
 
     // 设置标题生成回调
     const titleCallbacks: TitleGenerationCallbacks = {
@@ -328,8 +391,10 @@ export struct ChatPage {
 
   aboutToDisappear(): void {
     this.isPageVisible = false
+    ServiceRegistry.toolExecution().setApprovalCallback(null)
     // 释放TTS资源
     this.ttsService.destroy()
+    this.clearInitialBottomAlignmentRetries()
     this.clearRuntimeStateWatchdog()
     this.flushDraftAutosave(true).catch((error: Error): void => {
       console.error('ChatPage', `Failed to flush draft on disappear: ${JSON.stringify(error)}`)
@@ -356,6 +421,7 @@ export struct ChatPage {
   async loadData(): Promise<void> {
     const startTime = Date.now()
     hilog.info(DOMAIN, TAG, '📂 开始加载聊天页面数据...')
+    this.resetScrollStateForSessionLoad()
 
     // 新建对话时不显示加载动画，让用户无感
     // 只有打开现有对话时才显示加载动画
@@ -366,10 +432,10 @@ export struct ChatPage {
     const loadResult = await this.getLoadFlow().loadPageData(this.routeParams, this.sessionTitle)
 
     this.webSearchAvailable = loadResult.webSearchEnabled
-    this.webSearchEnabled = this.webSearchAvailable && loadResult.webSearchConversationEnabled
+    await this.syncToolAvailabilityFromPreferences()
     console.info(
       'ChatPage',
-      `[loadData] 联网可用=${this.webSearchAvailable}, 联网会话开关=${this.webSearchEnabled}`
+      `[loadData] 联网可用=${this.webSearchAvailable}, 联网查询=${this.webSearchConversationEnabled}, 已选工具=${this.selectedToolIds.join(',')}`
     )
 
     this.applyLoadedSessionData(loadResult)
@@ -382,6 +448,7 @@ export struct ChatPage {
 
     this.triggerPostLoadActions()
     this.activateCurrentSessionRuntimeState()
+    this.refreshMcpToolAvailabilityInBackground(false)
   }
 
   private async applyLoadedProviders(providers: ModelProvider[]): Promise<void> {
@@ -406,11 +473,13 @@ export struct ChatPage {
   }
 
   private applyLoadedSessionData(loadResult: ChatPageLoadResult): void {
+    this.pendingInitialBottomAlignment = false
     this.pendingInitialPrompt = loadResult.pendingInitialPrompt
     this.pendingInitialToolIds = loadResult.pendingInitialToolIds
     this.initialPromptAutoSent = loadResult.initialPromptAutoSent
     this.sessionId = loadResult.sessionId
     this.sessionTitle = loadResult.sessionTitle
+    this.webSearchConversationEnabled = loadResult.webSearchEnabled && loadResult.webSearchConversationEnabled
     this.inputText = loadResult.draftText
     this.pendingAttachments = [...loadResult.draftAttachments]
     this.isNewChatTransition = loadResult.isNewChatTransition
@@ -418,6 +487,7 @@ export struct ChatPage {
 
     if (!this.isNewChatTransition) {
       this.replaceMessages(loadResult.messages)
+      this.pendingInitialBottomAlignment = this.messages.length > 0
       hilog.info(DOMAIN, TAG, '📨 加载会话消息: %{public}d 条', this.messages.length)
       return
     }
@@ -430,6 +500,8 @@ export struct ChatPage {
       setTimeout(() => {
         this.autoFocusInput = true
       }, 50)
+    } else if (this.messages.length > 0) {
+      this.requestInitialBottomAlignment()
     }
 
     if (this.isNewChatTransition && this.pendingInitialPrompt !== '' && !this.initialPromptAutoSent) {
@@ -512,10 +584,102 @@ export struct ChatPage {
     this.updateRuntimeStateWatchdog()
   }
 
+  private clearInitialBottomAlignmentRetries(): void {
+    for (let i = 0; i < this.initialBottomAlignmentRetryTimerIds.length; i++) {
+      clearTimeout(this.initialBottomAlignmentRetryTimerIds[i])
+    }
+    this.initialBottomAlignmentRetryTimerIds.splice(0, this.initialBottomAlignmentRetryTimerIds.length)
+    if (this.initialBottomAlignmentCompletionTimerId >= 0) {
+      clearTimeout(this.initialBottomAlignmentCompletionTimerId)
+      this.initialBottomAlignmentCompletionTimerId = -1
+    }
+  }
+
+  private hasScheduledInitialBottomAlignment(): boolean {
+    return this.initialBottomAlignmentRetryTimerIds.length > 0 || this.initialBottomAlignmentCompletionTimerId >= 0
+  }
+
+  private cancelPendingInitialBottomAlignment(): void {
+    this.pendingInitialBottomAlignment = false
+    this.clearInitialBottomAlignmentRetries()
+  }
+
+  private resetScrollStateForSessionLoad(): void {
+    this.clearInitialBottomAlignmentRetries()
+    this.pendingInitialBottomAlignment = false
+    this.lastScrollOffset = 0
+    this.isAtTop = false
+    this.isAtBottom = false
+    this.scrollProgress = 0
+    this.maxScrollOffset = 0
+    this.scroller = new Scroller()
+    this.scrollUiFlow = null
+  }
+
+  private scheduleInitialBottomAlignmentRetries(force: boolean = false): void {
+    if (!this.pendingInitialBottomAlignment || this.messages.length <= 0) {
+      return
+    }
+    if (!force && this.hasScheduledInitialBottomAlignment()) {
+      return
+    }
+    this.clearInitialBottomAlignmentRetries()
+    const delays: number[] = [0, 80, 180]
+    const completionDelay = delays[delays.length - 1] + 180
+    for (let i = 0; i < delays.length; i++) {
+      const timerId = setTimeout(() => {
+        if (!this.pendingInitialBottomAlignment || this.messages.length <= 0) {
+          return
+        }
+        this.getScrollUiFlow().setIsAtBottom(true)
+        this.getScrollUiFlow().setIsAtTop(false)
+        this.getScrollUiFlow().alignToBottomAfterLayout()
+      }, delays[i])
+      this.initialBottomAlignmentRetryTimerIds.push(timerId)
+    }
+    this.initialBottomAlignmentCompletionTimerId = setTimeout(() => {
+      if (!this.pendingInitialBottomAlignment) {
+        return
+      }
+      this.pendingInitialBottomAlignment = false
+      this.clearInitialBottomAlignmentRetries()
+    }, completionDelay)
+  }
+
   private refreshToolAvailabilityOnShown(): void {
-    this.refreshToolAvailabilityFromPreferences(true).catch((error: Object) => {
+    this.syncToolAvailabilityFromPreferences().then(() => {
+      this.refreshMcpToolAvailabilityInBackground(false)
+    }).catch((error: Object) => {
       console.warn('ChatPage', `[refreshToolAvailabilityOnShown] Failed: ${JSON.stringify(error)}`)
     })
+  }
+
+  private requestInitialBottomAlignment(): void {
+    if (this.messages.length <= 0) {
+      this.cancelPendingInitialBottomAlignment()
+      return
+    }
+    this.pendingInitialBottomAlignment = true
+    this.scheduleInitialBottomAlignmentRetries(true)
+  }
+
+  private handleListAppear(): void {
+    if (!this.pendingInitialBottomAlignment || this.messages.length <= 0) {
+      return
+    }
+    this.scheduleInitialBottomAlignmentRetries()
+  }
+
+  private handleMessageListContentAreaChange(): void {
+    if (!this.pendingInitialBottomAlignment || this.messages.length <= 0) {
+      return
+    }
+    this.scheduleInitialBottomAlignmentRetries()
+  }
+
+  private getBottomAnchorListIndex(): number {
+    const draftItemCount = !this.isEditingMessage && this.hasDraftContent() ? 1 : 0
+    return this.messages.length + 1 + draftItemCount
   }
 
   private getCurrentModelInfo(): ModelInfo | null {
@@ -544,21 +708,420 @@ export struct ChatPage {
     }
   }
 
-  private async refreshToolAvailabilityFromPreferences(syncConversationSwitch: boolean): Promise<void> {
+  private applySelectedToolIdsInMemory(toolIds: string[], enabledMcpServerIds?: Set<string>): void {
+    this.selectedToolIds = [...this.normalizeSelectedToolIdsForPicker(toolIds, enabledMcpServerIds)]
+  }
+
+  private async setSelectedToolIds(toolIds: string[]): Promise<void> {
+    const normalizedToolIds = this.normalizeSelectedToolIdsForPicker(toolIds)
+    const savedToolIds = await this.mcpService.saveSelectedToolIds(normalizedToolIds)
+    const enabledMcpServerIds = await this.loadEnabledMcpServerIds()
+    this.applySelectedToolIdsInMemory(savedToolIds, enabledMcpServerIds)
+  }
+
+  private async setWebSearchConversationEnabled(enabled: boolean): Promise<void> {
+    const normalized = this.webSearchAvailable && enabled
+    await this.preferencesService.setBoolean(PreferenceKeys.SEARCH_CONVERSATION_ENABLED, normalized)
+    this.webSearchConversationEnabled = normalized
+  }
+
+  private rebuildAvailableChatTools(): void {
+    const configs = this.toolRegistry.getAllToolConfigs()
+    const tools: ToolConfig[] = []
+    for (let i = 0; i < configs.length; i++) {
+      if (configs[i].enabled && configs[i].id !== 'web_search') {
+        tools.push(configs[i])
+      }
+    }
+    this.availableChatTools = tools
+  }
+
+  private async loadEnabledMcpServerIds(): Promise<Set<string>> {
+    const configs = await this.mcpService.loadServerConfigs()
+    const enabledServerIds: Set<string> = new Set<string>()
+    for (let i = 0; i < configs.length; i++) {
+      if (configs[i].enabled) {
+        enabledServerIds.add(configs[i].id)
+      }
+    }
+    return enabledServerIds
+  }
+
+  private normalizeStoredSelectedToolIdsLocally(toolIds: string[]): string[] {
+    const normalizedToolIds: string[] = []
+    for (let i = 0; i < toolIds.length; i++) {
+      const toolId = toolIds[i].trim()
+      if (toolId === '' || toolId === 'web_search') {
+        continue
+      }
+      if (!normalizedToolIds.includes(toolId)) {
+        normalizedToolIds.push(toolId)
+      }
+    }
+    return normalizedToolIds
+  }
+
+  private extractMcpSourceIdFromToolId(toolId: string): string {
+    if (!toolId.startsWith('mcp:')) {
+      return ''
+    }
+    const raw = toolId.substring(4)
+    const separatorIndex = raw.indexOf(':')
+    if (separatorIndex <= 0) {
+      return ''
+    }
+    return raw.substring(0, separatorIndex)
+  }
+
+  private async syncToolAvailabilityFromPreferences(): Promise<void> {
     const webSearchAvailable = await this.preferencesService.getBoolean(PreferenceKeys.SEARCH_SERVICE_ENABLED, false)
-    let webSearchConversationEnabled = this.webSearchEnabled
-    if (syncConversationSwitch) {
-      webSearchConversationEnabled = await this.preferencesService.getBoolean(
-        PreferenceKeys.SEARCH_CONVERSATION_ENABLED,
-        webSearchAvailable
-      )
-    }
     this.webSearchAvailable = webSearchAvailable
-    if (!this.webSearchAvailable) {
-      this.webSearchEnabled = false
-    } else {
-      this.webSearchEnabled = webSearchConversationEnabled
+    this.webSearchConversationEnabled = webSearchAvailable && await this.preferencesService.getBoolean(
+      PreferenceKeys.SEARCH_CONVERSATION_ENABLED,
+      webSearchAvailable
+    )
+    const webSearchTool = this.toolRegistry.getTool('web_search')
+    if (webSearchTool !== undefined) {
+      webSearchTool.config.enabled = webSearchAvailable
     }
+    this.rebuildAvailableChatTools()
+    const enabledMcpServerIds = await this.loadEnabledMcpServerIds()
+    const selectedToolIds = await this.mcpService.loadSelectedToolIds()
+    this.applySelectedToolIdsInMemory(selectedToolIds, enabledMcpServerIds)
+  }
+
+  private async refreshMcpToolAvailability(showError: boolean): Promise<void> {
+    let refreshError: Object | null = null
+    try {
+      await this.mcpService.refreshAllServers()
+    } catch (error) {
+      refreshError = error
+      console.warn('ChatPage', `[refreshMcpToolAvailability] MCP refresh failed: ${JSON.stringify(error)}`)
+    }
+    this.rebuildAvailableChatTools()
+    const enabledMcpServerIds = await this.loadEnabledMcpServerIds()
+    const selectedToolIds = await this.mcpService.loadSelectedToolIds()
+    this.applySelectedToolIdsInMemory(selectedToolIds, enabledMcpServerIds)
+    if (showError && refreshError !== null) {
+      this.showError(pickLocalizedText('刷新工具失败', 'Failed to refresh tools'))
+    }
+  }
+
+  private runMcpToolAvailabilityRefresh(showError: boolean): Promise<void> {
+    if (this.mcpToolAvailabilityRefreshTask !== null) {
+      return this.mcpToolAvailabilityRefreshTask
+    }
+    this.isRefreshingMcpToolAvailability = true
+    const task = this.refreshMcpToolAvailability(showError).catch((error: Object) => {
+      console.error('ChatPage', `[runMcpToolAvailabilityRefresh] Failed: ${JSON.stringify(error)}`)
+      if (showError) {
+        this.showError(pickLocalizedText('刷新工具失败', 'Failed to refresh tools'))
+      }
+    }).finally(() => {
+      this.isRefreshingMcpToolAvailability = false
+      if (this.mcpToolAvailabilityRefreshTask === task) {
+        this.mcpToolAvailabilityRefreshTask = null
+      }
+    })
+    this.mcpToolAvailabilityRefreshTask = task
+    return task
+  }
+
+  private refreshMcpToolAvailabilityInBackground(showError: boolean): void {
+    this.runMcpToolAvailabilityRefresh(showError)
+  }
+
+  private collectPendingEnabledMcpToolIds(toolIds: string[], enabledMcpServerIds: Set<string>): string[] {
+    const pendingToolIds: string[] = []
+    const normalizedToolIds = this.normalizeStoredSelectedToolIdsLocally(toolIds)
+    for (let i = 0; i < normalizedToolIds.length; i++) {
+      const toolId = normalizedToolIds[i]
+      const sourceId = this.extractMcpSourceIdFromToolId(toolId)
+      if (sourceId === '' || !enabledMcpServerIds.has(sourceId)) {
+        continue
+      }
+      if (!this.toolRegistry.isToolRegistered(toolId)) {
+        pendingToolIds.push(toolId)
+      }
+    }
+    return pendingToolIds
+  }
+
+  private async ensureSelectedMcpToolsReadyForSend(toolIds: string[]): Promise<boolean> {
+    let enabledMcpServerIds = await this.loadEnabledMcpServerIds()
+    if (this.collectPendingEnabledMcpToolIds(toolIds, enabledMcpServerIds).length === 0) {
+      return true
+    }
+    await this.runMcpToolAvailabilityRefresh(false)
+    enabledMcpServerIds = await this.loadEnabledMcpServerIds()
+    return this.collectPendingEnabledMcpToolIds(toolIds, enabledMcpServerIds).length === 0
+  }
+
+  private isMcpChatTool(tool: ToolConfig): boolean {
+    return tool.sourceType === ToolSourceType.MCP && tool.sourceId.trim() !== ''
+  }
+
+  private getBuiltinChatTools(): ToolConfig[] {
+    const builtinTools: ToolConfig[] = []
+    for (let i = 0; i < this.availableChatTools.length; i++) {
+      const tool = this.availableChatTools[i]
+      if (!this.isMcpChatTool(tool)) {
+        builtinTools.push(tool)
+      }
+    }
+    return builtinTools
+  }
+
+  private getMcpToolGroups(): McpToolGroup[] {
+    const groups: McpToolGroup[] = []
+    const groupIndexes: Map<string, number> = new Map()
+    for (let i = 0; i < this.availableChatTools.length; i++) {
+      const tool = this.availableChatTools[i]
+      if (!this.isMcpChatTool(tool)) {
+        continue
+      }
+      const existingIndex = groupIndexes.get(tool.sourceId)
+      if (existingIndex === undefined) {
+        const displayName = tool.sourceLabel.trim() !== '' ? tool.sourceLabel : tool.sourceId
+        const group = new McpToolGroup(tool.sourceId, displayName)
+        group.toolIds.push(tool.id)
+        group.toolCount = 1
+        group.hasWriteTool = tool.permissionLevel === ToolPermissionLevel.WRITE
+        groups.push(group)
+        groupIndexes.set(tool.sourceId, groups.length - 1)
+        continue
+      }
+      groups[existingIndex].toolIds.push(tool.id)
+      groups[existingIndex].toolCount += 1
+      if (tool.permissionLevel === ToolPermissionLevel.WRITE) {
+        groups[existingIndex].hasWriteTool = true
+      }
+    }
+    return groups
+  }
+
+  private normalizeSelectedToolIdsForPicker(toolIds: string[], enabledMcpServerIds?: Set<string>): string[] {
+    const normalizedToolIds = this.normalizeStoredSelectedToolIdsLocally(toolIds)
+    const selectedBuiltinToolIds: Set<string> = new Set<string>()
+    const selectedMcpSourceIds: Set<string> = new Set<string>()
+    const availableMcpSourceIds: Set<string> = new Set<string>()
+    for (let i = 0; i < this.availableChatTools.length; i++) {
+      const tool = this.availableChatTools[i]
+      if (this.isMcpChatTool(tool)) {
+        availableMcpSourceIds.add(tool.sourceId)
+      }
+    }
+    for (let i = 0; i < normalizedToolIds.length; i++) {
+      const toolId = normalizedToolIds[i]
+      const registeredTool = this.toolRegistry.getTool(toolId)
+      if (registeredTool !== undefined && registeredTool.config.enabled) {
+        if (this.isMcpChatTool(registeredTool.config)) {
+          selectedMcpSourceIds.add(registeredTool.config.sourceId)
+          continue
+        }
+        selectedBuiltinToolIds.add(toolId)
+        continue
+      }
+      const sourceId = this.extractMcpSourceIdFromToolId(toolId)
+      if (sourceId !== '' && (enabledMcpServerIds === undefined || enabledMcpServerIds.has(sourceId))) {
+        selectedMcpSourceIds.add(sourceId)
+      }
+    }
+    for (let i = 0; i < this.availableChatTools.length; i++) {
+      const tool = this.availableChatTools[i]
+      if (this.isMcpChatTool(tool)) {
+        if (selectedMcpSourceIds.has(tool.sourceId)) {
+          selectedBuiltinToolIds.add(tool.id)
+        }
+        continue
+      }
+      if (!selectedBuiltinToolIds.has(tool.id)) {
+        continue
+      }
+    }
+
+    const pickerToolIds: string[] = []
+    for (let i = 0; i < this.availableChatTools.length; i++) {
+      const tool = this.availableChatTools[i]
+      if (this.isMcpChatTool(tool)) {
+        if (selectedMcpSourceIds.has(tool.sourceId)) {
+          pickerToolIds.push(tool.id)
+        }
+        continue
+      }
+      if (selectedBuiltinToolIds.has(tool.id)) {
+        pickerToolIds.push(tool.id)
+      }
+    }
+    for (let i = 0; i < normalizedToolIds.length; i++) {
+      const toolId = normalizedToolIds[i]
+      const sourceId = this.extractMcpSourceIdFromToolId(toolId)
+      if (sourceId === '' || !selectedMcpSourceIds.has(sourceId) || availableMcpSourceIds.has(sourceId)) {
+        continue
+      }
+      if (!pickerToolIds.includes(toolId)) {
+        pickerToolIds.push(toolId)
+      }
+    }
+    return pickerToolIds
+  }
+
+  private isWebSearchFunctionName(functionName: string): boolean {
+    const normalizedName = functionName.trim().toLowerCase().replace(/[\s\-]+/g, '_')
+    return normalizedName === 'web_search' ||
+      normalizedName === 'exa_search' ||
+      normalizedName === 'websearch' ||
+      normalizedName === 'search_web' ||
+      normalizedName === 'internet_search' ||
+      normalizedName === 'web_search_exa'
+  }
+
+  private isWebSearchToolCall(toolCall: ToolCall): boolean {
+    if (toolCall.toolId.trim() === 'web_search') {
+      return true
+    }
+    return this.isWebSearchFunctionName(toolCall.functionName)
+  }
+
+  private resolveEditedMessageToolContext(messageIndex: number): EditedMessageToolContext {
+    const selectedToolIds: string[] = []
+    let webSearchEnabled = false
+    for (let i = messageIndex + 1; i < this.messages.length; i++) {
+      const followupMessage = this.messages[i]
+      if (followupMessage.role === MessageRole.USER) {
+        break
+      }
+      if (followupMessage.searchQuery.trim() !== '') {
+        webSearchEnabled = true
+      }
+      for (let j = 0; j < followupMessage.toolCalls.length; j++) {
+        const toolCall = followupMessage.toolCalls[j]
+        if (this.isWebSearchToolCall(toolCall)) {
+          webSearchEnabled = true
+          continue
+        }
+        const resolvedToolId = toolCall.toolId.trim() !== '' ?
+          toolCall.toolId.trim() :
+          (this.toolRegistry.getToolIdByFunctionName(toolCall.functionName.trim()) || '')
+        if (resolvedToolId !== '' && !selectedToolIds.includes(resolvedToolId)) {
+          selectedToolIds.push(resolvedToolId)
+        }
+      }
+    }
+    const context = new EditedMessageToolContext()
+    context.webSearchEnabled = this.webSearchAvailable && webSearchEnabled
+    context.selectedToolIds = this.normalizeSelectedToolIdsForPicker(selectedToolIds)
+    return context
+  }
+
+  private getActiveComposerWebSearchEnabled(): boolean {
+    if (this.isEditingMessage) {
+      return this.editingWebSearchEnabled
+    }
+    return this.webSearchConversationEnabled
+  }
+
+  private getActiveComposerSelectedToolIds(): string[] {
+    if (this.isEditingMessage) {
+      return this.editingSelectedToolIds
+    }
+    return this.selectedToolIds
+  }
+
+  private updateActiveComposerSelectedToolIds(toolIds: string[]): Promise<void> {
+    const normalizedToolIds = this.normalizeSelectedToolIdsForPicker(toolIds)
+    if (this.isEditingMessage) {
+      this.editingSelectedToolIds = [...normalizedToolIds]
+      return Promise.resolve()
+    }
+    return this.setSelectedToolIds(normalizedToolIds)
+  }
+
+  private updateActiveComposerReasoningLevel(value: ReasoningLevel): void {
+    const normalizedLevel = normalizeReasoningLevelForControl(value)
+    if (this.isEditingMessage) {
+      this.editingReasoningLevel = normalizedLevel
+      return
+    }
+    this.reasoningLevel = normalizedLevel
+  }
+
+  private handleComposerWebSearchToggle(): void {
+    const nextValue = !this.getActiveComposerWebSearchEnabled()
+    if (this.isEditingMessage) {
+      this.editingWebSearchEnabled = this.webSearchAvailable && nextValue
+      return
+    }
+    this.setWebSearchConversationEnabled(nextValue).catch((error: Object) => {
+      console.error('ChatPage', `Failed to update chat search setting: ${JSON.stringify(error)}`)
+      this.showError(pickLocalizedText('联网查询开关保存失败', 'Failed to save web search toggle'))
+    })
+  }
+
+  private isMcpToolGroupSelected(group: McpToolGroup): boolean {
+    if (group.toolIds.length === 0) {
+      return false
+    }
+    for (let i = 0; i < group.toolIds.length; i++) {
+      if (!this.getActiveComposerSelectedToolIds().includes(group.toolIds[i])) {
+        return false
+      }
+    }
+    return true
+  }
+
+  private handleMcpToolGroupSelectionToggle(group: McpToolGroup, enabled: boolean): void {
+    const nextToolIds = [...this.getActiveComposerSelectedToolIds()]
+    for (let i = 0; i < group.toolIds.length; i++) {
+      const toolId = group.toolIds[i]
+      const index = nextToolIds.indexOf(toolId)
+      if (enabled && index < 0) {
+        nextToolIds.push(toolId)
+      }
+      if (!enabled && index >= 0) {
+        nextToolIds.splice(index, 1)
+      }
+    }
+    this.updateActiveComposerSelectedToolIds(nextToolIds).catch((error: Object) => {
+      console.error('ChatPage', `Failed to update selected MCP tool group: ${JSON.stringify(error)}`)
+      this.showError(pickLocalizedText('工具选择保存失败', 'Failed to save tool selection'))
+    })
+  }
+
+  private hasSelectedTools(): boolean {
+    return this.getActiveComposerSelectedToolIds().length > 0
+  }
+
+  private getToolPickerCardBackground(selected: boolean): ResourceColor {
+    return selected ? this.themePrimaryLight : $r('app.color.surface')
+  }
+
+  private getToolPickerCardBorderColor(selected: boolean): ResourceColor {
+    return selected ? this.themePrimary : $r('app.color.divider')
+  }
+
+  private getToolPickerCardShadowColor(selected: boolean): string {
+    return selected ? 'rgba(0, 125, 255, 0.16)' : 'rgba(15, 23, 42, 0.06)'
+  }
+
+  private getToolPickerBuiltinDescription(tool: ToolConfig): string {
+    const description = tool.description.trim()
+    return description !== '' ? description : pickLocalizedText(
+      '应用内原生能力，可在当前聊天中按需调用。',
+      'Built-in app capability that can be exposed to the model in this chat.'
+    )
+  }
+
+  private getDefaultSessionTitle(): string {
+    return pickLocalizedText('新对话', 'New Chat')
+  }
+
+  private getNoToolArgumentsText(): string {
+    return pickLocalizedText('无参数', 'No arguments')
+  }
+
+  private getToolPickerScrollMaxHeight(): number {
+    return 520
   }
 
   private syncSendingStateFromRuntime(): void {
@@ -647,9 +1210,7 @@ export struct ChatPage {
       onSyncMessages: (): void => {
       },
       onScrollBottom: (): void => {
-        if (this.isAtBottom) {
-          this.scroller.scrollEdge(Edge.Bottom)
-        }
+        this.getScrollUiFlow().alignToBottomIfPinned()
       },
       onSetNewEmptySession: (value: boolean): void => {
         this.isNewEmptySession = value
@@ -745,9 +1306,7 @@ export struct ChatPage {
       onSyncMessages: (): void => {
       },
       onScrollBottom: (): void => {
-        if (this.isAtBottom) {
-          this.scroller.scrollEdge(Edge.Bottom)
-        }
+        this.getScrollUiFlow().alignToBottomIfPinned()
       },
       onSetSending: (value: boolean): void => {
         this.isSending = value
@@ -800,6 +1359,7 @@ export struct ChatPage {
         content: string,
         attachments: MessageAttachment[],
         _webSearchEnabled: boolean,
+        _selectedToolIds: string[],
         _reasoningLevel: ReasoningLevel
       ): boolean => {
         const prepareResult = this.getSendFlow().prepareSendRequest(
@@ -820,28 +1380,33 @@ export struct ChatPage {
         this.editingOriginalContent = ''
         this.editingOriginalAttachments = []
         this.editingWebSearchEnabled = false
+        this.editingSelectedToolIds = []
         this.editingReasoningLevel = ReasoningLevel.OFF
       },
       onApplySavedDraft: (
         content: string,
         attachments: MessageAttachment[],
         webSearchEnabled: boolean,
+        selectedToolIds: string[],
         reasoningLevel: ReasoningLevel
       ): void => {
         this.inputText = content
         this.pendingAttachments = [...attachments]
-        this.webSearchEnabled = webSearchEnabled
+        this.webSearchConversationEnabled = this.webSearchAvailable && webSearchEnabled
+        this.applySelectedToolIdsInMemory(selectedToolIds)
         this.reasoningLevel = reasoningLevel
       },
       onTriggerSend: async (
         content: string,
         attachments: MessageAttachment[],
         webSearchEnabled: boolean,
+        selectedToolIds: string[],
         reasoningLevel: ReasoningLevel
       ): Promise<void> => {
         this.inputText = content
         this.pendingAttachments = [...attachments]
-        this.webSearchEnabled = webSearchEnabled
+        this.webSearchConversationEnabled = this.webSearchAvailable && webSearchEnabled
+        this.applySelectedToolIdsInMemory(selectedToolIds)
         this.reasoningLevel = reasoningLevel
         await this.sendMessage()
       },
@@ -942,9 +1507,15 @@ export struct ChatPage {
     const deps: ChatScrollUiFlowDependencies = {
       scroller: this.scroller,
       messages: this.messages,
+      getBottomAnchorIndex: (): number => this.getBottomAnchorListIndex(),
+      getCurrentScrollOffset: (): number => this.readCurrentScrollOffset(),
       getLastScrollOffset: (): number => this.lastScrollOffset,
       setLastScrollOffset: (value: number): void => {
         this.lastScrollOffset = value
+      },
+      getMaxScrollOffset: (): number => this.maxScrollOffset,
+      setMaxScrollOffset: (value: number): void => {
+        this.maxScrollOffset = value
       },
       getInputBarShowThreshold: (): number => this.inputBarShowThreshold,
       getInputBarHideThreshold: (): number => this.inputBarHideThreshold,
@@ -967,6 +1538,9 @@ export struct ChatPage {
           this.isInputFocused = false
           inputMethod.getController().stopInputSession()
         }
+      },
+      onSetScrollProgressState: (value: number): void => {
+        this.scrollProgress = value
       },
       onAnimate: (duration: number, curve: Curve, updater: () => void): void => {
         this.getUIContext().animateTo({
@@ -991,9 +1565,6 @@ export struct ChatPage {
     this.inputText = this.pendingInitialPrompt
     this.pendingInitialPrompt = ''
     this.forcedToolIdsOnce = [...this.pendingInitialToolIds]
-    if (this.pendingInitialToolIds.includes('web_search') && this.webSearchAvailable) {
-      this.webSearchEnabled = true
-    }
 
     await this.sendMessage()
   }
@@ -1205,14 +1776,16 @@ export struct ChatPage {
             this.handleEnterMultiSelectMode(messageId)
           },
           onListAppear: (): void => {
-            hilog.info(DOMAIN, TAG, '👁️ 消息列表已显示 (消息数: %{public}d)', this.messages.length)
+            this.handleListAppear()
           },
           onReachStart: (): void => {
-            this.getScrollUiFlow().setIsAtTop(true)
+            this.handleMessageListReachStart()
           },
           onReachEnd: (): void => {
-            this.getScrollUiFlow().setIsAtBottom(true)
-            this.getScrollUiFlow().setInputBarVisible(true)
+            this.handleMessageListReachEnd()
+          },
+          onContentAreaChange: (): void => {
+            this.handleMessageListContentAreaChange()
           },
           onDidScroll: (scrollOffset: number, scrollState: ScrollState): void => {
             this.handleMessageListDidScroll(scrollOffset, scrollState)
@@ -1294,29 +1867,30 @@ export struct ChatPage {
         // 快速到顶部按钮
         ScrollToBottomButton({
           isVisible: this.shouldShowScrollToTopButton(),
-          isInputBarVisible: this.isInputBarVisible,
           bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
+          fixedBottomOffset: this.floatingScrollButtonBottomOffsetVp,
           buttonDirection: 1,
-          extraOffsetY: -48,
+          progress: this.scrollProgress,
+          extraOffsetY: this.shouldShowStandardScrollToBottomButton() ? -48 : 0,
           onScrollToTop: () => {
-            this.scrollToTopWithAnimation()
+            this.handleScrollToTopRequest()
           }
         })
 
         // 回到底部按钮（非 AI 生成状态时显示）
         ScrollToBottomButton({
-          isVisible: !this.isAtBottom && !this.isMultiSelectMode && !this.isSending,
-          isInputBarVisible: this.isInputBarVisible,
+          isVisible: this.shouldShowStandardScrollToBottomButton(),
           bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
+          fixedBottomOffset: this.floatingScrollButtonBottomOffsetVp,
           buttonDirection: 0,
           onScrollToBottom: () => {
             this.scrollToBottomWithAnimation()
           }
         })
 
-        // AI 生成中的底部居中 loading 回到底部按钮
+        // AI 生成中的底部中间 loading 回到底部按钮
         ScrollToBottomLoadingButton({
-          isVisible: !this.isAtBottom && !this.isMultiSelectMode && this.isSending,
+          isVisible: this.shouldShowScrollToBottomLoadingButton(),
           isInputBarVisible: this.isInputBarVisible,
           bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
           onScrollToBottom: () => {
@@ -1349,14 +1923,20 @@ export struct ChatPage {
             autoFocus: this.autoFocusInput,
             isEditing: this.isEditingMessage,
             webSearchAvailable: this.webSearchAvailable,
-            webSearchEnabled: this.webSearchEnabled,
-            reasoningAvailable: this.supportsReasoningForCurrentModel(),
-            onWebSearchEnabledChange: (value: boolean): void => {
-              this.webSearchEnabled = value
+            webSearchEnabled: this.getActiveComposerWebSearchEnabled(),
+            onToggleWebSearch: (): void => {
+              this.handleComposerWebSearchToggle()
             },
-            reasoningLevel: this.reasoningLevel,
+            toolSelectionAvailable: this.availableChatTools.length > 0 || this.hasSelectedTools() ||
+              this.isRefreshingMcpToolAvailability,
+            hasSelectedTools: this.hasSelectedTools(),
+            reasoningAvailable: this.supportsReasoningForCurrentModel(),
+            onOpenTools: (): void => {
+              this.showToolPickerSheet = true
+            },
+            reasoningLevel: this.isEditingMessage ? this.editingReasoningLevel : this.reasoningLevel,
             onReasoningLevelChange: (value: ReasoningLevel): void => {
-              this.reasoningLevel = normalizeReasoningLevelForControl(value)
+              this.updateActiveComposerReasoningLevel(value)
             },
             hasRecentScreenshot: this.hasRecentScreenshot,
             bottomAvoidHeight: this.px2vp(this.bottomAvoidHeight),
@@ -1385,7 +1965,7 @@ export struct ChatPage {
               if (!this.isEditingMessage) {
                 this.isInputFocused = true
                 setTimeout(() => {
-                  this.scroller.scrollEdge(Edge.Bottom)
+                  this.getScrollUiFlow().alignToBottomAfterLayout()
                 }, 200)
               }
             },
@@ -1405,6 +1985,9 @@ export struct ChatPage {
               x: 0
             })
             .opacity(this.isInputBarVisible ? 1 : 0)
+            .onAreaChange((_oldArea: Area, newArea: Area) => {
+              this.handleInputAreaHeightChange(newArea)
+            })
             .animation({
               duration: 220,
               curve: Curve.EaseOut
@@ -1432,6 +2015,37 @@ export struct ChatPage {
             preferType: SheetType.BOTTOM,
             onDisappear: () => {
               this.showSharePreview = false
+            }
+          })
+
+        Column()
+          .width(0)
+          .height(0)
+          .bindSheet($$this.showToolPickerSheet, this.ToolPickerBuilder(), {
+            height: SheetSize.FIT_CONTENT,
+            dragBar: true,
+            showClose: false,
+            backgroundColor: $r('app.color.background'),
+            blurStyle: BlurStyle.Thick,
+            preferType: SheetType.BOTTOM,
+            onDisappear: () => {
+              this.showToolPickerSheet = false
+            }
+          })
+
+        Column()
+          .width(0)
+          .height(0)
+          .bindSheet($$this.showToolExecutionApprovalSheet, this.ToolExecutionApprovalSheetBuilder(), {
+            height: SheetSize.FIT_CONTENT,
+            dragBar: true,
+            showClose: false,
+            backgroundColor: $r('app.color.background'),
+            blurStyle: BlurStyle.Thick,
+            preferType: SheetType.BOTTOM,
+            maskColor: '#66000000',
+            onDisappear: () => {
+              this.handleToolExecutionApprovalSheetDisappear()
             }
           })
 
@@ -1463,6 +2077,9 @@ export struct ChatPage {
           .width('100%')
           .position({ x: 0, y: '100%' })
           .translate({ y: '-100%', x: 0 })
+          .onAreaChange((_oldArea: Area, newArea: Area) => {
+            this.handleMultiSelectToolbarHeightChange(newArea)
+          })
           .transition(TransitionEffect.OPACITY.animation({ duration: 200 }))
         }
 
@@ -1641,6 +2258,501 @@ export struct ChatPage {
     })
   }
 
+  private isToolSelected(toolId: string): boolean {
+    return this.getActiveComposerSelectedToolIds().includes(toolId)
+  }
+
+  private handleToolSelectionToggle(toolId: string, enabled: boolean): void {
+    const nextToolIds = [...this.getActiveComposerSelectedToolIds()]
+    const index = nextToolIds.indexOf(toolId)
+    if (enabled && index < 0) {
+      nextToolIds.push(toolId)
+    }
+    if (!enabled && index >= 0) {
+      nextToolIds.splice(index, 1)
+    }
+    this.updateActiveComposerSelectedToolIds(nextToolIds).catch((error: Object) => {
+      console.error('ChatPage', `Failed to update selected tools: ${JSON.stringify(error)}`)
+      this.showError(pickLocalizedText('工具选择保存失败', 'Failed to save tool selection'))
+    })
+  }
+
+  @Builder
+  ToolPickerBuilder() {
+    Column() {
+      Row({ space: 12 }) {
+        Button() {
+          SymbolGlyph($r('sys.symbol.xmark'))
+            .fontSize(18)
+            .fontColor([$r('app.color.text_secondary')])
+        }
+        .type(ButtonType.Circle)
+        .width(36)
+        .height(36)
+        .backgroundColor($r('app.color.divider'))
+        .onClick(() => {
+          this.showToolPickerSheet = false
+        })
+
+        Text(pickLocalizedText('选择工具', 'Choose Tools'))
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+        .layoutWeight(1)
+        .textAlign(TextAlign.Start)
+
+        Button() {
+          SymbolGlyph($r('sys.symbol.arrow_clockwise'))
+            .fontSize(18)
+            .fontColor([Color.White])
+        }
+        .type(ButtonType.Circle)
+        .width(36)
+        .height(36)
+        .backgroundColor(this.themePrimary)
+        .onClick(() => {
+          this.refreshMcpToolAvailabilityInBackground(true)
+        })
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 12, bottom: 8 })
+      .alignItems(VerticalAlign.Center)
+
+      Scroll() {
+        Column({ space: 18 }) {
+          if (this.availableChatTools.length === 0) {
+            Column({ space: 8 }) {
+              Column() {
+                SymbolGlyph($r('sys.symbol.gearshape'))
+                  .fontSize(22)
+                  .fontColor([this.themePrimary])
+              }
+              .width(48)
+              .height(48)
+              .borderRadius(14)
+              .backgroundColor(this.themePrimaryLight)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(HorizontalAlign.Center)
+
+              Text(pickLocalizedText('暂无可用工具', 'No tools available'))
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor($r('app.color.text_primary'))
+              Text(this.isRefreshingMcpToolAvailability
+                ? pickLocalizedText('正在后台刷新工具，请稍候再试。', 'Refreshing tools in the background. Try again shortly.')
+                : pickLocalizedText(
+                  '先到工具服务添加并启用 MCP Server，再回这里选择。',
+                  'Add and enable an MCP server in Tool Services first, then come back here.'
+                ))
+                .fontSize(12)
+                .lineHeight(18)
+                .fontColor($r('app.color.text_secondary'))
+                .textAlign(TextAlign.Center)
+            }
+            .width('100%')
+            .padding({ left: 20, right: 20, top: 28, bottom: 28 })
+            .borderRadius(20)
+            .backgroundColor($r('app.color.surface'))
+            .border({
+              width: 0.5,
+              color: $r('app.color.divider')
+            })
+              .shadow({ radius: 12, color: 'rgba(15, 23, 42, 0.06)', offsetX: 0, offsetY: 4 })
+              .alignItems(HorizontalAlign.Center)
+          } else {
+            if (this.getBuiltinChatTools().length > 0) {
+              Column({ space: 12 }) {
+                Column({ space: 4 }) {
+                  Text(pickLocalizedText('内置工具', 'Built-in Tools'))
+                    .fontSize(13)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor($r('app.color.text_primary'))
+
+                  Text(pickLocalizedText(
+                    '单个能力单独开关，启用后才会暴露给模型。',
+                    'Each capability is toggled separately and only exposed to the model after enabling.'
+                  ))
+                    .fontSize(11)
+                    .fontColor($r('app.color.text_secondary'))
+                }
+                .width('100%')
+                .alignItems(HorizontalAlign.Start)
+
+                ForEach(this.getBuiltinChatTools(), (tool: ToolConfig) => {
+                  Row({ space: 12 }) {
+                    Column() {
+                      SymbolGlyph($r('sys.symbol.gearshape'))
+                        .fontSize(20)
+                        .fontColor([this.isToolSelected(tool.id) ? Color.White : this.themePrimary])
+                    }
+                    .width(40)
+                    .height(40)
+                    .borderRadius(12)
+                    .backgroundColor(this.isToolSelected(tool.id) ? this.themePrimary : this.themePrimaryLight)
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+
+                    Column({ space: 8 }) {
+                      Row({ space: 8 }) {
+                        Text(tool.name)
+                          .fontSize(15)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor($r('app.color.text_primary'))
+                          .layoutWeight(1)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                        if (this.isToolSelected(tool.id)) {
+                          Text(pickLocalizedText('已启用', 'Enabled'))
+                            .fontSize(10)
+                            .fontWeight(FontWeight.Medium)
+                            .fontColor(Color.White)
+                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                            .borderRadius(999)
+                            .backgroundColor(this.themePrimary)
+                        }
+
+                        if (tool.permissionLevel === ToolPermissionLevel.WRITE) {
+                          Text(pickLocalizedText('需确认', 'Approval'))
+                            .fontSize(10)
+                            .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
+                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                            .borderRadius(999)
+                            .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
+                        }
+                      }
+                      .width('100%')
+                      .alignItems(VerticalAlign.Center)
+
+                      Text(this.getToolPickerBuiltinDescription(tool))
+                        .fontSize(12)
+                        .lineHeight(18)
+                        .fontColor($r('app.color.text_secondary'))
+                        .maxLines(2)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+
+                    Toggle({ type: ToggleType.Switch, isOn: this.isToolSelected(tool.id) })
+                      .onChange((value: boolean) => {
+                        this.handleToolSelectionToggle(tool.id, value)
+                      })
+                  }
+                  .width('100%')
+                  .padding(14)
+                  .borderRadius(18)
+                  .backgroundColor(this.getToolPickerCardBackground(this.isToolSelected(tool.id)))
+                  .border({
+                    width: this.isToolSelected(tool.id) ? 1.2 : 0.5,
+                    color: this.getToolPickerCardBorderColor(this.isToolSelected(tool.id))
+                  })
+                  .shadow({
+                    radius: this.isToolSelected(tool.id) ? 14 : 10,
+                    color: this.getToolPickerCardShadowColor(this.isToolSelected(tool.id)),
+                    offsetX: 0,
+                    offsetY: this.isToolSelected(tool.id) ? 6 : 4
+                  })
+                }, (tool: ToolConfig) => tool.id)
+              }
+              .width('100%')
+            }
+
+            if (this.getMcpToolGroups().length > 0) {
+              Column({ space: 12 }) {
+                Text(pickLocalizedText('MCP 服务', 'MCP Services'))
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor($r('app.color.text_primary'))
+                .width('100%')
+
+                ForEach(this.getMcpToolGroups(), (group: McpToolGroup) => {
+                  Row({ space: 12 }) {
+                    Column() {
+                      SymbolGlyph($r('sys.symbol.link'))
+                        .fontSize(20)
+                        .fontColor([this.isMcpToolGroupSelected(group) ? Color.White : this.themePrimary])
+                    }
+                    .width(40)
+                    .height(40)
+                    .borderRadius(12)
+                    .backgroundColor(this.isMcpToolGroupSelected(group) ? this.themePrimary : this.themePrimaryLight)
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+
+                    Column({ space: 8 }) {
+                      Row({ space: 8 }) {
+                        Text(group.displayName)
+                          .fontSize(15)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor($r('app.color.text_primary'))
+                          .layoutWeight(1)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                        if (this.isMcpToolGroupSelected(group)) {
+                          Text(pickLocalizedText('已启用', 'Enabled'))
+                            .fontSize(10)
+                            .fontWeight(FontWeight.Medium)
+                            .fontColor(Color.White)
+                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                            .borderRadius(999)
+                            .backgroundColor(this.themePrimary)
+                        }
+
+                        if (group.hasWriteTool) {
+                          Text(pickLocalizedText('需确认', 'Approval'))
+                            .fontSize(10)
+                            .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
+                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                            .borderRadius(999)
+                            .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
+                        }
+                      }
+                      .width('100%')
+                      .alignItems(VerticalAlign.Center)
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+
+                    Toggle({ type: ToggleType.Switch, isOn: this.isMcpToolGroupSelected(group) })
+                      .onChange((value: boolean) => {
+                        this.handleMcpToolGroupSelectionToggle(group, value)
+                      })
+                  }
+                  .width('100%')
+                  .padding(14)
+                  .borderRadius(18)
+                  .backgroundColor(this.getToolPickerCardBackground(this.isMcpToolGroupSelected(group)))
+                  .border({
+                    width: this.isMcpToolGroupSelected(group) ? 1.2 : 0.5,
+                    color: this.getToolPickerCardBorderColor(this.isMcpToolGroupSelected(group))
+                  })
+                  .shadow({
+                    radius: this.isMcpToolGroupSelected(group) ? 14 : 10,
+                    color: this.getToolPickerCardShadowColor(this.isMcpToolGroupSelected(group)),
+                    offsetX: 0,
+                    offsetY: this.isMcpToolGroupSelected(group) ? 6 : 4
+                  })
+                }, (group: McpToolGroup) => group.sourceId)
+              }
+              .width('100%')
+            }
+          }
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Start)
+        .alignItems(HorizontalAlign.Start)
+        .padding({ left: 16, right: 16, bottom: 24 })
+      }
+      .width('100%')
+      .constraintSize({ maxHeight: this.getToolPickerScrollMaxHeight() })
+      .scrollBar(BarState.Off)
+    }
+    .width('100%')
+    .backgroundColor($r('app.color.background'))
+  }
+
+  @Builder
+  ToolExecutionApprovalSheetBuilder() {
+    Column({ space: 16 }) {
+      Row() {
+        Column({ space: 4 }) {
+          Text(pickLocalizedText('确认工具调用', 'Approve Tool Call'))
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_primary'))
+
+          Text(pickLocalizedText(
+            '该工具可能修改外部状态，请确认后再继续。',
+            'This tool may change external state. Confirm before continuing.'
+          ))
+            .fontSize(12)
+            .fontColor($r('app.color.text_secondary'))
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        Text(pickLocalizedText('写操作', 'Write'))
+          .fontSize(11)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+          .borderRadius(999)
+          .backgroundColor('#D9485F')
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Top)
+
+      Column({ space: 10 }) {
+        Column({ space: 4 }) {
+          Text(pickLocalizedText('来源', 'Source'))
+            .fontSize(11)
+            .fontColor($r('app.color.text_tertiary'))
+          Text(this.toolExecutionApprovalSourceLabel.trim() !== ''
+            ? this.toolExecutionApprovalSourceLabel
+            : pickLocalizedText('未知来源', 'Unknown source'))
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text_primary'))
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+
+        Column({ space: 4 }) {
+          Text(pickLocalizedText('工具', 'Tool'))
+            .fontSize(11)
+            .fontColor($r('app.color.text_tertiary'))
+          Text(this.toolExecutionApprovalName.trim() !== ''
+            ? this.toolExecutionApprovalName
+            : pickLocalizedText('未知工具', 'Unknown tool'))
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text_primary'))
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor($r('app.color.surface'))
+
+      Column({ space: 6 }) {
+        Text(pickLocalizedText('风险提醒', 'Risk Notice'))
+          .fontSize(11)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#B85A00')
+
+        Text(pickLocalizedText(
+          '这是写操作工具。模型只是提出调用，真正执行前仍需要你明确批准。',
+          'This is a write tool. The model only proposes the call, and you still have to explicitly approve it.'
+        ))
+          .fontSize(12)
+          .lineHeight(18)
+          .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
+          .width('100%')
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
+
+      Column({ space: 8 }) {
+        Row() {
+          Text(pickLocalizedText('关键参数', 'Key Arguments'))
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text_primary'))
+          Blank()
+          Text(this.showRawToolExecutionApprovalArguments
+            ? pickLocalizedText('收起原始参数', 'Hide Raw Arguments')
+            : pickLocalizedText('查看原始参数', 'Show Raw Arguments'))
+            .fontSize(11)
+            .fontColor(this.themePrimary)
+            .onClick(() => {
+              this.showRawToolExecutionApprovalArguments = !this.showRawToolExecutionApprovalArguments
+            })
+        }
+        .width('100%')
+
+        if (this.toolExecutionApprovalArgumentEntries.length > 0) {
+          Column({ space: 8 }) {
+            ForEach(this.toolExecutionApprovalArgumentEntries, (entry: ToolPreviewEntry) => {
+              Row() {
+                Text(entry.label)
+                  .fontSize(11)
+                  .fontColor($r('app.color.text_tertiary'))
+                  .width(72)
+
+                Text(entry.value)
+                  .layoutWeight(1)
+                  .fontSize(12)
+                  .lineHeight(18)
+                  .fontColor($r('app.color.text_secondary'))
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .width('100%')
+              .alignItems(VerticalAlign.Top)
+            }, (entry: ToolPreviewEntry, index: number) => `${entry.label}_${index}`)
+          }
+          .width('100%')
+          .padding(12)
+          .borderRadius(14)
+          .backgroundColor($r('app.color.surface'))
+        } else {
+          Text(this.toolExecutionApprovalArgumentSummary)
+            .width('100%')
+            .fontSize(12)
+            .lineHeight(18)
+            .fontColor($r('app.color.text_secondary'))
+            .padding(12)
+            .borderRadius(14)
+            .backgroundColor($r('app.color.surface'))
+        }
+
+        if (this.showRawToolExecutionApprovalArguments) {
+          Scroll() {
+            Text(this.toolExecutionApprovalArgumentsPreview)
+              .width('100%')
+              .fontSize(12)
+              .lineHeight(18)
+              .fontFamily('monospace')
+              .fontColor($r('app.color.text_secondary'))
+              .textAlign(TextAlign.Start)
+          }
+          .width('100%')
+          .constraintSize({ maxHeight: 220 })
+          .padding(12)
+          .borderRadius(14)
+          .backgroundColor(this.isDarkMode ? '#14171F' : '#F6F8FC')
+        }
+
+        if (this.showRawToolExecutionApprovalArguments && this.toolExecutionApprovalArgumentsTruncated) {
+          Text(pickLocalizedText(
+            '仅展示前 800 个字符，避免长参数把确认面板撑坏。',
+            'Only the first 800 characters are shown to keep the approval panel readable.'
+          ))
+            .fontSize(11)
+            .fontColor($r('app.color.text_tertiary'))
+            .width('100%')
+        }
+      }
+      .width('100%')
+
+      Row({ space: 12 }) {
+        Button($r('app.string.cancel'))
+          .layoutWeight(1)
+          .height(46)
+          .type(ButtonType.Capsule)
+          .backgroundColor($r('app.color.surface'))
+          .fontColor($r('app.color.text_primary'))
+          .border({
+            width: 0.5,
+            color: $r('app.color.divider')
+          })
+          .onClick(() => {
+            this.resolveToolExecutionApproval(false)
+          })
+
+        Button(pickLocalizedText('继续执行', 'Continue'))
+          .layoutWeight(1)
+          .height(46)
+          .type(ButtonType.Capsule)
+          .backgroundColor(this.themePrimary)
+          .fontColor(Color.White)
+          .onClick(() => {
+            this.resolveToolExecutionApproval(true)
+          })
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 12, bottom: 24 })
+    .backgroundColor($r('app.color.background'))
+  }
+
   // 处理附件选择
   private handleAttachmentsSelected(attachments: MessageAttachment[]): void {
     // 普通输入模式：添加到输入框的附件列表
@@ -1725,19 +2837,108 @@ export struct ChatPage {
   }
 
   private shouldShowScrollToTopButton(): boolean {
-    return shouldShowScrollToTopButtonForChat(this.isMultiSelectMode, this.messages.length, this.isAtTop)
+    if (this.hasDraftContent()) {
+      return false
+    }
+    return shouldShowScrollToTopButtonForChat(
+      this.isMultiSelectMode,
+      this.messages.length,
+      this.isAtTop,
+      this.readCurrentScrollOffset(),
+      this.windowHeightVp
+    )
+  }
+
+  private shouldShowScrollToBottomLoadingButton(): boolean {
+    return !this.hasDraftContent() && !this.isAtBottom && !this.isMultiSelectMode && this.isSending
+  }
+
+  private shouldShowStandardScrollToBottomButton(): boolean {
+    return !this.hasDraftContent() && this.messages.length > 0 && !this.isAtBottom && !this.isMultiSelectMode && !this.isSending
   }
 
   private handleMessageListDidScroll(scrollOffset: number, scrollState: ScrollState): void {
+    const offsetDelta = scrollOffset - this.lastScrollOffset
+    if (this.pendingInitialBottomAlignment && scrollState === ScrollState.Scroll && offsetDelta < 0) {
+      this.cancelPendingInitialBottomAlignment()
+    }
     this.getScrollUiFlow().handleMessageListDidScroll(scrollOffset, scrollState)
+  }
+
+  private handleMessageListReachStart(): void {
+    this.getScrollUiFlow().handleReachStart()
+  }
+
+  private handleMessageListReachEnd(): void {
+    this.getScrollUiFlow().handleReachEnd()
   }
 
   private hasDraftContent(): boolean {
     return this.inputText.trim() !== '' || this.pendingAttachments.length > 0
   }
 
-  // 计算列表底部留白高度（需要根据输入栏实际高度动态调整）
+  private readMeasuredAreaHeight(area: Area): number {
+    const height = area.height
+    if (typeof height !== 'number' || Number.isNaN(height)) {
+      return 0
+    }
+    return height
+  }
+
+  private readCurrentScrollOffset(): number {
+    try {
+      const offset = this.scroller.currentOffset()
+      if (typeof offset.yOffset !== 'number' || Number.isNaN(offset.yOffset) || offset.yOffset <= 0) {
+        return 0
+      }
+      return offset.yOffset
+    } catch (_error) {
+      return 0
+    }
+  }
+
+  private alignListToBottomAfterLayout(): void {
+    this.getScrollUiFlow().alignToBottomAfterLayout()
+  }
+
+  private syncBottomAlignmentAfterOverlayHeightChange(previousHeight: number, nextHeight: number, isActive: boolean): void {
+    if (!isActive || !this.isAtBottom || Math.abs(previousHeight - nextHeight) < 0.5) {
+      return
+    }
+    this.alignListToBottomAfterLayout()
+  }
+
+  private handleInputAreaHeightChange(area: Area): void {
+    const nextHeight = this.readMeasuredAreaHeight(area)
+    const previousHeight = this.inputAreaHeightVp
+    this.inputAreaHeightVp = nextHeight
+    this.syncBottomAlignmentAfterOverlayHeightChange(previousHeight, nextHeight,
+      !this.isMultiSelectMode && this.isInputBarVisible)
+  }
+
+  private handleMultiSelectToolbarHeightChange(area: Area): void {
+    const nextHeight = this.readMeasuredAreaHeight(area)
+    const previousHeight = this.multiSelectToolbarHeightVp
+    this.multiSelectToolbarHeightVp = nextHeight
+    this.syncBottomAlignmentAfterOverlayHeightChange(previousHeight, nextHeight, this.isMultiSelectMode)
+  }
+
+  private getActiveBottomOverlayHeight(): number {
+    if (this.isMultiSelectMode) {
+      return this.multiSelectToolbarHeightVp
+    }
+    if (this.isInputBarVisible) {
+      return this.inputAreaHeightVp
+    }
+    return 0
+  }
+
+  // 计算列表底部留白高度：优先跟随底部遮挡层的实测高度，避免和输入区布局漂移
   private getListBottomPadding(): number {
+    const measuredHeight = this.getActiveBottomOverlayHeight()
+    if (measuredHeight > 0) {
+      return measuredHeight
+    }
     return getListBottomPaddingForChat(this.pendingAttachments.length, this.isEditingMessage,
       this.px2vp(this.bottomAvoidHeight))
   }
@@ -1838,6 +3039,10 @@ export struct ChatPage {
     this.getScrollUiFlow().scrollToTopWithAnimation()
   }
 
+  private async handleScrollToTopRequest(): Promise<void> {
+    this.scrollToTopWithAnimation()
+  }
+
   // 同步包装方法，用于 onSend 回调
   handleSend(): void {
     this.sendMessage()
@@ -1886,17 +3091,31 @@ export struct ChatPage {
       const currentProvider = prepareResult.currentProvider
       const effectiveApiKey = prepareResult.effectiveApiKey
 
-      await this.refreshToolAvailabilityFromPreferences(false)
+      await this.syncToolAvailabilityFromPreferences()
+      const mcpToolsReady = await this.ensureSelectedMcpToolsReadyForSend([
+        ...this.selectedToolIds,
+        ...this.forcedToolIdsOnce
+      ])
+      if (!mcpToolsReady) {
+        this.showError(pickLocalizedText(
+          '已选 MCP 工具尚未就绪，请稍后重试',
+          'Selected MCP tools are not ready yet. Try again shortly.'
+        ))
+        return
+      }
 
       const attachmentsToSend = [...this.pendingAttachments]
+      const searchEnabled = this.webSearchAvailable && this.webSearchConversationEnabled
+      const selectedToolIds = [...this.selectedToolIds]
       const forcedToolIds = [...this.forcedToolIdsOnce]
       await this.getSendFlow().executeSend(
         messageContent,
         currentProvider,
         effectiveApiKey,
         attachmentsToSend,
+        searchEnabled,
+        selectedToolIds,
         forcedToolIds,
-        this.webSearchAvailable && this.webSearchEnabled ? ChatExecutionMode.WEB_SEARCH : ChatExecutionMode.PLAIN,
         this.currentModelId
       )
       this.forcedToolIdsOnce = []
@@ -1937,6 +3156,62 @@ export struct ChatPage {
     this.showChatSnack(message, 3000, SnackBarTone.ERROR)
   }
 
+  private resetToolExecutionApprovalState(): void {
+    this.toolExecutionApprovalSourceLabel = ''
+    this.toolExecutionApprovalName = ''
+    this.toolExecutionApprovalArgumentSummary = this.getNoToolArgumentsText()
+    this.toolExecutionApprovalArgumentEntries = []
+    this.toolExecutionApprovalArgumentsPreview = '{}'
+    this.toolExecutionApprovalArgumentsTruncated = false
+    this.showRawToolExecutionApprovalArguments = false
+  }
+
+  private resolveToolExecutionApproval(approved: boolean): void {
+    const resolver = this.pendingToolExecutionApprovalResolver
+    this.pendingToolExecutionApprovalResolver = null
+    this.showToolExecutionApprovalSheet = false
+    this.resetToolExecutionApprovalState()
+    if (resolver !== null) {
+      resolver(approved)
+    }
+  }
+
+  private handleToolExecutionApprovalSheetDisappear(): void {
+    this.showToolExecutionApprovalSheet = false
+    const resolver = this.pendingToolExecutionApprovalResolver
+    this.pendingToolExecutionApprovalResolver = null
+    this.resetToolExecutionApprovalState()
+    if (resolver !== null) {
+      resolver(false)
+    }
+  }
+
+  private async requestToolExecutionApproval(
+    toolName: string,
+    sourceLabel: string,
+    argumentsJson: string
+  ): Promise<boolean> {
+    const preview = buildToolArgumentsPreview(argumentsJson, 4, 800)
+    return await new Promise<boolean>((resolve) => {
+      if (this.pendingToolExecutionApprovalResolver !== null) {
+        const previousResolver = this.pendingToolExecutionApprovalResolver
+        this.pendingToolExecutionApprovalResolver = null
+        previousResolver(false)
+      }
+      this.toolExecutionApprovalSourceLabel = sourceLabel.trim()
+      this.toolExecutionApprovalName = toolName.trim() !== ''
+        ? toolName.trim()
+        : pickLocalizedText('未知工具', 'Unknown tool')
+      this.toolExecutionApprovalArgumentSummary = preview.summary
+      this.toolExecutionApprovalArgumentEntries = [...preview.entries]
+      this.toolExecutionApprovalArgumentsPreview = preview.rawPreview
+      this.toolExecutionApprovalArgumentsTruncated = preview.rawTruncated
+      this.showRawToolExecutionApprovalArguments = false
+      this.pendingToolExecutionApprovalResolver = resolve
+      this.showToolExecutionApprovalSheet = true
+    })
+  }
+
   // 处理删除消息
   async handleDeleteMessage(message: ChatMessage): Promise<void> {
     const index = findMessageIndexById(this.messages, message.id)
@@ -1957,7 +3232,7 @@ export struct ChatPage {
         callback('', result.errorMessage)
       }
     }).catch((error: Error) => {
-      callback('', '翻译失败：' + error.message)
+      callback('', `${pickLocalizedText('翻译失败：', 'Translation failed: ')}${error.message}`)
     })
   }
 
@@ -2019,7 +3294,7 @@ export struct ChatPage {
   }
 
   // 处理重新生成标题
-  private handleRegenerateTitle(): void {
+  private async handleRegenerateTitle(): Promise<void> {
     if (this.messages.length === 0) {
       this.showChatSnack($r('app.string.chat_empty'), 2000, SnackBarTone.ERROR)
       return
@@ -2074,9 +3349,13 @@ export struct ChatPage {
     this.editingMessageIsUser = message.role === MessageRole.USER
     this.inputText = message.content
     this.pendingAttachments = [...message.attachments]
-    if (message.role === MessageRole.USER) {
-      this.editingWebSearchEnabled = message.searchQuery !== undefined && message.searchQuery !== ''
-    }
+    const messageIndex = findMessageIndexById(this.messages, message.id)
+    const toolContext = messageIndex >= 0 ?
+      this.resolveEditedMessageToolContext(messageIndex) :
+      new EditedMessageToolContext()
+    this.editingWebSearchEnabled = toolContext.webSearchEnabled
+    this.editingSelectedToolIds = [...toolContext.selectedToolIds]
+    this.editingReasoningLevel = this.reasoningLevel
     this.isEditingMessage = true
     this.getScrollUiFlow().setInputBarVisible(true)
     this.autoFocusInput = true
@@ -2085,9 +3364,12 @@ export struct ChatPage {
         resolve()
       }, 100)
     })
-    const messageIndex = findMessageIndexById(this.messages, message.id)
     if (messageIndex >= 0) {
-      this.scroller.scrollToIndex(toListScrollIndexForMessage(messageIndex), true, ScrollAlign.CENTER)
+      this.scroller.scrollToIndex(
+        toListScrollIndexForMessage(messageIndex),
+        true,
+        ScrollAlign.CENTER
+      )
     }
   }
 
@@ -2105,6 +3387,7 @@ export struct ChatPage {
     this.editingOriginalContent = ''
     this.editingOriginalAttachments = []
     this.editingWebSearchEnabled = false
+    this.editingSelectedToolIds = []
     this.editingReasoningLevel = ReasoningLevel.OFF
   }
 
@@ -2115,6 +3398,7 @@ export struct ChatPage {
       this.inputText,
       this.pendingAttachments,
       this.editingWebSearchEnabled,
+      this.editingSelectedToolIds,
       this.editingReasoningLevel
     )
   }

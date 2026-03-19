@@ -10,6 +10,13 @@ import { hilog } from '@kit.PerformanceAnalysisKit'
 import { webview } from '@kit.ArkWeb'
 import { SymbolGlyphModifier } from '@kit.ArkUI'
 import { getAppUiState } from '../state/AppUiState'
+import {
+  getMarkdownBlockSpacing,
+  getMarkdownQuotePadding,
+  getMarkdownTextLineHeight,
+  getMarkdownTitleLineHeights,
+  getMarkdownTitleSizes
+} from '../utils/MarkdownTypographyUtils'
 
 const DOMAIN = 0x0002
 const TAG = 'MessageBubble'
@@ -236,19 +243,27 @@ export struct MessageBubble {
     const latexTextColor = this.isDarkMode ? 0xFFE0E0E0 : 0xFF333333
     const latexTextColorSecondary = 0xFF999999
 
-    // 配置主内容 Markdown
     const fs = this.chatFontSize
+    const mainTextSize = fs - 1
+    const compactTextSize = fs - 2
+    const mainTitleSizes = getMarkdownTitleSizes(mainTextSize)
+    const compactTitleSizes = getMarkdownTitleSizes(compactTextSize, true)
+    const mainBlockSpacing = getMarkdownBlockSpacing(mainTextSize)
+    const compactBlockSpacing = getMarkdownBlockSpacing(compactTextSize, true)
+    const mainQuotePadding = getMarkdownQuotePadding(mainTextSize)
+    const compactQuotePadding = getMarkdownQuotePadding(compactTextSize, true)
+
+    // 配置主内容 Markdown
     this.markdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(fs - 1)
-      .setTextLineHeight(Math.round((fs - 1) * 1.4))
-      .setTitleSize([fs + 7, fs + 5, fs + 3, fs + 1, fs, fs - 1])
-      .setTitleLineHeight([
-        Math.round((fs + 7) * 1.3), Math.round((fs + 5) * 1.3), Math.round((fs + 3) * 1.3),
-        Math.round((fs + 1) * 1.3), Math.round(fs * 1.3), Math.round((fs - 1) * 1.3)])
+      .setTextSize(mainTextSize)
+      .setTextLineHeight(getMarkdownTextLineHeight(mainTextSize))
+      .setTitleSize(mainTitleSizes)
+      .setTitleLineHeight(getMarkdownTitleLineHeights(mainTitleSizes))
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
+      .setQuotePadding(mainQuotePadding)
       .setHyperlinkTextColor(linkColor)
       .setHyperlinkBackgroundColor(linkBgColor)
       .setInlineCodeColor(inlineCodeTextColor)
@@ -270,19 +285,19 @@ export struct MessageBubble {
       .setCodeCopyListener((code: string) => {
         this.copyToClipboard(code)
       })
+    this.markdownController.setBlockSpacing(mainBlockSpacing)
 
     // 配置推理内容 Markdown（更紧凑）
     this.reasoningMarkdownController
       .setTitleColor(reasoningTextColor)
       .setTextColor(reasoningTextColor)
-      .setTextSize(fs - 2)
-      .setTextLineHeight(Math.round((fs - 2) * 1.35))
-      .setTitleSize([fs + 3, fs + 1, fs, fs - 1, fs - 2, fs - 2])
-      .setTitleLineHeight([
-        Math.round((fs + 3) * 1.3), Math.round((fs + 1) * 1.3), Math.round(fs * 1.3),
-        Math.round((fs - 1) * 1.3), Math.round((fs - 2) * 1.3), Math.round((fs - 2) * 1.3)])
+      .setTextSize(compactTextSize)
+      .setTextLineHeight(getMarkdownTextLineHeight(compactTextSize, true))
+      .setTitleSize(compactTitleSizes)
+      .setTitleLineHeight(getMarkdownTitleLineHeights(compactTitleSizes, true))
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
+      .setQuotePadding(compactQuotePadding)
       .setHyperlinkTextColor(linkColor)
       .setHyperlinkBackgroundColor(linkBgColor)
       .setInlineCodeColor(inlineCodeTextColor)
@@ -304,19 +319,19 @@ export struct MessageBubble {
       .setCodeCopyListener((code: string) => {
         this.copyToClipboard(code)
       })
+    this.reasoningMarkdownController.setBlockSpacing(compactBlockSpacing)
 
     // 配置翻译内容 Markdown
     this.translationMarkdownController
       .setTitleColor(titleColor)
       .setTextColor(textColor)
-      .setTextSize(fs - 2)
-      .setTextLineHeight(Math.round((fs - 2) * 1.35))
-      .setTitleSize([fs + 5, fs + 3, fs + 1, fs, fs - 1, fs - 2])
-      .setTitleLineHeight([
-        Math.round((fs + 5) * 1.3), Math.round((fs + 3) * 1.3), Math.round((fs + 1) * 1.3),
-        Math.round(fs * 1.3), Math.round((fs - 1) * 1.3), Math.round((fs - 2) * 1.3)])
+      .setTextSize(compactTextSize)
+      .setTextLineHeight(getMarkdownTextLineHeight(compactTextSize, true))
+      .setTitleSize(compactTitleSizes)
+      .setTitleLineHeight(getMarkdownTitleLineHeights(compactTitleSizes, true))
       .setQuoteBackgroundColor(quoteBgColor)
       .setQuoteBorderColor(linkColor)
+      .setQuotePadding(compactQuotePadding)
       .setHyperlinkTextColor(linkColor)
       .setHyperlinkBackgroundColor(linkBgColor)
       .setInlineCodeColor(inlineCodeTextColor)
@@ -338,6 +353,7 @@ export struct MessageBubble {
       .setCodeCopyListener((code: string) => {
         this.copyToClipboard(code)
       })
+    this.translationMarkdownController.setBlockSpacing(compactBlockSpacing)
   }
 
   @Monitor('themeRenderKey')
@@ -1163,12 +1179,14 @@ export struct MessageBubble {
             // ========== 工具调用区域 ==========
             if (this.message.hasToolCalls()) {
               ForEach(this.message.toolCalls, (toolCall: ToolCall, index: number) => {
-                ToolCallCard({
-                  toolCall: toolCall,
-                  toolResult: index < this.message.toolResults.length ? this.message.toolResults[index] : null,
-                  isExecuting: this.message.isGenerating && index >= this.message.toolResults.length
-                })
-                  .margin({ bottom: 6 })
+                if (!this.shouldHideToolCallCard(toolCall)) {
+                  ToolCallCard({
+                    toolCall: toolCall,
+                    toolResult: index < this.message.toolResults.length ? this.message.toolResults[index] : null,
+                    isExecuting: this.message.isGenerating && index >= this.message.toolResults.length
+                  })
+                    .margin({ bottom: 6 })
+                }
               }, (toolCall: ToolCall, index: number) => toolCall.id + '_' + index.toString())
             }
 
@@ -1692,6 +1710,27 @@ export struct MessageBubble {
       return '搜索结果'
     }
     return ''
+  }
+
+  private shouldHideToolCallCard(toolCall: ToolCall): boolean {
+    return this.message.hasSearchReferences() && this.isWebSearchToolCall(toolCall)
+  }
+
+  private isWebSearchToolCall(toolCall: ToolCall): boolean {
+    if (toolCall.toolId.trim() === 'web_search') {
+      return true
+    }
+    return this.isWebSearchFunctionName(toolCall.functionName)
+  }
+
+  private isWebSearchFunctionName(functionName: string): boolean {
+    const normalizedName = functionName.trim().toLowerCase().replace(/[\s\-]+/g, '_')
+    return normalizedName === 'web_search' ||
+      normalizedName === 'exa_search' ||
+      normalizedName === 'websearch' ||
+      normalizedName === 'search_web' ||
+      normalizedName === 'internet_search' ||
+      normalizedName === 'web_search_exa'
   }
 
   private getSearchSourceLabel(): string {
