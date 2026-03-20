@@ -5,7 +5,7 @@ import { getImportExportService, ExportOptions } from '../services/ImportExportS
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
-import { getSettingsPageContentMaxWidth } from '../utils/SettingsPageLayoutHelper'
+import { getCompactTabsBarHeightForIndex, getSettingsPageContentMaxWidth } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
 
 let exportDataPathStack: NavPathStack | null = null
@@ -58,6 +58,25 @@ struct ExportDataPage {
 
   private isDetailPaneMode(): boolean {
     return this.settingsDetailPresentationMode === SettingsPagePresentationMode.DETAIL_PANE
+  }
+
+  private getBaseBottomInset(): number {
+    return this.px2vp(this.bottomAvoidHeight)
+  }
+
+  private getCompactTabsOverlayInset(): number {
+    if (this.isDetailPaneMode()) {
+      return 0
+    }
+    return getCompactTabsBarHeightForIndex(this.getBaseBottomInset()) - this.getBaseBottomInset()
+  }
+
+  private getScrollBottomPadding(): number {
+    return 100 + this.getCompactTabsOverlayInset()
+  }
+
+  private getBottomActionBarPadding(): number {
+    return 12 + this.getBaseBottomInset() + this.getCompactTabsOverlayInset()
   }
 
   private showExportToast(message: string | Resource, duration: number = 2000,
@@ -289,7 +308,7 @@ struct ExportDataPage {
           }
           .width('100%')
           .justifyContent(FlexAlign.Center)
-          .padding({ left: 16, right: 16, bottom: 100 })
+          .padding({ left: 16, right: 16, bottom: this.getScrollBottomPadding() })
         }
         .width('100%')
         .layoutWeight(1)
@@ -313,7 +332,7 @@ struct ExportDataPage {
         }
         .width('100%')
         .justifyContent(FlexAlign.Center)
-        .padding({ left: 16, right: 16, top: 12, bottom: 12 + this.px2vp(this.bottomAvoidHeight) })
+        .padding({ left: 16, right: 16, top: 12, bottom: this.getBottomActionBarPadding() })
         .backgroundColor($r('app.color.background'))
         .shadow({
           radius: 8,

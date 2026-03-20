@@ -7,6 +7,7 @@ import { getAppUiState } from '../../state/AppUiState'
 export struct IndexSessionListSection {
   @Param sessionGroups: SessionListGroupViewModel[] = []
   @Param isMultiSelectMode: boolean = false
+  @Param topSpacerHeight: number = 0
   @Param bottomSpacerHeight: number = 100
   @Param themeRenderKey: string = ''
   @Event onGetGroupTitle: (groupKey: string) => Resource = (_groupKey: string): Resource => $r('app.string.group_older')
@@ -130,6 +131,15 @@ export struct IndexSessionListSection {
 
   build() {
     List({ scroller: this.sessionListScroller }) {
+      if (this.topSpacerHeight > 0) {
+        ListItem() {
+          Column()
+            .height(this.topSpacerHeight)
+        }
+        .focusable(false)
+        .selectable(false)
+      }
+
       ForEach(this.sessionGroups, (group: SessionListGroupViewModel) => {
         this.SessionGroup(group)
       }, (group: SessionListGroupViewModel): string => group.key)

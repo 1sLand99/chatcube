@@ -96,6 +96,7 @@ struct Index {
   @Local searchText: string = ''
   @Local isSearchExpanded: boolean = false
   @Local currentSessionFilter: SessionFilterType = SessionFilterType.ALL
+  @Local compactChatHeaderHeight: number = 0
   @Local tabletDetailSessionId: string = ''
   private get activeChatSessionId(): string {
     return getAppUiState().activeChatSessionId
@@ -162,6 +163,10 @@ struct Index {
   @Monitor('sessionListRefreshAt')
   onSessionListRefreshMonitor(): void {
     this.onSessionListRefresh()
+  }
+  @Monitor('isMultiSelectMode')
+  onMultiSelectModeMonitor(): void {
+    this.compactChatHeaderHeight = 0
   }
   // 多选模式状态
   @Local isMultiSelectMode: boolean = false
@@ -744,13 +749,40 @@ struct Index {
 
   private getChatListBottomSpacerHeight(): number {
     const cardBottomBreathingRoom = 12
-    const viewportBottomInset = this.isExpandedLayout() ? this.px2vp(this.bottomAvoidHeight) : 0
-    return viewportBottomInset + INDEX_NEW_CHAT_FAB_SIZE +
+    return this.getFabBaseBottomInset() + INDEX_NEW_CHAT_FAB_SIZE +
       INDEX_NEW_CHAT_FAB_BOTTOM_SPACING + cardBottomBreathingRoom
   }
 
   private getFabOffsetY(): number {
     return getFabOffsetYForIndex(this.getFabBaseBottomInset())
+  }
+
+  private getCompactChatHeaderDefaultHeight(): number {
+    return this.px2vp(this.topAvoidHeight) + (this.isMultiSelectMode ? 56 : 92)
+  }
+
+  private getCompactChatHeaderOverlayHeight(): number {
+    return this.compactChatHeaderHeight > 0 ? this.compactChatHeaderHeight : this.getCompactChatHeaderDefaultHeight()
+  }
+
+  private getChatListTopSpacerHeight(): number {
+    return this.isExpandedLayout() ? 0 : this.getCompactChatHeaderOverlayHeight()
+  }
+
+  private readMeasuredAreaHeight(area: Area): number {
+    const height = area.height
+    if (typeof height !== 'number' || Number.isNaN(height)) {
+      return 0
+    }
+    return height
+  }
+
+  private handleCompactChatHeaderAreaChange(area: Area): void {
+    const nextHeight = this.readMeasuredAreaHeight(area)
+    if (nextHeight <= 0 || Math.abs(nextHeight - this.compactChatHeaderHeight) < 0.5) {
+      return
+    }
+    this.compactChatHeaderHeight = nextHeight
   }
 
   private async persistHandAdaptiveSettings(): Promise<void> {
@@ -1121,7 +1153,9 @@ struct Index {
       .layoutWeight(1)
       .barMode(BarMode.Fixed)
       .barHeight(this.getCompactTabsBarHeight())
-      .barBackgroundBlurStyle(BlurStyle.COMPONENT_THICK)
+      .barOverlap(true)
+      .barBackgroundColor(Color.Transparent)
+      .barBackgroundBlurStyle(BlurStyle.COMPONENT_THIN)
       .scrollable(false)
       .onChange((index: number) => {
         this.switchToTab(index)
@@ -1382,9 +1416,9 @@ struct Index {
   }
 
   @Builder
-  private ChatListPanelContent() {
+  private ChatListHeaderContent(applyTopInset: boolean = false) {
     Column() {
-      if (!this.isExpandedLayout()) {
+      if (applyTopInset) {
         Column()
           .width('100%')
           .height(this.px2vp(this.topAvoidHeight))
@@ -1405,21 +1439,18 @@ struct Index {
           }
 
           if (this.isSearchExpanded) {
-            Row() {
-              Row() {
-                SymbolGlyph($r('sys.symbol.magnifyingglass'))
-                  .fontSize(18)
-                  .fontColor([$r('app.color.text_tertiary')])
-              }
-              .width(36)
-              .height(36)
-              .justifyContent(FlexAlign.Center)
+            Row({ space: 8 }) {
+              SymbolGlyph($r('sys.symbol.magnifyingglass'))
+                .fontSize(18)
+                .fontColor([$r('app.color.text_tertiary')])
 
               TextInput({ text: this.searchText, placeholder: $r('app.string.search_sessions_placeholder') })
                 .layoutWeight(1)
                 .height(36)
+                .fontSize(14)
+                .fontColor($r('app.color.text_primary'))
                 .backgroundColor(Color.Transparent)
-                .padding({ left: 0, right: 8 })
+                .padding({ left: 2, right: 0 })
                 .caretColor(this.themePrimary)
                 .placeholderColor($r('app.color.text_tertiary'))
                 .onChange((value: string) => {
@@ -1431,9 +1462,11 @@ struct Index {
                     this.collapseSearch()
                   }
                 })
-          }
+            }
             .layoutWeight(1)
             .height(40)
+            .padding({ left: 12, right: 12 })
+            .alignItems(VerticalAlign.Center)
             .backgroundColor($r('app.color.surface'))
             .borderRadius(20)
             .geometryTransition('SEARCH_BAR_ID', { follow: true })
@@ -1489,30 +1522,75 @@ struct Index {
         .padding({ left: 8, right: 8 })
         .alignItems(VerticalAlign.Center)
       }
+    }
+    .width('100%')
+  }
 
+  @Builder
+  private CompactChatHeaderOverlay() {
+    Column() {
+      this.ChatListHeaderContent(true)
+    }
+    .width('100%')
+    .backgroundColor(Color.Transparent)
+    .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
+    .onAreaChange((_oldArea: Area, newArea: Area) => {
+      this.handleCompactChatHeaderAreaChange(newArea)
+    })
+  }
+
+  @Builder
+  private ChatListPanelContent(topSpacerHeight: number = 0) {
+    Column() {
       if (this.isLoading) {
         Column() {
-          LoadingProgress()
-            .width(48)
-            .height(48)
-            .color(this.themePrimary)
+          if (topSpacerHeight > 0) {
+            Column()
+              .width('100%')
+              .height(topSpacerHeight)
+          }
+
+          Column() {
+            LoadingProgress()
+              .width(48)
+              .height(48)
+              .color(this.themePrimary)
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .justifyContent(FlexAlign.Center)
         }
         .width('100%')
         .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
       } else if (this.sessions.length === 0) {
-        IndexEmptyStateCard({
-          icon: $r('sys.symbol.ellipsis_message'),
-          title: $r('app.string.no_sessions'),
-          description: $r('app.string.start_new_chat'),
-          showButton: true,
-          buttonText: $r('app.string.new_chat'),
-          onButtonClick: (): void => {
-            this.openChatRoute({} as ChatPageRouteParams)
+        Column() {
+          if (topSpacerHeight > 0) {
+            Column()
+              .width('100%')
+              .height(topSpacerHeight)
           }
-        })
-      } else {
-        if (this.filteredSessionCount === 0) {
+
+          IndexEmptyStateCard({
+            icon: $r('sys.symbol.ellipsis_message'),
+            title: $r('app.string.no_sessions'),
+            description: $r('app.string.start_new_chat'),
+            showButton: true,
+            buttonText: $r('app.string.new_chat'),
+            onButtonClick: (): void => {
+              this.openChatRoute({} as ChatPageRouteParams)
+            }
+          })
+        }
+        .width('100%')
+        .layoutWeight(1)
+      } else if (this.filteredSessionCount === 0) {
+        Column() {
+          if (topSpacerHeight > 0) {
+            Column()
+              .width('100%')
+              .height(topSpacerHeight)
+          }
+
           if (this.searchText.trim() !== '') {
             IndexEmptyStateCard({
               icon: $r('sys.symbol.magnifyingglass'),
@@ -1526,41 +1604,44 @@ struct Index {
               description: $r('app.string.favorite_sessions_hint')
             })
           }
-        } else {
-          Column() {
-            IndexSessionListSection({
-              sessionGroups: this.sessionListGroups,
-              isMultiSelectMode: this.isMultiSelectMode,
-              bottomSpacerHeight: this.isMultiSelectMode ? 16 : this.getChatListBottomSpacerHeight(),
-              themeRenderKey: this.sessionListThemeRenderKey,
-              onGetGroupTitle: (groupKey: string): Resource => {
-                return this.getSessionGroupTitle(groupKey)
-              },
-              onToggleSelection: (sessionId: string): void => {
-                this.handleSessionCardClick(sessionId)
-              },
-              onOpenSession: (sessionId: string): void => {
-                this.openChatRoute({ sessionId: sessionId } as ChatPageRouteParams)
-              },
-              onDeleteSession: (sessionId: string): void => {
-                this.deleteSession(sessionId)
-              },
-              onEnterMultiSelect: (sessionId: string): void => {
-                this.handleEnterMultiSelectMode(sessionId)
-              },
-              onShareSession: (session: ChatSession): void => {
-                this.handleShareSession(session)
-              },
-              onToggleFavorite: (session: ChatSession): void => {
-                this.handleToggleFavoriteSession(session)
-              }
-            })
-            .width('100%')
-            .height('100%')
-          }
-          .width('100%')
-          .layoutWeight(1)
         }
+        .width('100%')
+        .layoutWeight(1)
+      } else {
+        Column() {
+          IndexSessionListSection({
+            sessionGroups: this.sessionListGroups,
+            isMultiSelectMode: this.isMultiSelectMode,
+            topSpacerHeight: topSpacerHeight,
+            bottomSpacerHeight: this.isMultiSelectMode ? 16 : this.getChatListBottomSpacerHeight(),
+            themeRenderKey: this.sessionListThemeRenderKey,
+            onGetGroupTitle: (groupKey: string): Resource => {
+              return this.getSessionGroupTitle(groupKey)
+            },
+            onToggleSelection: (sessionId: string): void => {
+              this.handleSessionCardClick(sessionId)
+            },
+            onOpenSession: (sessionId: string): void => {
+              this.openChatRoute({ sessionId: sessionId } as ChatPageRouteParams)
+            },
+            onDeleteSession: (sessionId: string): void => {
+              this.deleteSession(sessionId)
+            },
+            onEnterMultiSelect: (sessionId: string): void => {
+              this.handleEnterMultiSelectMode(sessionId)
+            },
+            onShareSession: (session: ChatSession): void => {
+              this.handleShareSession(session)
+            },
+            onToggleFavorite: (session: ChatSession): void => {
+              this.handleToggleFavoriteSession(session)
+            }
+          })
+          .width('100%')
+          .height('100%')
+        }
+        .width('100%')
+        .layoutWeight(1)
       }
     }
     .width('100%')
@@ -1571,7 +1652,12 @@ struct Index {
   @Builder
   private ChatListViewportContent() {
     Column() {
-      this.ChatListPanelContent()
+      if (this.isExpandedLayout()) {
+        this.ChatListHeaderContent(false)
+        this.ChatListPanelContent(0)
+      } else {
+        this.ChatListPanelContent(this.getChatListTopSpacerHeight())
+      }
     }
     .width('100%')
     .height('100%')
@@ -1579,37 +1665,85 @@ struct Index {
   }
 
   @Builder
+  private CompactChatListViewport() {
+    Stack({ alignContent: Alignment.Top }) {
+      this.ChatListViewportContent()
+      this.CompactChatHeaderOverlay()
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
   ChatListPanel() {
-    if (this.isMultiSelectMode) {
-      Column() {
-        this.ChatListPanelContent()
-        MultiSelectToolbar({
-          selectedCount: this.selectedSessionIds.length,
-          totalCount: this.filteredSessionCount,
-          onSelectAll: () => {
-            this.handleSelectAllSessions()
-          },
-          onDelete: () => {
-            this.handleDeleteSelectedSessions()
-          },
-          onShare: () => {
-            this.handleShareSelectedSessions()
-          },
-          onCancel: () => {
-            this.handleExitMultiSelectMode()
-          }
-        })
+    if (this.isExpandedLayout()) {
+      if (this.isMultiSelectMode) {
+        Column() {
+          this.ChatListViewportContent()
+          MultiSelectToolbar({
+            selectedCount: this.selectedSessionIds.length,
+            totalCount: this.filteredSessionCount,
+            onSelectAll: () => {
+              this.handleSelectAllSessions()
+            },
+            onDelete: () => {
+              this.handleDeleteSelectedSessions()
+            },
+            onShare: () => {
+              this.handleShareSelectedSessions()
+            },
+            onCancel: () => {
+              this.handleExitMultiSelectMode()
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor($r('app.color.background'))
+      } else {
+        Stack({ alignContent: Alignment.BottomEnd }) {
+          this.ChatListViewportContent()
+          this.FloatingActionButton()
+        }
+        .width('100%')
+        .height('100%')
       }
-      .width('100%')
-      .height('100%')
-      .backgroundColor($r('app.color.background'))
     } else {
-      Stack({ alignContent: Alignment.BottomEnd }) {
-        this.ChatListViewportContent()
-        this.FloatingActionButton()
+      if (this.isMultiSelectMode) {
+        Column() {
+          Column() {
+            this.CompactChatListViewport()
+          }
+          .width('100%')
+          .layoutWeight(1)
+          MultiSelectToolbar({
+            selectedCount: this.selectedSessionIds.length,
+            totalCount: this.filteredSessionCount,
+            onSelectAll: () => {
+              this.handleSelectAllSessions()
+            },
+            onDelete: () => {
+              this.handleDeleteSelectedSessions()
+            },
+            onShare: () => {
+              this.handleShareSelectedSessions()
+            },
+            onCancel: () => {
+              this.handleExitMultiSelectMode()
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor($r('app.color.background'))
+      } else {
+        Stack({ alignContent: Alignment.BottomEnd }) {
+          this.CompactChatListViewport()
+          this.FloatingActionButton()
+        }
+        .width('100%')
+        .height('100%')
       }
-      .width('100%')
-      .height('100%')
     }
   }
 
@@ -1785,10 +1919,17 @@ struct Index {
 
   @Builder
   private SettingsNavigationScrollableContent() {
-    List() {
-      ListItem() {
+    Scroll() {
+      Column() {
         this.SettingsNavigationContent()
+
+        if (!this.isSettingsSplitMode()) {
+          Blank()
+            .width('100%')
+            .height(this.getCompactTabsBarHeight() + 12)
+        }
       }
+      .width('100%')
     }
     .width('100%')
     .height('100%')

@@ -839,7 +839,8 @@ export struct ProviderDetailPanel {
           }
           .layoutWeight(1)
           .barOverlap(false)
-          .barBackgroundBlurStyle(BlurStyle.Thin)
+          .barBackgroundColor(Color.Transparent)
+          .barBackgroundBlurStyle(BlurStyle.COMPONENT_THIN)
           .animationDuration(300)
           .onChange((index: number) => {
             this.currentTabIndex = index
@@ -917,6 +918,8 @@ export struct ProviderDetailPanel {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 2, bottom: 2 })
+    .backgroundColor(Color.Transparent)
+    .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
   }
 
   @Builder
