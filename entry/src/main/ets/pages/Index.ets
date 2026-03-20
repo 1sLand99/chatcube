@@ -30,11 +30,8 @@ import {
 } from '../utils/SelectionHelper'
 import { ChatTaskStatus } from '../models/ChatTaskModels'
 import {
-  getTotalUnreadCount as getTotalUnreadCountFromMap,
-  getUnreadCountBySession,
   parseInAppTaskAlertPayload,
-  parseOpenSessionPayload,
-  parseUnreadBySessionMap
+  parseOpenSessionPayload
 } from '../utils/TaskAlertUtils'
 import { IndexBottomTabItem } from '../components/index/IndexBottomTabItem'
 import { IndexFilterBar } from '../components/index/IndexFilterBar'
@@ -43,7 +40,8 @@ import { IndexSettingsPanel } from '../components/index/IndexSettingsPanel'
 import { IndexSettingsSheetContent } from '../components/index/IndexSettingsSheetContent'
 import { IndexSessionListSection } from '../components/index/IndexSessionListSection'
 import { SettingsSheetType, SessionFilterType, SessionGroupData } from './index/IndexPageTypes'
-import { getFilteredSessionsForIndex, buildSessionGroupsForIndex, buildSessionGroupRenderKey } from './index/IndexSessionGroupHelper'
+import { getFilteredSessionsForIndex, buildSessionGroupsForIndex } from './index/IndexSessionGroupHelper'
+import { SessionListGroupViewModel, rebuildSessionListGroupViewModels } from './index/IndexSessionListDataSource'
 import {
   getFabOffsetXForIndex,
   getFabOffsetYForIndex,
@@ -134,9 +132,6 @@ struct Index {
   private get openSessionPayload(): string {
     return getAppUiState().openSessionPayload
   }
-  private get taskUnreadBySessionJson(): string {
-    return getAppUiState().taskUnreadBySessionJson
-  }
   private get taskEventTick(): number {
     return getAppUiState().taskEventTick
   }
@@ -153,7 +148,8 @@ struct Index {
     }
     this.handleInAppTaskAlertPayload(payload)
   }
-  @Local unreadRenderTick: number = 0
+  @Local filteredSessionCount: number = 0
+  @Local sessionListGroups: SessionListGroupViewModel[] = []
   // 监听会话列表刷新信号（标题更新、创建、删除等）
   @Computed
   get sessionListRefreshAt(): number {
@@ -181,11 +177,9 @@ struct Index {
   // 返回键退出控制
   private lastBackPressTime: number = 0
   private chatViewModel: ChatViewModel = ServiceRegistry.chat()
-  private chatTaskOrchestrator = ServiceRegistry.chatTaskOrchestrator()
   private settingsManager = ServiceRegistry.settings()
   private preferencesService = ServiceRegistry.preferences()
   private settingsCallback: SettingsChangeCallback | null = null
-  private unreadBySession: Map<string, number> = new Map()
   private holdingHandSubscribed: boolean = false
   private handAdaptiveLoadSeq: number = 0
   private sessionLoadSeq: number = 0
@@ -220,6 +214,7 @@ struct Index {
       this.navPathStack.pushPath({ name: 'ChatPage', param: params as ChatPageRouteParams })
       return
     }
+    this.refreshSessionListProjection()
   }
 
   private isExpandedLayout(): boolean {
@@ -338,6 +333,7 @@ struct Index {
   private openTabletChatDetail(params: ChatPageRouteParams): void {
     this.currentTabletDetailParams = params
     this.tabletDetailSessionId = params.sessionId ?? ''
+    this.refreshSessionListProjection()
     if (this.tabletChatDetailPathStack.size() > 0) {
       this.tabletChatDetailPathStack.replacePath({ name: 'ChatPage', param: params as ChatPageRouteParams })
       return
@@ -351,6 +347,7 @@ struct Index {
     }
     this.currentTabletDetailParams = null
     this.tabletDetailSessionId = ''
+    this.refreshSessionListProjection()
   }
 
   private openSettingsDestination(routeName: SettingsRouteName): void {
@@ -400,14 +397,13 @@ struct Index {
     this.handleOpenSessionPayload(this.openSessionPayload)
   }
 
-  onTaskUnreadBySessionChanged(): void {
-    this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
+  onActiveChatSessionIdChanged(): void {
+    this.refreshSessionListProjection()
   }
 
   onTaskEventTickChanged(): void {
     if (this.taskEventTick > 0) {
       this.loadSessions()
-      this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
     }
   }
 
@@ -433,7 +429,7 @@ struct Index {
         (): void => this.onWindowMetricsChanged()),
       observeAppUiState(AppStorageKeys.OPEN_NEW_CHAT, (): void => this.onOpenNewChat()),
       observeAppUiState(AppStorageKeys.OPEN_SESSION_PAYLOAD, (): void => this.onOpenSessionPayloadChanged()),
-      observeAppUiState(AppStorageKeys.TASK_UNREAD_BY_SESSION, (): void => this.onTaskUnreadBySessionChanged()),
+      observeAppUiState(AppStorageKeys.ACTIVE_CHAT_SESSION_ID, (): void => this.onActiveChatSessionIdChanged()),
       observeAppUiState(AppStorageKeys.TASK_EVENT_TICK, (): void => this.onTaskEventTickChanged()),
       observeAppUiState(AppStorageKeys.SETTINGS_HAND_ADAPTIVE_CHANGED_AT,
         (): void => this.onHandAdaptiveSettingsTickChanged())
@@ -455,7 +451,6 @@ struct Index {
         if (to === 'navBar') {
           // pop 完成，navPathStack.size() 已变为 0，loadSessions 不再跳过
           this.loadSessions()
-          this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
           // 补偿 pop 动画期间被 shouldHandleInAppTaskAlert 拦截的 alert（直接处理，不走守卫）
           this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
         }
@@ -467,6 +462,7 @@ struct Index {
         if (to === 'navBar' || this.tabletChatDetailPathStack.size() <= 0) {
           this.currentTabletDetailParams = null
           this.tabletDetailSessionId = ''
+          this.refreshSessionListProjection()
           this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
           return
         }
@@ -475,6 +471,7 @@ struct Index {
         ) as ChatPageRouteParams | undefined
         this.currentTabletDetailParams = topParam ?? null
         this.tabletDetailSessionId = topParam?.sessionId ?? ''
+        this.refreshSessionListProjection()
       }
     })
     this.settingsNavPathStack.setInterception({
@@ -490,14 +487,12 @@ struct Index {
     this.loadSessions()
     this.loadSettings()
     this.registerSettingsCallback()
-    this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
     this.handleOpenSessionPayload(this.openSessionPayload)
     this.handleInAppTaskAlertPayload(this.inAppTaskAlertPayload)
   }
 
   onPageShow(): void {
     this.loadSessions()
-    this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
     this.refreshSettingsState()
     this.loadHandAdaptiveSettings()
     this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
@@ -770,29 +765,6 @@ struct Index {
     this.updateHoldingHandSubscription()
   }
 
-  private parseUnreadBySessionJson(jsonText: string): void {
-    this.unreadBySession = parseUnreadBySessionMap(jsonText)
-    this.unreadRenderTick = this.unreadRenderTick + 1
-  }
-
-  private getUnreadCountForSession(sessionId: string): number {
-    if (this.unreadRenderTick < 0) {
-      return 0
-    }
-    return getUnreadCountBySession(this.unreadBySession, sessionId)
-  }
-
-  private isSessionUnread(sessionId: string): boolean {
-    return this.getUnreadCountForSession(sessionId) > 0
-  }
-
-  private getTotalUnreadCount(): number {
-    if (this.unreadRenderTick < 0) {
-      return 0
-    }
-    return getTotalUnreadCountFromMap(this.unreadBySession)
-  }
-
   private handleOpenSessionPayload(payloadText: string): void {
     if (payloadText === '') {
       return
@@ -802,7 +774,6 @@ struct Index {
       console.error('Index', 'Failed to parse openSession payload')
       return
     }
-    this.chatTaskOrchestrator.markSessionRead(payload.sessionId)
     this.openChatRoute({ sessionId: payload.sessionId } as ChatPageRouteParams)
     setAppUiStateValue(AppStorageKeys.OPEN_SESSION_PAYLOAD, '')
   }
@@ -822,7 +793,6 @@ struct Index {
     if (payloadText === '') {
       return
     }
-    this.parseUnreadBySessionJson(this.taskUnreadBySessionJson)
     const payload = parseInAppTaskAlertPayload(payloadText)
     if (payload === null) {
       console.error('Index', 'Failed to parse in-app alert payload')
@@ -834,7 +804,6 @@ struct Index {
     opts.tone = payload.status === ChatTaskStatus.FAILED ? SnackBarTone.ERROR : SnackBarTone.SUCCESS
     opts.actionText = $r('app.string.task_alert_view')
     opts.onAction = (): void => {
-      this.chatTaskOrchestrator.markSessionRead(payload.sessionId)
       this.openChatRoute({ sessionId: payload.sessionId } as ChatPageRouteParams)
     }
     showSnackBar(this.getUIContext(), opts)
@@ -956,11 +925,13 @@ struct Index {
           }
         }
         this.sessions = reorderedSessions
+        this.refreshSessionListProjection()
         return
       }
     }
     // id 列表不同（新增或删除了会话），全量替换
     this.sessions = newSessions
+    this.refreshSessionListProjection()
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -973,6 +944,7 @@ struct Index {
     if (this.activeChatSessionId === sessionId) {
       setAppUiStateValue(AppStorageKeys.ACTIVE_CHAT_SESSION_ID, '')
     }
+    this.refreshSessionListProjection()
     this.showIndexSnack($r('app.string.conversation_deleted'), 2000, SnackBarTone.SUCCESS)
   }
 
@@ -980,8 +952,17 @@ struct Index {
     return getFilteredSessionsForIndex(this.sessions, this.searchText, this.currentSessionFilter)
   }
 
-  private getSessionGroups(): SessionGroupData[] {
-    return buildSessionGroupsForIndex(this.getFilteredSessions())
+  private refreshSessionListProjection(): void {
+    const filteredSessions = this.getFilteredSessions()
+    const nextSessionGroups: SessionGroupData[] = buildSessionGroupsForIndex(filteredSessions)
+    this.filteredSessionCount = filteredSessions.length
+    this.sessionListGroups = rebuildSessionListGroupViewModels(
+      this.sessionListGroups,
+      nextSessionGroups,
+      this.selectedSessionIds,
+      this.isMultiSelectMode,
+      this.getActiveSessionIdForChatList()
+    )
   }
 
   private getSessionGroupTitle(key: string): Resource {
@@ -996,8 +977,7 @@ struct Index {
   }
 
   private getFilterCountText(): string {
-    const count = this.getFilteredSessions().length
-    return count.toString()
+    return this.filteredSessionCount.toString()
   }
 
   private shouldApplyCompactContentTopInset(): boolean {
@@ -1006,10 +986,6 @@ struct Index {
 
   private shouldApplyExpandedContentTopInset(): boolean {
     return true
-  }
-
-  private getGroupRenderKey(group: SessionGroupData): string {
-    return buildSessionGroupRenderKey(group, this.currentSessionFilter, this.searchText)
   }
 
   private getActiveSessionIdForChatList(): string {
@@ -1176,10 +1152,8 @@ struct Index {
         .height(this.px2vp(this.topAvoidHeight))
 
       this.RailTabButton(0, $r('sys.symbol.person_fill'), $r('sys.symbol.person'), $r('app.string.tab_assistant'))
-      this.RailTabButton(1, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'),
-        this.getTotalUnreadCount())
-      this.RailTabButton(2, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'),
-        $r('app.string.tab_settings'))
+      this.RailTabButton(1, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
+      this.RailTabButton(2, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'), $r('app.string.tab_settings'))
 
       Blank()
     }
@@ -1287,8 +1261,7 @@ struct Index {
       active: this.isTabActive(1),
       activeIcon: $r('sys.symbol.ellipsis_message_fill'),
       inactiveIcon: $r('sys.symbol.ellipsis_message'),
-      label: $r('app.string.tab_chat'),
-      badgeCount: this.getTotalUnreadCount()
+      label: $r('app.string.tab_chat')
     })
   }
 
@@ -1358,6 +1331,7 @@ struct Index {
     }, () => {
       this.searchText = ''
       this.isSearchExpanded = false
+      this.refreshSessionListProjection()
     })
   }
 
@@ -1432,6 +1406,7 @@ struct Index {
                 .placeholderColor($r('app.color.text_tertiary'))
                 .onChange((value: string) => {
                   this.searchText = value
+                  this.refreshSessionListProjection()
                 })
                 .onSubmit(() => {
                   if (this.searchText.trim() === '') {
@@ -1472,6 +1447,7 @@ struct Index {
           countText: this.getFilterCountText(),
           onFilterChange: (filterType: SessionFilterType): void => {
             this.currentSessionFilter = filterType
+            this.refreshSessionListProjection()
           }
         })
       } else {
@@ -1518,7 +1494,7 @@ struct Index {
           }
         })
       } else {
-        if (this.getFilteredSessions().length === 0) {
+        if (this.filteredSessionCount === 0) {
           if (this.searchText.trim() !== '') {
             IndexEmptyStateCard({
               icon: $r('sys.symbol.magnifyingglass'),
@@ -1534,21 +1510,12 @@ struct Index {
           }
         } else {
           IndexSessionListSection({
-            sessionGroups: this.getSessionGroups(),
+            sessionGroups: this.sessionListGroups,
             isMultiSelectMode: this.isMultiSelectMode,
-            selectedSessionIds: this.selectedSessionIds,
-            activeSessionId: this.getActiveSessionIdForChatList(),
             bottomSpacerHeight: this.isMultiSelectMode ? 16 : 100,
-            unreadRenderVersion: this.unreadRenderTick,
             themeRenderKey: this.sessionListThemeRenderKey,
-            onGetUnreadCount: (sessionId: string): number => {
-              return this.getUnreadCountForSession(sessionId)
-            },
             onGetGroupTitle: (groupKey: string): Resource => {
               return this.getSessionGroupTitle(groupKey)
-            },
-            onGetGroupRenderKey: (group: SessionGroupData): string => {
-              return this.getGroupRenderKey(group)
             },
             onToggleSelection: (sessionId: string): void => {
               this.handleSessionCardClick(sessionId)
@@ -1584,7 +1551,7 @@ struct Index {
         this.ChatListPanelContent()
         MultiSelectToolbar({
           selectedCount: this.selectedSessionIds.length,
-          totalCount: this.getFilteredSessions().length,
+          totalCount: this.filteredSessionCount,
           onSelectAll: () => {
             this.handleSelectAllSessions()
           },
@@ -2193,17 +2160,20 @@ struct Index {
   private handleEnterMultiSelectMode(sessionId: string): void {
     this.isMultiSelectMode = true
     this.selectedSessionIds = [sessionId]
+    this.refreshSessionListProjection()
   }
 
   // 退出多选模式
   private handleExitMultiSelectMode(): void {
     this.isMultiSelectMode = false
     this.selectedSessionIds = []
+    this.refreshSessionListProjection()
   }
 
   // 切换会话选中状态
   private handleToggleSessionSelection(sessionId: string): void {
     this.selectedSessionIds = toggleSelectionById(this.selectedSessionIds, sessionId)
+    this.refreshSessionListProjection()
   }
 
   // 全选/取消全选
@@ -2224,6 +2194,7 @@ struct Index {
     } else {
       this.selectedSessionIds = mergeSelectAllIds(this.selectedSessionIds, filteredIds)
     }
+    this.refreshSessionListProjection()
   }
 
   private async handleToggleFavoriteSession(session: ChatSession): Promise<void> {
@@ -2231,6 +2202,7 @@ struct Index {
     session.isFavorite = isFavorite
     // 触发 sessions 的 @State 更新，确保 swipeAction 文案/图标立即按收藏状态重渲染
     this.sessions = [...this.sessions]
+    this.refreshSessionListProjection()
     this.showIndexSnack(isFavorite ? $r('app.string.conversation_favorited') :
     $r('app.string.conversation_unfavorited'), 2000, SnackBarTone.SUCCESS)
     await this.loadSessions()

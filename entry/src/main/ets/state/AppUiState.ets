@@ -11,7 +11,6 @@ export class AppUiState {
   @Trace openNewChatTimestamp: number = 0
   @Trace openSessionPayload: string = ''
   @Trace sessionListRefreshAt: number = 0
-  @Trace taskUnreadBySessionJson: string = '{}'
   @Trace taskEventTick: number = 0
   @Trace inAppTaskAlertPayload: string = ''
   @Trace appInBackground: boolean = false
@@ -69,9 +68,6 @@ function applyAppUiStateValue<T extends string | number | boolean>(state: AppUiS
       return
     case AppStorageKeys.SESSION_LIST_REFRESH_AT:
       state.sessionListRefreshAt = value as number
-      return
-    case AppStorageKeys.TASK_UNREAD_BY_SESSION:
-      state.taskUnreadBySessionJson = value as string
       return
     case AppStorageKeys.TASK_EVENT_TICK:
       state.taskEventTick = value as number
@@ -196,8 +192,6 @@ function createAppUiStateFromStorage(): AppUiState {
     readStorageValue<string>(AppStorageKeys.OPEN_SESSION_PAYLOAD, ''))
   applyAppUiStateValue(state, AppStorageKeys.SESSION_LIST_REFRESH_AT,
     readStorageValue<number>(AppStorageKeys.SESSION_LIST_REFRESH_AT, 0))
-  applyAppUiStateValue(state, AppStorageKeys.TASK_UNREAD_BY_SESSION,
-    readStorageValue<string>(AppStorageKeys.TASK_UNREAD_BY_SESSION, '{}'))
   applyAppUiStateValue(state, AppStorageKeys.TASK_EVENT_TICK, readStorageValue<number>(AppStorageKeys.TASK_EVENT_TICK, 0))
   applyAppUiStateValue(state, AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD,
     readStorageValue<string>(AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD, ''))
@@ -284,7 +278,6 @@ export function syncAppUiStateFromStorage(): void {
   state.openNewChatTimestamp = freshState.openNewChatTimestamp
   state.openSessionPayload = freshState.openSessionPayload
   state.sessionListRefreshAt = freshState.sessionListRefreshAt
-  state.taskUnreadBySessionJson = freshState.taskUnreadBySessionJson
   state.taskEventTick = freshState.taskEventTick
   state.inAppTaskAlertPayload = freshState.inAppTaskAlertPayload
   state.appInBackground = freshState.appInBackground
@@ -358,8 +351,6 @@ function resolveAppUiStatePath(path: string): string {
       return 'openSessionPayload'
     case AppStorageKeys.SESSION_LIST_REFRESH_AT:
       return 'sessionListRefreshAt'
-    case AppStorageKeys.TASK_UNREAD_BY_SESSION:
-      return 'taskUnreadBySessionJson'
     case AppStorageKeys.TASK_EVENT_TICK:
       return 'taskEventTick'
     case AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD:

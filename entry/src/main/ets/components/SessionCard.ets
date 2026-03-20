@@ -13,7 +13,6 @@ import { getAppUiState } from '../state/AppUiState'
 @ComponentV2
 export struct SessionCard {
   @Param session: ChatSession = new ChatSession('', '', '')
-  @Param unreadCount: number = 0
   @Param enableAnimation: boolean = true
   @Param enableContextMenu: boolean = true
   @Param themeRenderKey: string = ''
@@ -253,18 +252,7 @@ export struct SessionCard {
             .layoutWeight(1)
         }
 
-        if (this.unreadCount > 0) {
-          Text(this.getUnreadCountText())
-            .fontSize(10)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#FFFFFF')
-            .padding({ left: 6, right: 6, top: 1, bottom: 1 })
-            .backgroundColor($r('app.color.status_error'))
-            .borderRadius(8)
-            .margin({ right: 6 })
-        }
-
-        this.RelativeTimeText(this.session.updatedAt)
+        this.RelativeTimeText()
       }
       .width('100%')
 
@@ -352,35 +340,35 @@ export struct SessionCard {
   }
 
   @Builder
-  RelativeTimeText(timestamp: number) {
+  RelativeTimeText() {
     Row({ space: 0 }) {
-      if (this.isJustNow(timestamp)) {
+      if (this.isJustNow(this.session.updatedAt)) {
         Text($r('app.string.time_just_now'))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
-      } else if (this.isMinutesAgo(timestamp)) {
-        Text(this.getMinutesAgoValue(timestamp))
+      } else if (this.isMinutesAgo(this.session.updatedAt)) {
+        Text(this.getMinutesAgoValue(this.session.updatedAt))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
         Text($r('app.string.time_minutes_ago_suffix'))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
-      } else if (this.isHoursAgo(timestamp)) {
-        Text(this.getHoursAgoValue(timestamp))
+      } else if (this.isHoursAgo(this.session.updatedAt)) {
+        Text(this.getHoursAgoValue(this.session.updatedAt))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
         Text($r('app.string.time_hours_ago_suffix'))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
-      } else if (this.isDaysAgo(timestamp)) {
-        Text(this.getDaysAgoValue(timestamp))
+      } else if (this.isDaysAgo(this.session.updatedAt)) {
+        Text(this.getDaysAgoValue(this.session.updatedAt))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
         Text($r('app.string.time_days_ago_suffix'))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
       } else {
-        Text(this.formatDateMMDD(timestamp))
+        Text(this.formatDateMMDD(this.session.updatedAt))
           .fontSize(11)
           .fontColor($r('app.color.text_tertiary'))
       }
@@ -429,13 +417,6 @@ export struct SessionCard {
 
   private getDaysAgoValue(timestamp: number): string {
     return `${Math.floor(this.getRelativeDiff(timestamp) / (24 * 60 * 60 * 1000))}`
-  }
-
-  private getUnreadCountText(): string {
-    if (this.unreadCount > 99) {
-      return '99+'
-    }
-    return this.unreadCount.toString()
   }
 }
 

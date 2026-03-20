@@ -23,7 +23,6 @@ export class ChatTaskOrchestratorService {
   private static instance: ChatTaskOrchestratorService | null = null
   private readonly MAX_CONCURRENT_TASKS: number = 3
   private tasks: Map<string, ChatTaskRuntime> = new Map()
-  private unreadBySession: Map<string, number> = new Map()
   private settingsManager: SettingsManager = getSettingsManager()
   private backgroundGuard: BackgroundRunGuardService = getBackgroundRunGuardService()
   private notificationService: ChatNotificationService = getChatNotificationService()
@@ -94,28 +93,6 @@ export class ChatTaskOrchestratorService {
     this.finishTaskInternal(taskId, ChatTaskStatus.CANCELLED, '')
   }
 
-  markSessionRead(sessionId: string): void {
-    if (sessionId === '') {
-      return
-    }
-    this.dismissInAppAlertForSession(sessionId)
-    const count = this.unreadBySession.get(sessionId)
-    if (count === undefined || count <= 0) {
-      return
-    }
-    this.unreadBySession.delete(sessionId)
-    this.syncUnreadStorage()
-    this.bumpTaskEventTick()
-  }
-
-  getUnreadCountForSession(sessionId: string): number {
-    const value = this.unreadBySession.get(sessionId)
-    if (value === undefined) {
-      return 0
-    }
-    return value
-  }
-
   private finishTaskInternal(taskId: string, status: ChatTaskStatus, errorMessage: string): void {
     const runtime = this.tasks.get(taskId)
     if (runtime === undefined || runtime.finalized) {
@@ -139,11 +116,7 @@ export class ChatTaskOrchestratorService {
   private handleTaskResult(task: ChatTaskInfo): void {
     const appInBackground = this.getAppInBackground()
     const activeSessionId = this.getActiveSessionId()
-    const shouldMarkUnread = appInBackground || activeSessionId !== task.sessionId
-
-    if (shouldMarkUnread) {
-      this.increaseUnreadCount(task.sessionId)
-    }
+    const shouldPublishInAppAlert = appInBackground || activeSessionId !== task.sessionId
 
     if (!this.settingsManager.getNotificationEnabled()) {
       return
@@ -155,7 +128,7 @@ export class ChatTaskOrchestratorService {
       return
     }
 
-    if (shouldMarkUnread) {
+    if (shouldPublishInAppAlert) {
       this.inAppAlertService.publishTaskAlert(task)
     }
 
@@ -164,47 +137,10 @@ export class ChatTaskOrchestratorService {
     }
   }
 
-  private increaseUnreadCount(sessionId: string): void {
-    const current = this.unreadBySession.get(sessionId)
-    if (current === undefined) {
-      this.unreadBySession.set(sessionId, 1)
-    } else {
-      this.unreadBySession.set(sessionId, current + 1)
-    }
-    this.syncUnreadStorage()
-  }
-
   private syncTaskCountAndStorage(): void {
     const runningCount = this.getRunningTaskCount()
     AppStorage.setOrCreate(AppStorageKeys.RUNNING_CHAT_TASK_COUNT, runningCount)
     this.backgroundGuard.updateRunningTaskCount(runningCount)
-  }
-
-  private syncUnreadStorage(): void {
-    const data: Record<string, number> = {}
-    let total = 0
-    this.unreadBySession.forEach((value: number, key: string) => {
-      data[key] = value
-      total = total + value
-    })
-    setAppUiStateValue(AppStorageKeys.TASK_UNREAD_BY_SESSION, JSON.stringify(data))
-    AppStorage.setOrCreate(AppStorageKeys.TASK_UNREAD_TOTAL, total)
-  }
-
-  private dismissInAppAlertForSession(sessionId: string): void {
-    const payloadText = AppStorage.get<string>(AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD)
-    if (payloadText === undefined || payloadText === '') {
-      return
-    }
-
-    try {
-      const payload = JSON.parse(payloadText) as Record<string, string>
-      if (payload.sessionId === sessionId) {
-        setAppUiStateValue(AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD, '')
-      }
-    } catch (error) {
-      console.error('ChatTaskOrchestratorService', `Failed to parse in-app alert payload: ${JSON.stringify(error)}`)
-    }
   }
 
   private bumpTaskEventTick(): void {

@@ -82,25 +82,3 @@ export function buildSessionGroupsForIndex(filteredSessions: ChatSession[]): Ses
   }
   return groups
 }
-
-// 用于 Index 列表渲染的稳定 key：包含所有会影响卡片展示的字段。
-// 注意：title 更新不会改变 updatedAt（避免影响排序），因此 key 必须显式包含 title。
-export function buildSessionRenderKeyForIndex(session: ChatSession): string {
-  const id = session.id
-  const favorite = session.isFavorite ? '1' : '0'
-  const updatedAt = session.updatedAt.toString()
-  const messageCount = session.messageCount.toString()
-  const title = session.title
-  const preview = getSessionDisplayPreviewText(session)
-  return `${id}_${favorite}_${updatedAt}_${messageCount}_${title}_${preview}`
-}
-
-export function buildSessionGroupRenderKey(group: SessionGroupData, filterType: SessionFilterType, searchText: string):
-  string {
-  let orderSignature = ''
-  for (let i = 0; i < group.sessions.length; i++) {
-    const session = group.sessions[i]
-    orderSignature += `${buildSessionRenderKeyForIndex(session)}|`
-  }
-  return `${group.key}_${filterType.toString()}_${searchText}_${orderSignature}`
-}

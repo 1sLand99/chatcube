@@ -286,8 +286,6 @@ export default class EntryAbility extends UIAbility {
       setAppUiStateValue(AppStorageKeys.APP_IN_BACKGROUND, false);
       setAppUiStateValue(AppStorageKeys.ACTIVE_CHAT_SESSION_ID, '')
       setAppUiStateValue(AppStorageKeys.SPEAKING_MESSAGE_ID, '')
-      setAppUiStateValue(AppStorageKeys.TASK_UNREAD_BY_SESSION, '{}')
-      AppStorage.setOrCreate(AppStorageKeys.TASK_UNREAD_TOTAL, 0)
 
       if (this.pendingOpenSessionPayload !== '') {
         setAppUiStateValue(AppStorageKeys.OPEN_SESSION_PAYLOAD, this.pendingOpenSessionPayload)

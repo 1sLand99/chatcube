@@ -107,9 +107,6 @@ export struct ChatPage {
   private get appInBackground(): boolean {
     return getAppUiState().appInBackground
   }
-  private get taskUnreadBySessionJson(): string {
-    return getAppUiState().taskUnreadBySessionJson
-  }
   private get inAppTaskAlertPayload(): string {
     return getAppUiState().inAppTaskAlertPayload
   }
@@ -236,7 +233,6 @@ export struct ChatPage {
   @Local editingWebSearchEnabled: boolean = false
   @Local editingSelectedToolIds: string[] = []
   @Local editingReasoningLevel: ReasoningLevel = ReasoningLevel.OFF
-  @Local otherSessionUnreadCount: number = 0
   private scroller: Scroller = new Scroller()
   private maxScrollOffset: number = 0
   private readonly floatingScrollButtonBottomOffsetVp: number = 128
@@ -499,10 +495,6 @@ export struct ChatPage {
     }
   }
 
-  onTaskUnreadBySessionChanged(): void {
-    this.getTaskAlertFlow().refreshOtherSessionUnreadCount()
-  }
-
   onInAppTaskAlertPayloadChanged(): void {
     this.getTaskAlertFlow().handleInAppTaskAlertPayload(this.inAppTaskAlertPayload)
   }
@@ -525,7 +517,6 @@ export struct ChatPage {
       return
     }
     this.appUiStateDisposers = [
-      observeAppUiState(AppStorageKeys.TASK_UNREAD_BY_SESSION, (): void => this.onTaskUnreadBySessionChanged()),
       observeAppUiState(AppStorageKeys.IN_APP_TASK_ALERT_PAYLOAD, (): void => this.onInAppTaskAlertPayloadChanged()),
       observeAppUiState(AppStorageKeys.OPEN_SESSION_PAYLOAD, (): void => this.onOpenSessionPayloadChanged()),
       observeAppUiState(AppStorageKeys.TASK_EVENT_TICK, (): void => this.onTaskEventTickChanged())
@@ -554,8 +545,6 @@ export struct ChatPage {
     this.syncSendingStateFromRuntime()
     this.fixInconsistentState()
     this.refreshProviders()
-    this.chatTaskOrchestrator.markSessionRead(this.sessionId)
-    this.getTaskAlertFlow().refreshOtherSessionUnreadCount()
     this.updateRuntimeStateWatchdog()
     // 检查在页面切换间隙到达的 in-app alert
     this.getTaskAlertFlow().handleInAppTaskAlertPayload(this.inAppTaskAlertPayload)
@@ -563,8 +552,6 @@ export struct ChatPage {
 
   private activateCurrentSessionRuntimeState(): void {
     this.syncActiveSessionBinding()
-    this.chatTaskOrchestrator.markSessionRead(this.sessionId)
-    this.getTaskAlertFlow().refreshOtherSessionUnreadCount()
     this.syncSendingStateFromRuntime()
     this.fixInconsistentState()
     this.getTaskAlertFlow().handleOpenSessionPayload(this.openSessionPayload)
@@ -1385,14 +1372,8 @@ export struct ChatPage {
       return this.taskAlertFlow
     }
     const deps: ChatTaskAlertFlowDependencies = {
-      chatTaskOrchestrator: this.chatTaskOrchestrator,
-      getTaskUnreadBySessionJson: (): string => this.taskUnreadBySessionJson,
       getCurrentSessionId: (): string => this.sessionId,
-      isCurrentSessionVisible: (): boolean => this.isPageVisible,
       getLastHandledAlertTimestamp: (): number => this.lastHandledAlertTimestamp,
-      onSetOtherSessionUnreadCount: (count: number): void => {
-        this.otherSessionUnreadCount = count
-      },
       onSetLastHandledAlertTimestamp: (value: number): void => {
         this.lastHandledAlertTimestamp = value
       },
@@ -1737,7 +1718,6 @@ export struct ChatPage {
           titleGenerateFailed: this.titleGenerateFailed,
           contentMaxWidth: this.getChatContentMaxWidth(),
           isSending: this.isSending,
-          otherSessionUnreadCount: this.otherSessionUnreadCount,
           topInsetHeight: this.getPageTopAvoidHeight(),
           onBack: () => {
             this.handleBack()

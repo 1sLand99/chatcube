@@ -1,20 +1,13 @@
-import { ChatTaskOrchestratorService } from '../../services/ChatTaskOrchestratorService'
 import { ChatTaskStatus } from '../../models/ChatTaskModels'
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../../utils/ToastUtil'
 import {
-  getTotalUnreadCountExcludeSession,
   parseInAppTaskAlertPayload,
-  parseOpenSessionPayload,
-  tryParseUnreadBySessionMap
+  parseOpenSessionPayload
 } from '../../utils/TaskAlertUtils'
 
 export interface ChatTaskAlertFlowDependencies {
-  chatTaskOrchestrator: ChatTaskOrchestratorService
-  getTaskUnreadBySessionJson: () => string
   getCurrentSessionId: () => string
-  isCurrentSessionVisible: () => boolean
   getLastHandledAlertTimestamp: () => number
-  onSetOtherSessionUnreadCount: (count: number) => void
   onSetLastHandledAlertTimestamp: (value: number) => void
   onNavigateToSession: (sessionId: string) => void
   onClearOpenSessionPayloadStorage: () => void
@@ -27,30 +20,6 @@ export class ChatTaskAlertFlow {
 
   constructor(deps: ChatTaskAlertFlowDependencies) {
     this.deps = deps
-  }
-
-  refreshOtherSessionUnreadCount(): void {
-    const taskUnreadBySessionJson = this.deps.getTaskUnreadBySessionJson()
-    if (taskUnreadBySessionJson === '') {
-      this.deps.onSetOtherSessionUnreadCount(0)
-      return
-    }
-
-    const currentSessionId = this.deps.getCurrentSessionId()
-    const unreadBySession = tryParseUnreadBySessionMap(taskUnreadBySessionJson)
-    if (unreadBySession === null) {
-      this.deps.onSetOtherSessionUnreadCount(0)
-      console.error('ChatTaskAlertFlow', 'Failed to parse unread map')
-      return
-    }
-
-    const currentSessionUnreadCount = unreadBySession.get(currentSessionId) ?? 0
-    if (currentSessionId !== '' && currentSessionUnreadCount > 0 && this.deps.isCurrentSessionVisible()) {
-      this.deps.chatTaskOrchestrator.markSessionRead(currentSessionId)
-      unreadBySession.delete(currentSessionId)
-    }
-
-    this.deps.onSetOtherSessionUnreadCount(getTotalUnreadCountExcludeSession(unreadBySession, currentSessionId))
   }
 
   handleOpenSessionPayload(payloadText: string): void {
@@ -66,13 +35,10 @@ export class ChatTaskAlertFlow {
 
     const currentSessionId = this.deps.getCurrentSessionId()
     if (payload.sessionId === currentSessionId) {
-      this.deps.chatTaskOrchestrator.markSessionRead(currentSessionId)
-      this.refreshOtherSessionUnreadCount()
       this.deps.onClearOpenSessionPayloadStorage()
       return
     }
 
-    this.deps.chatTaskOrchestrator.markSessionRead(payload.sessionId)
     this.deps.onNavigateToSession(payload.sessionId)
     this.deps.onClearOpenSessionPayloadStorage()
   }
@@ -106,7 +72,6 @@ export class ChatTaskAlertFlow {
     opts.tone = payload.status === ChatTaskStatus.FAILED ? SnackBarTone.ERROR : SnackBarTone.SUCCESS
     opts.actionText = $r('app.string.task_alert_view')
     opts.onAction = (): void => {
-      this.deps.chatTaskOrchestrator.markSessionRead(payload.sessionId)
       this.deps.onNavigateToSession(payload.sessionId)
     }
     showSnackBar(this.deps.getUIContext(), opts)

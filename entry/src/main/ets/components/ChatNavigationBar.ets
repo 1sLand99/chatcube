@@ -44,8 +44,6 @@ export struct ChatNavigationBar {
   @Param contentMaxWidth: number = 99999
   // 是否正在发送（用于禁用重新生成标题）
   @Param isSending: boolean = false
-  // 其他会话未读完成提醒数量
-  @Param otherSessionUnreadCount: number = 0
   @Param topInsetHeight: number = 0
 
   // 回调函数
@@ -211,18 +209,6 @@ export struct ChatNavigationBar {
               .onClick(() => {
                 this.onBack()
               })
-
-              if (this.otherSessionUnreadCount > 0) {
-                Text(this.getUnreadBadgeText())
-                  .fontSize(9)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor('#FFFFFF')
-                  .padding({ left: 4, right: 4 })
-                  .height(14)
-                  .backgroundColor($r('app.color.status_error'))
-                  .borderRadius(7)
-                  .position({ x: 20, y: -4 })
-              }
             }
             .width(34)
             .height(30)
@@ -439,13 +425,6 @@ export struct ChatNavigationBar {
       return this.currentModelName
     }
     return $r('app.string.select_model')
-  }
-
-  private getUnreadBadgeText(): string {
-    if (this.otherSessionUnreadCount > 99) {
-      return '99+'
-    }
-    return this.otherSessionUnreadCount.toString()
   }
 
   // 开始编辑标题
