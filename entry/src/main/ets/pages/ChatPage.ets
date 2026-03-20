@@ -11,7 +11,6 @@ import {
   ModelRole,
   ToolCall,
   ToolConfig,
-  ToolPermissionLevel,
   ToolSourceType
 } from '../models/ChatModels'
 import { AttachmentPicker } from '../components/AttachmentPicker'
@@ -40,6 +39,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ChatModelSelectorSheetContent } from '../components/chat/ChatModelSelectorSheetContent'
 import { ChatInputAreaSection } from '../components/chat/ChatInputAreaSection'
 import { ChatMessageListSection } from '../components/chat/ChatMessageListSection'
+import { ChatToolPickerSheetContent } from '../components/chat/ChatToolPickerSheetContent'
+import { ChatToolExecutionApprovalSheetContent } from '../components/chat/ChatToolExecutionApprovalSheetContent'
 import {
   normalizeReasoningLevelForControl
 } from '../services/ProviderCompatibilityRegistry'
@@ -80,19 +81,6 @@ class ProviderModelSelection {
   constructor(provider: ModelProvider, model: ModelInfo) {
     this.provider = provider
     this.model = model
-  }
-}
-
-class McpToolGroup {
-  sourceId: string = ''
-  displayName: string = ''
-  toolIds: string[] = []
-  toolCount: number = 0
-  hasWriteTool: boolean = false
-
-  constructor(sourceId: string, displayName: string) {
-    this.sourceId = sourceId
-    this.displayName = displayName
   }
 }
 
@@ -861,45 +849,6 @@ export struct ChatPage {
     return tool.sourceType === ToolSourceType.MCP && tool.sourceId.trim() !== ''
   }
 
-  private getBuiltinChatTools(): ToolConfig[] {
-    const builtinTools: ToolConfig[] = []
-    for (let i = 0; i < this.availableChatTools.length; i++) {
-      const tool = this.availableChatTools[i]
-      if (!this.isMcpChatTool(tool)) {
-        builtinTools.push(tool)
-      }
-    }
-    return builtinTools
-  }
-
-  private getMcpToolGroups(): McpToolGroup[] {
-    const groups: McpToolGroup[] = []
-    const groupIndexes: Map<string, number> = new Map()
-    for (let i = 0; i < this.availableChatTools.length; i++) {
-      const tool = this.availableChatTools[i]
-      if (!this.isMcpChatTool(tool)) {
-        continue
-      }
-      const existingIndex = groupIndexes.get(tool.sourceId)
-      if (existingIndex === undefined) {
-        const displayName = tool.sourceLabel.trim() !== '' ? tool.sourceLabel : tool.sourceId
-        const group = new McpToolGroup(tool.sourceId, displayName)
-        group.toolIds.push(tool.id)
-        group.toolCount = 1
-        group.hasWriteTool = tool.permissionLevel === ToolPermissionLevel.WRITE
-        groups.push(group)
-        groupIndexes.set(tool.sourceId, groups.length - 1)
-        continue
-      }
-      groups[existingIndex].toolIds.push(tool.id)
-      groups[existingIndex].toolCount += 1
-      if (tool.permissionLevel === ToolPermissionLevel.WRITE) {
-        groups[existingIndex].hasWriteTool = true
-      }
-    }
-    return groups
-  }
-
   private normalizeSelectedToolIdsForPicker(toolIds: string[], enabledMcpServerIds?: Set<string>): string[] {
     const normalizedToolIds = this.normalizeStoredSelectedToolIdsLocally(toolIds)
     const selectedBuiltinToolIds: Set<string> = new Set<string>()
@@ -1058,22 +1007,10 @@ export struct ChatPage {
     })
   }
 
-  private isMcpToolGroupSelected(group: McpToolGroup): boolean {
-    if (group.toolIds.length === 0) {
-      return false
-    }
-    for (let i = 0; i < group.toolIds.length; i++) {
-      if (!this.getActiveComposerSelectedToolIds().includes(group.toolIds[i])) {
-        return false
-      }
-    }
-    return true
-  }
-
-  private handleMcpToolGroupSelectionToggle(group: McpToolGroup, enabled: boolean): void {
+  private handleMcpToolGroupSelectionToggle(toolIds: string[], enabled: boolean): void {
     const nextToolIds = [...this.getActiveComposerSelectedToolIds()]
-    for (let i = 0; i < group.toolIds.length; i++) {
-      const toolId = group.toolIds[i]
+    for (let i = 0; i < toolIds.length; i++) {
+      const toolId = toolIds[i]
       const index = nextToolIds.indexOf(toolId)
       if (enabled && index < 0) {
         nextToolIds.push(toolId)
@@ -1092,36 +1029,12 @@ export struct ChatPage {
     return this.getActiveComposerSelectedToolIds().length > 0
   }
 
-  private getToolPickerCardBackground(selected: boolean): ResourceColor {
-    return selected ? this.themePrimaryLight : $r('app.color.surface')
-  }
-
-  private getToolPickerCardBorderColor(selected: boolean): ResourceColor {
-    return selected ? this.themePrimary : $r('app.color.divider')
-  }
-
-  private getToolPickerCardShadowColor(selected: boolean): string {
-    return selected ? 'rgba(0, 125, 255, 0.16)' : 'rgba(15, 23, 42, 0.06)'
-  }
-
-  private getToolPickerBuiltinDescription(tool: ToolConfig): string {
-    const description = tool.description.trim()
-    return description !== '' ? description : pickLocalizedText(
-      '应用内原生能力，可在当前聊天中按需调用。',
-      'Built-in app capability that can be exposed to the model in this chat.'
-    )
-  }
-
   private getDefaultSessionTitle(): string {
     return pickLocalizedText('新对话', 'New Chat')
   }
 
   private getNoToolArgumentsText(): string {
     return pickLocalizedText('无参数', 'No arguments')
-  }
-
-  private getToolPickerScrollMaxHeight(): number {
-    return 520
   }
 
   private syncSendingStateFromRuntime(): void {
@@ -2258,10 +2171,6 @@ export struct ChatPage {
     })
   }
 
-  private isToolSelected(toolId: string): boolean {
-    return this.getActiveComposerSelectedToolIds().includes(toolId)
-  }
-
   private handleToolSelectionToggle(toolId: string, enabled: boolean): void {
     const nextToolIds = [...this.getActiveComposerSelectedToolIds()]
     const index = nextToolIds.indexOf(toolId)
@@ -2279,478 +2188,50 @@ export struct ChatPage {
 
   @Builder
   ToolPickerBuilder() {
-    Column() {
-      Row({ space: 12 }) {
-        Button() {
-          SymbolGlyph($r('sys.symbol.xmark'))
-            .fontSize(18)
-            .fontColor([$r('app.color.text_secondary')])
-        }
-        .type(ButtonType.Circle)
-        .width(36)
-        .height(36)
-        .backgroundColor($r('app.color.divider'))
-        .onClick(() => {
-          this.showToolPickerSheet = false
-        })
-
-        Text(pickLocalizedText('选择工具', 'Choose Tools'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_primary'))
-        .layoutWeight(1)
-        .textAlign(TextAlign.Start)
-
-        Button() {
-          SymbolGlyph($r('sys.symbol.arrow_clockwise'))
-            .fontSize(18)
-            .fontColor([Color.White])
-        }
-        .type(ButtonType.Circle)
-        .width(36)
-        .height(36)
-        .backgroundColor(this.themePrimary)
-        .onClick(() => {
-          this.refreshMcpToolAvailabilityInBackground(true)
-        })
+    ChatToolPickerSheetContent({
+      availableChatTools: this.availableChatTools,
+      selectedToolIds: this.getActiveComposerSelectedToolIds(),
+      isRefreshingMcpToolAvailability: this.isRefreshingMcpToolAvailability,
+      themePrimary: this.themePrimary,
+      themePrimaryLight: this.themePrimaryLight,
+      isDarkMode: this.isDarkMode,
+      onClose: (): void => {
+        this.showToolPickerSheet = false
+      },
+      onRefresh: (): void => {
+        this.refreshMcpToolAvailabilityInBackground(true)
+      },
+      onToggleTool: (toolId: string, enabled: boolean): void => {
+        this.handleToolSelectionToggle(toolId, enabled)
+      },
+      onToggleMcpGroup: (toolIds: string[], enabled: boolean): void => {
+        this.handleMcpToolGroupSelectionToggle(toolIds, enabled)
       }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 8 })
-      .alignItems(VerticalAlign.Center)
-
-      Scroll() {
-        Column({ space: 18 }) {
-          if (this.availableChatTools.length === 0) {
-            Column({ space: 8 }) {
-              Column() {
-                SymbolGlyph($r('sys.symbol.gearshape'))
-                  .fontSize(22)
-                  .fontColor([this.themePrimary])
-              }
-              .width(48)
-              .height(48)
-              .borderRadius(14)
-              .backgroundColor(this.themePrimaryLight)
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center)
-
-              Text(pickLocalizedText('暂无可用工具', 'No tools available'))
-                .fontSize(16)
-                .fontWeight(FontWeight.Medium)
-                .fontColor($r('app.color.text_primary'))
-              Text(this.isRefreshingMcpToolAvailability
-                ? pickLocalizedText('正在后台刷新工具，请稍候再试。', 'Refreshing tools in the background. Try again shortly.')
-                : pickLocalizedText(
-                  '先到工具服务添加并启用 MCP Server，再回这里选择。',
-                  'Add and enable an MCP server in Tool Services first, then come back here.'
-                ))
-                .fontSize(12)
-                .lineHeight(18)
-                .fontColor($r('app.color.text_secondary'))
-                .textAlign(TextAlign.Center)
-            }
-            .width('100%')
-            .padding({ left: 20, right: 20, top: 28, bottom: 28 })
-            .borderRadius(20)
-            .backgroundColor($r('app.color.surface'))
-            .border({
-              width: 0.5,
-              color: $r('app.color.divider')
-            })
-              .shadow({ radius: 12, color: 'rgba(15, 23, 42, 0.06)', offsetX: 0, offsetY: 4 })
-              .alignItems(HorizontalAlign.Center)
-          } else {
-            if (this.getBuiltinChatTools().length > 0) {
-              Column({ space: 12 }) {
-                Column({ space: 4 }) {
-                  Text(pickLocalizedText('内置工具', 'Built-in Tools'))
-                    .fontSize(13)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor($r('app.color.text_primary'))
-
-                  Text(pickLocalizedText(
-                    '单个能力单独开关，启用后才会暴露给模型。',
-                    'Each capability is toggled separately and only exposed to the model after enabling.'
-                  ))
-                    .fontSize(11)
-                    .fontColor($r('app.color.text_secondary'))
-                }
-                .width('100%')
-                .alignItems(HorizontalAlign.Start)
-
-                ForEach(this.getBuiltinChatTools(), (tool: ToolConfig) => {
-                  Row({ space: 12 }) {
-                    Column() {
-                      SymbolGlyph($r('sys.symbol.gearshape'))
-                        .fontSize(20)
-                        .fontColor([this.isToolSelected(tool.id) ? Color.White : this.themePrimary])
-                    }
-                    .width(40)
-                    .height(40)
-                    .borderRadius(12)
-                    .backgroundColor(this.isToolSelected(tool.id) ? this.themePrimary : this.themePrimaryLight)
-                    .justifyContent(FlexAlign.Center)
-                    .alignItems(HorizontalAlign.Center)
-
-                    Column({ space: 8 }) {
-                      Row({ space: 8 }) {
-                        Text(tool.name)
-                          .fontSize(15)
-                          .fontWeight(FontWeight.Medium)
-                          .fontColor($r('app.color.text_primary'))
-                          .layoutWeight(1)
-                          .maxLines(1)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-                        if (this.isToolSelected(tool.id)) {
-                          Text(pickLocalizedText('已启用', 'Enabled'))
-                            .fontSize(10)
-                            .fontWeight(FontWeight.Medium)
-                            .fontColor(Color.White)
-                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                            .borderRadius(999)
-                            .backgroundColor(this.themePrimary)
-                        }
-
-                        if (tool.permissionLevel === ToolPermissionLevel.WRITE) {
-                          Text(pickLocalizedText('需确认', 'Approval'))
-                            .fontSize(10)
-                            .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
-                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                            .borderRadius(999)
-                            .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
-                        }
-                      }
-                      .width('100%')
-                      .alignItems(VerticalAlign.Center)
-
-                      Text(this.getToolPickerBuiltinDescription(tool))
-                        .fontSize(12)
-                        .lineHeight(18)
-                        .fontColor($r('app.color.text_secondary'))
-                        .maxLines(2)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(HorizontalAlign.Start)
-
-                    Toggle({ type: ToggleType.Switch, isOn: this.isToolSelected(tool.id) })
-                      .onChange((value: boolean) => {
-                        this.handleToolSelectionToggle(tool.id, value)
-                      })
-                  }
-                  .width('100%')
-                  .padding(14)
-                  .borderRadius(18)
-                  .backgroundColor(this.getToolPickerCardBackground(this.isToolSelected(tool.id)))
-                  .border({
-                    width: this.isToolSelected(tool.id) ? 1.2 : 0.5,
-                    color: this.getToolPickerCardBorderColor(this.isToolSelected(tool.id))
-                  })
-                  .shadow({
-                    radius: this.isToolSelected(tool.id) ? 14 : 10,
-                    color: this.getToolPickerCardShadowColor(this.isToolSelected(tool.id)),
-                    offsetX: 0,
-                    offsetY: this.isToolSelected(tool.id) ? 6 : 4
-                  })
-                }, (tool: ToolConfig) => tool.id)
-              }
-              .width('100%')
-            }
-
-            if (this.getMcpToolGroups().length > 0) {
-              Column({ space: 12 }) {
-                Text(pickLocalizedText('MCP 服务', 'MCP Services'))
-                  .fontSize(13)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor($r('app.color.text_primary'))
-                .width('100%')
-
-                ForEach(this.getMcpToolGroups(), (group: McpToolGroup) => {
-                  Row({ space: 12 }) {
-                    Column() {
-                      SymbolGlyph($r('sys.symbol.link'))
-                        .fontSize(20)
-                        .fontColor([this.isMcpToolGroupSelected(group) ? Color.White : this.themePrimary])
-                    }
-                    .width(40)
-                    .height(40)
-                    .borderRadius(12)
-                    .backgroundColor(this.isMcpToolGroupSelected(group) ? this.themePrimary : this.themePrimaryLight)
-                    .justifyContent(FlexAlign.Center)
-                    .alignItems(HorizontalAlign.Center)
-
-                    Column({ space: 8 }) {
-                      Row({ space: 8 }) {
-                        Text(group.displayName)
-                          .fontSize(15)
-                          .fontWeight(FontWeight.Medium)
-                          .fontColor($r('app.color.text_primary'))
-                          .layoutWeight(1)
-                          .maxLines(1)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-                        if (this.isMcpToolGroupSelected(group)) {
-                          Text(pickLocalizedText('已启用', 'Enabled'))
-                            .fontSize(10)
-                            .fontWeight(FontWeight.Medium)
-                            .fontColor(Color.White)
-                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                            .borderRadius(999)
-                            .backgroundColor(this.themePrimary)
-                        }
-
-                        if (group.hasWriteTool) {
-                          Text(pickLocalizedText('需确认', 'Approval'))
-                            .fontSize(10)
-                            .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
-                            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                            .borderRadius(999)
-                            .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
-                        }
-                      }
-                      .width('100%')
-                      .alignItems(VerticalAlign.Center)
-                    }
-                    .layoutWeight(1)
-                    .alignItems(HorizontalAlign.Start)
-
-                    Toggle({ type: ToggleType.Switch, isOn: this.isMcpToolGroupSelected(group) })
-                      .onChange((value: boolean) => {
-                        this.handleMcpToolGroupSelectionToggle(group, value)
-                      })
-                  }
-                  .width('100%')
-                  .padding(14)
-                  .borderRadius(18)
-                  .backgroundColor(this.getToolPickerCardBackground(this.isMcpToolGroupSelected(group)))
-                  .border({
-                    width: this.isMcpToolGroupSelected(group) ? 1.2 : 0.5,
-                    color: this.getToolPickerCardBorderColor(this.isMcpToolGroupSelected(group))
-                  })
-                  .shadow({
-                    radius: this.isMcpToolGroupSelected(group) ? 14 : 10,
-                    color: this.getToolPickerCardShadowColor(this.isMcpToolGroupSelected(group)),
-                    offsetX: 0,
-                    offsetY: this.isMcpToolGroupSelected(group) ? 6 : 4
-                  })
-                }, (group: McpToolGroup) => group.sourceId)
-              }
-              .width('100%')
-            }
-          }
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.Start)
-        .alignItems(HorizontalAlign.Start)
-        .padding({ left: 16, right: 16, bottom: 24 })
-      }
-      .width('100%')
-      .constraintSize({ maxHeight: this.getToolPickerScrollMaxHeight() })
-      .scrollBar(BarState.Off)
-    }
-    .width('100%')
-    .backgroundColor($r('app.color.background'))
+    })
   }
 
   @Builder
   ToolExecutionApprovalSheetBuilder() {
-    Column({ space: 16 }) {
-      Row() {
-        Column({ space: 4 }) {
-          Text(pickLocalizedText('确认工具调用', 'Approve Tool Call'))
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.text_primary'))
-
-          Text(pickLocalizedText(
-            '该工具可能修改外部状态，请确认后再继续。',
-            'This tool may change external state. Confirm before continuing.'
-          ))
-            .fontSize(12)
-            .fontColor($r('app.color.text_secondary'))
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
-
-        Text(pickLocalizedText('写操作', 'Write'))
-          .fontSize(11)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Color.White)
-          .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-          .borderRadius(999)
-          .backgroundColor('#D9485F')
+    ChatToolExecutionApprovalSheetContent({
+      sourceLabel: this.toolExecutionApprovalSourceLabel,
+      toolName: this.toolExecutionApprovalName,
+      argumentSummary: this.toolExecutionApprovalArgumentSummary,
+      argumentEntries: this.toolExecutionApprovalArgumentEntries,
+      argumentsPreview: this.toolExecutionApprovalArgumentsPreview,
+      argumentsTruncated: this.toolExecutionApprovalArgumentsTruncated,
+      showRawArguments: this.showRawToolExecutionApprovalArguments,
+      themePrimary: this.themePrimary,
+      isDarkMode: this.isDarkMode,
+      onToggleShowRaw: (): void => {
+        this.showRawToolExecutionApprovalArguments = !this.showRawToolExecutionApprovalArguments
+      },
+      onCancel: (): void => {
+        this.resolveToolExecutionApproval(false)
+      },
+      onApprove: (): void => {
+        this.resolveToolExecutionApproval(true)
       }
-      .width('100%')
-      .alignItems(VerticalAlign.Top)
-
-      Column({ space: 10 }) {
-        Column({ space: 4 }) {
-          Text(pickLocalizedText('来源', 'Source'))
-            .fontSize(11)
-            .fontColor($r('app.color.text_tertiary'))
-          Text(this.toolExecutionApprovalSourceLabel.trim() !== ''
-            ? this.toolExecutionApprovalSourceLabel
-            : pickLocalizedText('未知来源', 'Unknown source'))
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.text_primary'))
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Start)
-
-        Column({ space: 4 }) {
-          Text(pickLocalizedText('工具', 'Tool'))
-            .fontSize(11)
-            .fontColor($r('app.color.text_tertiary'))
-          Text(this.toolExecutionApprovalName.trim() !== ''
-            ? this.toolExecutionApprovalName
-            : pickLocalizedText('未知工具', 'Unknown tool'))
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.text_primary'))
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Start)
-      }
-      .width('100%')
-      .padding(14)
-      .borderRadius(16)
-      .backgroundColor($r('app.color.surface'))
-
-      Column({ space: 6 }) {
-        Text(pickLocalizedText('风险提醒', 'Risk Notice'))
-          .fontSize(11)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#B85A00')
-
-        Text(pickLocalizedText(
-          '这是写操作工具。模型只是提出调用，真正执行前仍需要你明确批准。',
-          'This is a write tool. The model only proposes the call, and you still have to explicitly approve it.'
-        ))
-          .fontSize(12)
-          .lineHeight(18)
-          .fontColor(this.isDarkMode ? '#FFD6A6' : '#8A4B08')
-          .width('100%')
-      }
-      .width('100%')
-      .padding(14)
-      .borderRadius(16)
-      .backgroundColor(this.isDarkMode ? '#3B2413' : '#FFF3E8')
-
-      Column({ space: 8 }) {
-        Row() {
-          Text(pickLocalizedText('关键参数', 'Key Arguments'))
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.text_primary'))
-          Blank()
-          Text(this.showRawToolExecutionApprovalArguments
-            ? pickLocalizedText('收起原始参数', 'Hide Raw Arguments')
-            : pickLocalizedText('查看原始参数', 'Show Raw Arguments'))
-            .fontSize(11)
-            .fontColor(this.themePrimary)
-            .onClick(() => {
-              this.showRawToolExecutionApprovalArguments = !this.showRawToolExecutionApprovalArguments
-            })
-        }
-        .width('100%')
-
-        if (this.toolExecutionApprovalArgumentEntries.length > 0) {
-          Column({ space: 8 }) {
-            ForEach(this.toolExecutionApprovalArgumentEntries, (entry: ToolPreviewEntry) => {
-              Row() {
-                Text(entry.label)
-                  .fontSize(11)
-                  .fontColor($r('app.color.text_tertiary'))
-                  .width(72)
-
-                Text(entry.value)
-                  .layoutWeight(1)
-                  .fontSize(12)
-                  .lineHeight(18)
-                  .fontColor($r('app.color.text_secondary'))
-                  .maxLines(2)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-              }
-              .width('100%')
-              .alignItems(VerticalAlign.Top)
-            }, (entry: ToolPreviewEntry, index: number) => `${entry.label}_${index}`)
-          }
-          .width('100%')
-          .padding(12)
-          .borderRadius(14)
-          .backgroundColor($r('app.color.surface'))
-        } else {
-          Text(this.toolExecutionApprovalArgumentSummary)
-            .width('100%')
-            .fontSize(12)
-            .lineHeight(18)
-            .fontColor($r('app.color.text_secondary'))
-            .padding(12)
-            .borderRadius(14)
-            .backgroundColor($r('app.color.surface'))
-        }
-
-        if (this.showRawToolExecutionApprovalArguments) {
-          Scroll() {
-            Text(this.toolExecutionApprovalArgumentsPreview)
-              .width('100%')
-              .fontSize(12)
-              .lineHeight(18)
-              .fontFamily('monospace')
-              .fontColor($r('app.color.text_secondary'))
-              .textAlign(TextAlign.Start)
-          }
-          .width('100%')
-          .constraintSize({ maxHeight: 220 })
-          .padding(12)
-          .borderRadius(14)
-          .backgroundColor(this.isDarkMode ? '#14171F' : '#F6F8FC')
-        }
-
-        if (this.showRawToolExecutionApprovalArguments && this.toolExecutionApprovalArgumentsTruncated) {
-          Text(pickLocalizedText(
-            '仅展示前 800 个字符，避免长参数把确认面板撑坏。',
-            'Only the first 800 characters are shown to keep the approval panel readable.'
-          ))
-            .fontSize(11)
-            .fontColor($r('app.color.text_tertiary'))
-            .width('100%')
-        }
-      }
-      .width('100%')
-
-      Row({ space: 12 }) {
-        Button($r('app.string.cancel'))
-          .layoutWeight(1)
-          .height(46)
-          .type(ButtonType.Capsule)
-          .backgroundColor($r('app.color.surface'))
-          .fontColor($r('app.color.text_primary'))
-          .border({
-            width: 0.5,
-            color: $r('app.color.divider')
-          })
-          .onClick(() => {
-            this.resolveToolExecutionApproval(false)
-          })
-
-        Button(pickLocalizedText('继续执行', 'Continue'))
-          .layoutWeight(1)
-          .height(46)
-          .type(ButtonType.Capsule)
-          .backgroundColor(this.themePrimary)
-          .fontColor(Color.White)
-          .onClick(() => {
-            this.resolveToolExecutionApproval(true)
-          })
-      }
-      .width('100%')
-    }
-    .width('100%')
-    .padding({ left: 20, right: 20, top: 12, bottom: 24 })
-    .backgroundColor($r('app.color.background'))
+    })
   }
 
   // 处理附件选择
