@@ -49,6 +49,8 @@ export struct ChatMessageListSection {
   @Event onContentAreaChange: () => void = (): void => {}
   @Event onDidScroll: (scrollOffset: number, scrollState: ScrollState) => void = (_scrollOffset: number,
     _scrollState: ScrollState): void => {}
+  @Event onScrollIndex: (firstIndex: number, lastIndex: number) => void = (_firstIndex: number,
+    _lastIndex: number): void => {}
   private messageRows: ChatMessageRowData[] = []
   private messageRowDataSource: ChatMessageListDataSource = new ChatMessageListDataSource()
 
@@ -306,6 +308,9 @@ export struct ChatMessageListSection {
         })
         .onDidScroll((scrollOffset: number, scrollState: ScrollState) => {
           this.onDidScroll(scrollOffset, scrollState)
+        })
+        .onScrollIndex((firstIndex: number, lastIndex: number) => {
+          this.onScrollIndex(firstIndex, lastIndex)
         })
       }
     }

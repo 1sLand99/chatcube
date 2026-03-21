@@ -11,6 +11,9 @@ export interface ChatScrollUiFlowDependencies {
   setLastScrollOffset: (value: number) => void
   getMaxScrollOffset: () => number
   setMaxScrollOffset: (value: number) => void
+  getFirstVisibleIndex: () => number
+  getLastVisibleIndex: () => number
+  getTotalListItemCount: () => number
   getInputBarShowThreshold: () => number
   getInputBarHideThreshold: () => number
   getIsAtTop: () => boolean
@@ -30,10 +33,12 @@ export interface ChatScrollUiFlowDependencies {
 
 export class ChatScrollUiFlow {
   private static readonly BOTTOM_OFFSET_TOLERANCE_VP: number = 8
+  private static readonly PROGRESS_JUMP_THRESHOLD: number = 0.04
   private deps: ChatScrollUiFlowDependencies
   private pinnedBottomAlignmentTimerIds: number[] = []
   private pinnedBottomAlignmentCompletionTimerId: number = -1
   private pendingPinnedBottomAlignment: boolean = false
+  private lastSetProgress: number = 0
 
   constructor(deps: ChatScrollUiFlowDependencies) {
     this.deps = deps
@@ -60,7 +65,16 @@ export class ChatScrollUiFlow {
   }
 
   private setScrollProgress(value: number): void {
-    this.deps.onSetScrollProgressState(this.clampProgress(value))
+    const clamped = this.clampProgress(value)
+    const delta = Math.abs(clamped - this.lastSetProgress)
+    this.lastSetProgress = clamped
+    if (delta > ChatScrollUiFlow.PROGRESS_JUMP_THRESHOLD) {
+      this.deps.onAnimate(150, Curve.EaseOut, () => {
+        this.deps.onSetScrollProgressState(clamped)
+      })
+    } else {
+      this.deps.onSetScrollProgressState(clamped)
+    }
   }
 
   private setCurrentScrollOffset(value: number): void {
@@ -84,30 +98,42 @@ export class ChatScrollUiFlow {
   }
 
   private getCurrentScrollProgress(): number {
-    const maxScrollOffset = this.deps.getMaxScrollOffset()
-    if (maxScrollOffset <= 0) {
+    const totalItems = this.deps.getTotalListItemCount()
+    if (totalItems <= 1) {
       return 0
     }
-    const normalizedOffset = this.normalizeScrollOffset(this.deps.getCurrentScrollOffset())
-    return this.clampProgress(normalizedOffset / maxScrollOffset)
+    const firstVisible = this.deps.getFirstVisibleIndex()
+    const lastVisible = this.deps.getLastVisibleIndex()
+    const scrollableItems = totalItems - (lastVisible - firstVisible + 1)
+    if (scrollableItems <= 0) {
+      return 0
+    }
+    return this.clampProgress(firstVisible / scrollableItems)
   }
 
   private updateScrollProgress(): void {
-    const maxScrollOffset = this.deps.getMaxScrollOffset()
-    if (maxScrollOffset <= 0) {
-      this.setScrollProgress(0)
-      return
-    }
     if (this.deps.getIsAtBottom()) {
       this.setScrollProgress(1)
       return
     }
-    const normalizedOffset = this.normalizeScrollOffset(this.deps.getCurrentScrollOffset())
-    if (normalizedOffset <= 0 || this.deps.getIsAtTop()) {
+    if (this.deps.getIsAtTop()) {
       this.setScrollProgress(0)
       return
     }
-    this.setScrollProgress(normalizedOffset / maxScrollOffset)
+    const totalItems = this.deps.getTotalListItemCount()
+    if (totalItems <= 1) {
+      this.setScrollProgress(0)
+      return
+    }
+    const firstVisible = this.deps.getFirstVisibleIndex()
+    const lastVisible = this.deps.getLastVisibleIndex()
+    const visibleCount = lastVisible - firstVisible + 1
+    const scrollableItems = totalItems - visibleCount
+    if (scrollableItems <= 0) {
+      this.setScrollProgress(0)
+      return
+    }
+    this.setScrollProgress(firstVisible / scrollableItems)
   }
 
   private captureBottomScrollBaseline(): void {

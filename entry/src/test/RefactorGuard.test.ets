@@ -131,6 +131,9 @@ interface TestScrollFlowState {
   scrollProgress: number
   scrollToIndexCalls: number
   scrollEdgeCalls: number
+  firstVisibleIndex: number
+  lastVisibleIndex: number
+  totalListItemCount: number
 }
 
 function createScrollUiFlow(state: TestScrollFlowState): ChatScrollUiFlow {
@@ -158,6 +161,9 @@ function createScrollUiFlow(state: TestScrollFlowState): ChatScrollUiFlow {
     setMaxScrollOffset: (value: number): void => {
       state.maxOffset = value
     },
+    getFirstVisibleIndex: (): number => state.firstVisibleIndex,
+    getLastVisibleIndex: (): number => state.lastVisibleIndex,
+    getTotalListItemCount: (): number => state.totalListItemCount,
     getInputBarShowThreshold: (): number => 24,
     getInputBarHideThreshold: (): number => 24,
     getIsAtTop: (): boolean => state.isAtTop,
@@ -621,19 +627,26 @@ export default function refactorGuardTest() {
         isInputBarVisible: true,
         scrollProgress: 0,
         scrollToIndexCalls: 0,
-        scrollEdgeCalls: 0
+        scrollEdgeCalls: 0,
+        firstVisibleIndex: 5,
+        lastVisibleIndex: 9,
+        totalListItemCount: 22
       }
       const flow = createScrollUiFlow(state)
 
       state.scrollerOffset = 300
       flow.handleMessageListDidScroll(300, ScrollState.Scroll)
       state.scrollerOffset = 500
+      state.firstVisibleIndex = 10
+      state.lastVisibleIndex = 14
       flow.handleMessageListDidScroll(500, ScrollState.Scroll)
 
       expect(state.currentOffset).assertEqual(500)
       expect(state.lastOffset).assertEqual(500)
       expect(state.isAtTop).assertEqual(false)
-      expect(state.scrollProgress).assertEqual(0.5)
+      // index-based: firstVisible(10) / (totalItems(22) - visibleCount(5)) = 10/17 ≈ 0.588
+      const expectedProgress = 10 / (22 - 5)
+      expect(Math.abs(state.scrollProgress - expectedProgress) < 0.001).assertEqual(true)
     })
 
     it('chatScrollUiFlow_should_leave_bottom_when_absolute_offset_decreases', 0, () => {
@@ -648,7 +661,10 @@ export default function refactorGuardTest() {
         isInputBarVisible: true,
         scrollProgress: 0.5,
         scrollToIndexCalls: 0,
-        scrollEdgeCalls: 0
+        scrollEdgeCalls: 0,
+        firstVisibleIndex: 10,
+        lastVisibleIndex: 14,
+        totalListItemCount: 22
       }
       const flow = createScrollUiFlow(state)
 
@@ -673,7 +689,10 @@ export default function refactorGuardTest() {
           isInputBarVisible: true,
           scrollProgress: 0.5,
           scrollToIndexCalls: 0,
-          scrollEdgeCalls: 0
+          scrollEdgeCalls: 0,
+          firstVisibleIndex: 10,
+          lastVisibleIndex: 14,
+          totalListItemCount: 22
         }
         const flow = createScrollUiFlow(state)
 
@@ -702,7 +721,10 @@ export default function refactorGuardTest() {
         isInputBarVisible: true,
         scrollProgress: 1,
         scrollToIndexCalls: 0,
-        scrollEdgeCalls: 0
+        scrollEdgeCalls: 0,
+        firstVisibleIndex: 17,
+        lastVisibleIndex: 21,
+        totalListItemCount: 22
       }
       const flow = createScrollUiFlow(state)
 
@@ -726,7 +748,10 @@ export default function refactorGuardTest() {
         isInputBarVisible: false,
         scrollProgress: 0.6,
         scrollToIndexCalls: 0,
-        scrollEdgeCalls: 0
+        scrollEdgeCalls: 0,
+        firstVisibleIndex: 5,
+        lastVisibleIndex: 9,
+        totalListItemCount: 22
       }
       const flow = createScrollUiFlow(state)
 

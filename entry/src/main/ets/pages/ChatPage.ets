@@ -123,6 +123,8 @@ export struct ChatPage {
   @Local isAtTop: boolean = false
   @Local currentScrollOffsetVp: number = 0
   @Local scrollProgress: number = 0
+  @Local firstVisibleListIndex: number = 0
+  @Local lastVisibleListIndex: number = 0
   // 输入框显示状态（true=显示，false=隐藏）
   @Local isInputBarVisible: boolean = true
   @Local inputAreaHeightVp: number = 0
@@ -664,6 +666,12 @@ export struct ChatPage {
   private getBottomAnchorListIndex(): number {
     const draftItemCount = !this.isEditingMessage && this.hasDraftContent() ? 1 : 0
     return this.messages.length + 1 + draftItemCount
+  }
+
+  private getTotalListItemCount(): number {
+    // 1 (top padding) + messages + draft preview (0 or 1) + 1 (bottom padding)
+    const draftItemCount = !this.isEditingMessage && this.hasDraftContent() ? 1 : 0
+    return 1 + this.messages.length + draftItemCount + 1
   }
 
   private getCurrentModelInfo(): ModelInfo | null {
@@ -1427,6 +1435,9 @@ export struct ChatPage {
       setMaxScrollOffset: (value: number): void => {
         this.maxScrollOffset = value
       },
+      getFirstVisibleIndex: (): number => this.firstVisibleListIndex,
+      getLastVisibleIndex: (): number => this.lastVisibleListIndex,
+      getTotalListItemCount: (): number => this.getTotalListItemCount(),
       getInputBarShowThreshold: (): number => this.inputBarShowThreshold,
       getInputBarHideThreshold: (): number => this.inputBarHideThreshold,
       getIsAtTop: (): boolean => this.isAtTop,
@@ -1703,6 +1714,10 @@ export struct ChatPage {
           },
           onDidScroll: (scrollOffset: number, scrollState: ScrollState): void => {
             this.handleMessageListDidScroll(scrollOffset, scrollState)
+          },
+          onScrollIndex: (firstIndex: number, lastIndex: number): void => {
+            this.firstVisibleListIndex = firstIndex
+            this.lastVisibleListIndex = lastIndex
           }
         })
           .width('100%')

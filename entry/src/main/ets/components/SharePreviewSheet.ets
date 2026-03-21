@@ -7,6 +7,7 @@ import { ShareService, ShareMode, getShareService } from '../services/ShareServi
 import { ShareMessageCard } from './ShareMessageCard'
 import { showToast } from '../utils/ToastUtil'
 import { common } from '@kit.AbilityKit'
+import { display } from '@kit.ArkUI'
 import { getAppUiState } from '../state/AppUiState'
 import { preloadModelIcon, resolveShareModelIdentity } from '../utils/ProviderIconUtils'
 
@@ -18,6 +19,7 @@ export struct SharePreviewSheet {
   @Local isSharing: boolean = false
   @Local previewText: string = ''
   @Local iconRenderVersion: number = 0
+  @Local cardContentHeight: number = 0
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
@@ -120,7 +122,16 @@ export struct SharePreviewSheet {
           // 预览仍然允许滚动，但截图不再依赖这个滚动容器。
           Scroll() {
             Column() {
-              this.ShareSnapshotCard()
+              ShareMessageCard({
+                messages: this.messages,
+                appName: 'ChatCube',
+                currentModelId: this.currentModelId,
+                iconRenderVersion: this.iconRenderVersion
+              })
+                .margin(16)
+                .onAreaChange((_old: Area, newArea: Area) => {
+                  this.cardContentHeight = newArea.height as number
+                })
             }
             .width('100%')
             .alignItems(HorizontalAlign.Center)
@@ -181,6 +192,40 @@ export struct SharePreviewSheet {
       iconRenderVersion: this.iconRenderVersion
     })
       .margin(16)
+  }
+
+  // 截图专用 Builder：根组件设置显式高度，确保离屏渲染区域覆盖全部内容
+  @Builder
+  private ShareCaptureCard() {
+    Column() {
+      ShareMessageCard({
+        messages: this.messages,
+        appName: 'ChatCube',
+        currentModelId: this.currentModelId,
+        iconRenderVersion: this.iconRenderVersion
+      })
+    }
+    .width('100%')
+    .padding(16)
+    .height(this.getCaptureHeight())
+  }
+
+  // 计算截图根组件高度（使用完整内容高度，不截断）
+  private getCaptureHeight(): number {
+    if (this.cardContentHeight <= 0) {
+      return 2000
+    }
+    return this.cardContentHeight + 32
+  }
+
+  // 计算截图缩放比例，确保渲染纹理不超过 8192px 硬件限制
+  private getCaptureScale(): number {
+    const density = display.getDefaultDisplaySync().densityPixels
+    const pixelHeight = this.getCaptureHeight() * density
+    if (pixelHeight <= 8192) {
+      return 1
+    }
+    return 8192 / pixelHeight
   }
 
   private collectShareModelIds(): string[] {
@@ -319,15 +364,15 @@ export struct SharePreviewSheet {
     try {
       console.info('SharePreviewSheet', '[shareAsImage] start snapshot sharing flow')
       await this.ensureShareModelIconsReady()
+      const scale = this.getCaptureScale()
+      console.info('SharePreviewSheet',
+        `[shareAsImage] captureHeight=${this.getCaptureHeight()}, scale=${scale}`)
       const filePath = await this.shareService.captureBuilderAsImage((): void => {
-        this.ShareSnapshotCard()
-      }, this.getUIContext())
+        this.ShareCaptureCard()
+      }, this.getUIContext(), scale)
       console.info('SharePreviewSheet', `[shareAsImage] image saved: ${filePath}`)
 
-      // 分享图片
-      console.info('SharePreviewSheet', '[shareAsImage] start share image')
       const result = await this.shareService.shareImage(filePath, 'conversation')
-
       if (!result.success) {
         console.error('SharePreviewSheet', `[shareAsImage] 分享失败: ${result.errorMessage}`)
         if (result.errorMessage !== '') {

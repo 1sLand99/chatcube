@@ -92,11 +92,9 @@ export struct MessageBubble {
 
   // ========== 流式渲染优化 ==========
   // lv-markdown-in 自带流式渲染，无需手动节流
-  // 跳动点动画状态
-  @Local dot1Scale: number = 0.6
-  @Local dot2Scale: number = 0.6
-  @Local dot3Scale: number = 0.6
-  private dotAnimationTimer: number = -1
+  // 跳动点动画：setInterval 切换 step，.animation() 声明式驱动过渡
+  @Local dotStep: number = -1
+  private dotTimer: number = -1
   private boundMessageId: string = ''
   private translationRequestToken: number = 0
   private get speakingMessageId(): string {
@@ -499,44 +497,24 @@ export struct MessageBubble {
     this.stopDotAnimation()
   }
 
-  // 启动跳动点动画
+  // 启动跳动点动画：setInterval 循环 step，.animation() 声明式驱动视觉过渡
   private startDotAnimation(): void {
-    if (this.dotAnimationTimer !== -1) {
+    if (this.dotTimer !== -1) {
       return
     }
-    let step = 0
-    this.dotAnimationTimer = setInterval(() => {
-      const currentDot = step % 3
-      this.getUIContext().animateTo({
-        duration: 300,
-        curve: Curve.EaseInOut
-      }, () => {
-        // 重置所有点
-        this.dot1Scale = 0.6
-        this.dot2Scale = 0.6
-        this.dot3Scale = 0.6
-        // 当前点放大
-        if (currentDot === 0) {
-          this.dot1Scale = 1.0
-        } else if (currentDot === 1) {
-          this.dot2Scale = 1.0
-        } else {
-          this.dot3Scale = 1.0
-        }
-      })
-      step++
-    }, 300)
+    this.dotStep = 0
+    this.dotTimer = setInterval(() => {
+      this.dotStep = (this.dotStep + 1) % 3
+    }, 400)
   }
 
   // 停止跳动点动画
   private stopDotAnimation(): void {
-    if (this.dotAnimationTimer !== -1) {
-      clearInterval(this.dotAnimationTimer)
-      this.dotAnimationTimer = -1
+    if (this.dotTimer !== -1) {
+      clearInterval(this.dotTimer)
+      this.dotTimer = -1
     }
-    this.dot1Scale = 0.6
-    this.dot2Scale = 0.6
-    this.dot3Scale = 0.6
+    this.dotStep = -1
   }
 
   build() {
@@ -1527,8 +1505,9 @@ export struct MessageBubble {
           .height(7)
           .borderRadius(3.5)
           .backgroundColor(this.themePrimary)
-          .scale({ x: this.dot1Scale, y: this.dot1Scale })
-          .opacity(0.5 + this.dot1Scale * 0.5)
+          .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
+          .opacity(this.dotStep === 0 ? 1.0 : 0.8)
+          .animation({ duration: 300, curve: Curve.EaseInOut })
 
         // 第二个点
         Column()
@@ -1536,8 +1515,9 @@ export struct MessageBubble {
           .height(7)
           .borderRadius(3.5)
           .backgroundColor(this.themePrimary)
-          .scale({ x: this.dot2Scale, y: this.dot2Scale })
-          .opacity(0.5 + this.dot2Scale * 0.5)
+          .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
+          .opacity(this.dotStep === 1 ? 1.0 : 0.8)
+          .animation({ duration: 300, curve: Curve.EaseInOut })
 
         // 第三个点
         Column()
@@ -1545,8 +1525,9 @@ export struct MessageBubble {
           .height(7)
           .borderRadius(3.5)
           .backgroundColor(this.themePrimary)
-          .scale({ x: this.dot3Scale, y: this.dot3Scale })
-          .opacity(0.5 + this.dot3Scale * 0.5)
+          .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
+          .opacity(this.dotStep === 2 ? 1.0 : 0.8)
+          .animation({ duration: 300, curve: Curve.EaseInOut })
       }
       .padding({ left: 14, right: 14, top: 10, bottom: 10 })
       .backgroundColor(this.themeAiBubble)
@@ -1593,21 +1574,24 @@ export struct MessageBubble {
             .height(4)
             .borderRadius(2)
             .backgroundColor(this.themePrimary)
-            .scale({ x: this.dot1Scale, y: this.dot1Scale })
+            .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
+            .animation({ duration: 300, curve: Curve.EaseInOut })
 
           Column()
             .width(4)
             .height(4)
             .borderRadius(2)
             .backgroundColor(this.themePrimary)
-            .scale({ x: this.dot2Scale, y: this.dot2Scale })
+            .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
+            .animation({ duration: 300, curve: Curve.EaseInOut })
 
           Column()
             .width(4)
             .height(4)
             .borderRadius(2)
             .backgroundColor(this.themePrimary)
-            .scale({ x: this.dot3Scale, y: this.dot3Scale })
+            .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
+            .animation({ duration: 300, curve: Curve.EaseInOut })
         }
       }
       .constraintSize({ maxWidth: 220 })
@@ -1721,21 +1705,24 @@ export struct MessageBubble {
                 .height(4)
                 .borderRadius(2)
                 .backgroundColor(this.themePrimary)
-                .scale({ x: this.dot1Scale, y: this.dot1Scale })
+                .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
+                .animation({ duration: 300, curve: Curve.EaseInOut })
 
               Column()
                 .width(4)
                 .height(4)
                 .borderRadius(2)
                 .backgroundColor(this.themePrimary)
-                .scale({ x: this.dot2Scale, y: this.dot2Scale })
+                .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
+                .animation({ duration: 300, curve: Curve.EaseInOut })
 
               Column()
                 .width(4)
                 .height(4)
                 .borderRadius(2)
                 .backgroundColor(this.themePrimary)
-                .scale({ x: this.dot3Scale, y: this.dot3Scale })
+                .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
+                .animation({ duration: 300, curve: Curve.EaseInOut })
             }
           }
           .margin({ left: 6 })

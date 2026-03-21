@@ -52,7 +52,7 @@ export struct ShareMessageCard {
     const tableAltBgColor = $r('app.color.markdown_table_alt_bg')
     const tableBorderColor = $r('app.color.markdown_table_border')
     const codeTheme = this.isDarkMode ? 'dark' : 'light'
-    const textSize = 12
+    const textSize = 14
     const titleSizes = getMarkdownTitleSizes(textSize)
 
     // 数学公式颜色接口需要 number（ARGB），不能直接传 ResourceColor
@@ -285,20 +285,21 @@ export struct ShareMessageCard {
             // 文本内容
             if (message.content.length > 0) {
               Text(message.content)
-                .fontSize(13)
+                .fontSize(15)
                 .fontColor(this.getUserBubbleTextColor())
-                .lineHeight(18)
+                .lineHeight(21)
                 .padding(message.hasAttachments() ? { left: 8, right: 8 } : { left: 0, right: 0 })
             }
           }
-          .padding(message.hasAttachments() ? { left: 4, right: 4, top: 4, bottom: 8 } : { left: 12, right: 12, top: 10, bottom: 10 })
+          .padding(message.hasAttachments() ? { left: 8, right: 8, top: 8, bottom: 8 } : { left: 14, right: 14, top: 10, bottom: 10 })
           .backgroundColor(this.getUserBubbleBgColor())
           .borderRadius({
-            topLeft: 16,
-            topRight: 16,
-            bottomLeft: 16,
-            bottomRight: 4
+            topLeft: 20,
+            topRight: 20,
+            bottomLeft: 20,
+            bottomRight: 6
           })
+          .border({ width: 0.5, color: 'rgba(255, 255, 255, 0.15)' })
           .constraintSize({ maxWidth: '75%' })
         }
         .width('100%')
@@ -310,11 +311,11 @@ export struct ShareMessageCard {
           Column() {
             if (this.getMessageModelIconResourcePath(message) !== '') {
               Image(this.getMessageModelIconResourcePath(message))
-                .width(20)
-                .height(20)
+                .width(18)
+                .height(18)
                 .objectFit(ImageFit.Contain)
                 .syncLoad(true)
-                .borderRadius(10)
+                .borderRadius(9)
             } else {
               Text(this.getModelBadgeText(message))
                 .fontSize(12)
@@ -322,9 +323,9 @@ export struct ShareMessageCard {
                 .fontWeight(FontWeight.Bold)
             }
           }
-          .width(32)
-          .height(32)
-          .borderRadius(16)
+          .width(30)
+          .height(30)
+          .borderRadius(8)
           .backgroundColor(this.getMessageModelIconResourcePath(message) !== '' ?
             $r('app.color.model_icon_bg') : this.getModelBadgeBgColor(message))
           .justifyContent(FlexAlign.Center)
@@ -349,10 +350,10 @@ export struct ShareMessageCard {
               }
             }
             .width('100%')
-            .padding({ left: 10, right: 10, top: 8, bottom: 8 })
+            .padding({ left: 14, right: 14, top: 12, bottom: 10 })
             .backgroundColor(this.getAiContentBgColor())
-            .borderRadius(12)
-            .border({ width: 0.5, color: this.getDividerColor() })
+            .borderRadius(16)
+            .border({ width: 0.5, color: $r('app.color.bubble_border') })
           }
           .alignItems(HorizontalAlign.Start)
           .margin({ left: 10 })
@@ -377,21 +378,21 @@ export struct ShareMessageCard {
           if (attachment.filePath !== '') {
             Image('file://' + attachment.filePath)
               .constraintSize({
-                maxWidth: isUserMessage ? 160 : 240,
-                maxHeight: isUserMessage ? 160 : 240
+                maxWidth: 180,
+                maxHeight: 180
               })
               .objectFit(ImageFit.Contain)
-              .borderRadius(isUserMessage ? 12 : 8)
+              .borderRadius(8)
               .margin({ bottom: 4 })
               .syncLoad(true)
           } else if (attachment.base64Data !== '') {
             Image(`data:${attachment.mimeType};base64,${attachment.base64Data}`)
               .constraintSize({
-                maxWidth: isUserMessage ? 160 : 240,
-                maxHeight: isUserMessage ? 160 : 240
+                maxWidth: 180,
+                maxHeight: 180
               })
               .objectFit(ImageFit.Contain)
-              .borderRadius(isUserMessage ? 12 : 8)
+              .borderRadius(8)
               .margin({ bottom: 4 })
               .syncLoad(true)
           }
@@ -399,20 +400,20 @@ export struct ShareMessageCard {
           // 文件附件：图标+文件名
           Row() {
             SymbolGlyph($r('sys.symbol.doc'))
-              .fontSize(14)
-              .fontColor([isUserMessage ? 'rgba(255,255,255,0.8)' : this.getSecondaryTextColor()])
+              .fontSize(18)
+              .fontColor([isUserMessage ? 'rgba(255,255,255,0.8)' : $r('app.color.text_tertiary')])
 
             Text(attachment.name)
-              .fontSize(11)
-              .fontColor(isUserMessage ? 'rgba(255,255,255,0.9)' : this.getSecondaryTextColor())
-              .margin({ left: 4 })
+              .fontSize(12)
+              .fontColor(isUserMessage ? 'rgba(255,255,255,0.9)' : $r('app.color.text_secondary'))
+              .margin({ left: 6 })
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .layoutWeight(1)
           }
-          .padding(6)
-          .backgroundColor(isUserMessage ? 'rgba(255,255,255,0.15)' : this.getDividerColor())
-          .borderRadius(6)
+          .padding(8)
+          .backgroundColor(isUserMessage ? 'rgba(255,255,255,0.15)' : $r('app.color.divider'))
+          .borderRadius(8)
           .margin({ bottom: 4 })
         }
       }, (attachment: MessageAttachment) => attachment.id || attachment.filePath)

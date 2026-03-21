@@ -165,8 +165,10 @@ export class ShareService {
   }
 
   // 通过离屏 Builder 渲染长图并保存，避免受当前页面滚动区域和父布局裁剪影响。
-  async captureBuilderAsImage(builder: CustomBuilder, uiContext: UIContext): Promise<string> {
+  async captureBuilderAsImage(builder: CustomBuilder, uiContext: UIContext,
+    scale?: number): Promise<string> {
     let pixelMap: image.PixelMap | null = null
+    const effectiveScale = scale ?? this.snapshotScale
     try {
       const snapshot = uiContext.getComponentSnapshot()
       let lastSnapshotError: Object | null = null
@@ -178,7 +180,7 @@ export class ShareService {
             this.snapshotBuilderDelayMs,
             true,
             {
-              scale: this.snapshotScale,
+              scale: effectiveScale,
               waitUntilRenderFinished: true
             })
           break
@@ -201,7 +203,7 @@ export class ShareService {
             this.snapshotBuilderDelayMs,
             false,
             {
-              scale: this.snapshotScale,
+              scale: effectiveScale,
               waitUntilRenderFinished: true
             })
         } catch (error) {
