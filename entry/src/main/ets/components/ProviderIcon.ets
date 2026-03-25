@@ -7,6 +7,15 @@
 import { buildIconResourcePath } from '../utils/ProviderIconUtils'
 import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 
+export enum ProviderTextIconDisplayMode {
+  BRAND = 'brand',
+  DISABLED_NEUTRAL = 'disabledNeutral'
+}
+
+export function resolveProviderTextIconDisplayMode(isEnabled: boolean): ProviderTextIconDisplayMode {
+  return isEnabled ? ProviderTextIconDisplayMode.BRAND : ProviderTextIconDisplayMode.DISABLED_NEUTRAL
+}
+
 @ComponentV2
 export struct ProviderIcon {
   @Param iconPath: string = ''
@@ -21,16 +30,28 @@ export struct ProviderIcon {
   @Param customImagePath: string = ''
   @Param brandColor: ResourceColor = ''
   @Param isDarkMode: boolean = false
+  @Param textIconDisplayMode: ProviderTextIconDisplayMode = ProviderTextIconDisplayMode.BRAND
+
+  private isDisabledNeutralMode(): boolean {
+    return this.iconType === 'text' && this.textIconDisplayMode === ProviderTextIconDisplayMode.DISABLED_NEUTRAL
+  }
 
   // 判断是否为透明背景
   private isTransparentBg(): boolean {
     return this.textIconBgColor === TRANSPARENT_BG_COLOR || this.textIconBgColor === ''
   }
 
+  private shouldUseTransparentTextLayout(): boolean {
+    return !this.isDisabledNeutralMode() && this.isTransparentBg()
+  }
+
   // 获取背景色
   private getBackgroundColor(): ResourceColor {
     if (this.iconType === 'text') {
-      if (this.isTransparentBg()) {
+      if (this.isDisabledNeutralMode()) {
+        return $r('app.color.divider')
+      }
+      if (this.shouldUseTransparentTextLayout()) {
         return Color.Transparent
       }
       return this.textIconBgColor
@@ -43,10 +64,17 @@ export struct ProviderIcon {
 
   // 获取文字颜色（透明背景时使用深色文字）
   private getTextColor(): ResourceColor {
-    if (this.isTransparentBg()) {
+    if (this.isDisabledNeutralMode()) {
+      return $r('app.color.text_secondary')
+    }
+    if (this.shouldUseTransparentTextLayout()) {
       return $r('app.color.text_primary')
     }
     return Color.White
+  }
+
+  private getTextFontSize(): number {
+    return this.shouldUseTransparentTextLayout() ? this.iconSize * 0.7 : this.iconSize * 0.45
   }
 
   build() {
@@ -64,7 +92,7 @@ export struct ProviderIcon {
       // 文字图标
       else if (this.iconType === 'text' && this.textIcon !== '') {
         Text(this.textIcon)
-          .fontSize(this.isTransparentBg() ? this.iconSize * 0.7 : this.iconSize * 0.45)
+          .fontSize(this.getTextFontSize())
           .fontColor(this.getTextColor())
           .fontWeight(FontWeight.Bold)
       }
@@ -104,6 +132,11 @@ export struct ProviderIconSmall {
   @Param customImagePath: string = ''
   @Param brandColor: ResourceColor = ''
   @Param isDarkMode: boolean = false
+  @Param textIconDisplayMode: ProviderTextIconDisplayMode = ProviderTextIconDisplayMode.BRAND
+
+  private isDisabledNeutralMode(): boolean {
+    return this.iconType === 'text' && this.textIconDisplayMode === ProviderTextIconDisplayMode.DISABLED_NEUTRAL
+  }
 
   // 判断是否显示品牌色边框
   private shouldShowBrandBorder(): boolean {
@@ -113,6 +146,10 @@ export struct ProviderIconSmall {
   // 判断是否为透明背景
   private isTransparentBg(): boolean {
     return this.textIconBgColor === TRANSPARENT_BG_COLOR || this.textIconBgColor === ''
+  }
+
+  private shouldUseTransparentTextLayout(): boolean {
+    return !this.isDisabledNeutralMode() && this.isTransparentBg()
   }
 
   build() {
@@ -131,7 +168,7 @@ export struct ProviderIconSmall {
     }
     // 文字图标
     else if (this.iconType === 'text' && this.textIcon !== '') {
-      if (this.isTransparentBg()) {
+      if (this.shouldUseTransparentTextLayout()) {
         // 透明背景：直接显示文字/emoji
         Text(this.textIcon)
           .fontSize(this.iconSize * 0.85)
@@ -141,13 +178,13 @@ export struct ProviderIconSmall {
         Column() {
           Text(this.textIcon)
             .fontSize(this.iconSize * 0.45)
-            .fontColor(Color.White)
+            .fontColor(this.isDisabledNeutralMode() ? $r('app.color.text_secondary') : Color.White)
             .fontWeight(FontWeight.Bold)
         }
         .width(this.iconSize)
         .height(this.iconSize)
         .borderRadius(this.iconSize * 0.25)
-        .backgroundColor(this.textIconBgColor)
+        .backgroundColor(this.isDisabledNeutralMode() ? $r('app.color.divider') : this.textIconBgColor)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
       }

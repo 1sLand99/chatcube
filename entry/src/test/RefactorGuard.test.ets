@@ -29,6 +29,11 @@ import { LayoutSizeClass, resolveLayoutSizeClass } from '../main/ets/config/Layo
 import { SessionFilterType, SessionGroupData } from '../main/ets/pages/index/IndexPageTypes'
 import { buildSessionGroupRenderKey, buildSessionRenderKeyForIndex } from '../main/ets/pages/index/IndexSessionGroupHelper'
 import { getCompactTabsBarHeightForIndex } from '../main/ets/utils/SettingsPageLayoutHelper'
+import { ProviderTextIconDisplayMode, resolveProviderTextIconDisplayMode } from '../main/ets/components/ProviderIcon'
+import {
+  getProviderDetailPaneBottomInset,
+  ProviderDetailPresentationMode
+} from '../main/ets/components/ProviderDetailSheet'
 import { AppError, AppErrorCode, Result } from '../main/ets/models/AppError'
 import {
   setAllModelsEnabled,
@@ -304,6 +309,17 @@ export default function refactorGuardTest() {
     it('getCompactTabsBarHeightForIndex_should_keep_tabs_stable_for_settings_drill_down', 0, () => {
       expect(getCompactTabsBarHeightForIndex(0)).assertEqual(56)
       expect(getCompactTabsBarHeightForIndex(18)).assertEqual(74)
+    })
+
+    it('resolveProviderTextIconDisplayMode_should_neutralize_disabled_provider_icons', 0, () => {
+      expect(resolveProviderTextIconDisplayMode(true)).assertEqual(ProviderTextIconDisplayMode.BRAND)
+      expect(resolveProviderTextIconDisplayMode(false)).assertEqual(ProviderTextIconDisplayMode.DISABLED_NEUTRAL)
+    })
+
+    it('getProviderDetailPaneBottomInset_should_only_apply_in_detail_pane_mode', 0, () => {
+      expect(getProviderDetailPaneBottomInset(0, ProviderDetailPresentationMode.PAGE)).assertEqual(0)
+      expect(getProviderDetailPaneBottomInset(18, ProviderDetailPresentationMode.SHEET)).assertEqual(0)
+      expect(getProviderDetailPaneBottomInset(18, ProviderDetailPresentationMode.DETAIL_PANE)).assertEqual(90)
     })
 
     it('result_should_wrap_app_error', 0, () => {

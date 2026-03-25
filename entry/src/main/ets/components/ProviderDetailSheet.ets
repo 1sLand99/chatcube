@@ -36,6 +36,22 @@ export enum ProviderDetailPresentationMode {
   DETAIL_PANE = 'detailPane'
 }
 
+const PROVIDER_DETAIL_PANE_BOTTOM_BAR_BASE_HEIGHT = 60
+const PROVIDER_DETAIL_PANE_BOTTOM_BAR_EXTRA_SPACING = 12
+
+export function getProviderDetailPaneBottomBarHeight(bottomAvoidHeightVp: number): number {
+  return PROVIDER_DETAIL_PANE_BOTTOM_BAR_BASE_HEIGHT + bottomAvoidHeightVp
+}
+
+export function getProviderDetailPaneBottomInset(bottomAvoidHeightVp: number,
+  presentationMode: ProviderDetailPresentationMode): number {
+  if (presentationMode !== ProviderDetailPresentationMode.DETAIL_PANE) {
+    return 0
+  }
+  // Reserve trailing content space only when the bottom tabs overlay the detail pane body.
+  return getProviderDetailPaneBottomBarHeight(bottomAvoidHeightVp) + PROVIDER_DETAIL_PANE_BOTTOM_BAR_EXTRA_SPACING
+}
+
 enum ProviderModelRenderRowType {
   GROUP_HEADER = 0,
   MODEL = 1
@@ -73,6 +89,9 @@ export struct ProviderDetailPanel {
   }
   private get topAvoidHeight(): number {
     return getAppUiState().topAvoidHeight
+  }
+  private get bottomAvoidHeight(): number {
+    return getAppUiState().bottomAvoidHeight
   }
 
   @Local provider: ModelProvider | null = null
@@ -726,6 +745,40 @@ export struct ProviderDetailPanel {
     return this.presentationMode === ProviderDetailPresentationMode.PAGE
   }
 
+  private isDetailPanePresentation(): boolean {
+    return this.presentationMode === ProviderDetailPresentationMode.DETAIL_PANE
+  }
+
+  private usesLargeProviderHeaderCard(): boolean {
+    return this.presentationMode !== ProviderDetailPresentationMode.SHEET
+  }
+
+  private getBottomAvoidHeightVp(): number {
+    return this.px2vp(this.bottomAvoidHeight)
+  }
+
+  private getDetailPaneBottomBarHeight(): number {
+    return getProviderDetailPaneBottomBarHeight(this.getBottomAvoidHeightVp())
+  }
+
+  private getDetailPaneBottomInset(): number {
+    return getProviderDetailPaneBottomInset(this.getBottomAvoidHeightVp(), this.presentationMode)
+  }
+
+  private getConfigContentBottomSpacerHeight(): number {
+    if (this.isDetailPanePresentation()) {
+      return this.getDetailPaneBottomInset()
+    }
+    return this.isStandalonePagePresentation() ? 12 : 20
+  }
+
+  private getModelsListBottomSpacerHeight(): number {
+    if (this.isDetailPanePresentation()) {
+      return this.getDetailPaneBottomInset()
+    }
+    return 16
+  }
+
   private getCurrentApiStyleName(): string {
     const currentStyle = this.provider?.apiStyle
     for (let i = 0; i < this.apiStyleOptions.length; i++) {
@@ -792,7 +845,7 @@ export struct ProviderDetailPanel {
               Column() {
                 this.ApiConfigCard()
 
-                Column().height(12)
+                Column().height(this.getConfigContentBottomSpacerHeight())
               }
               .width('100%')
             }
@@ -808,6 +861,19 @@ export struct ProviderDetailPanel {
             .width('100%')
             .layoutWeight(1)
           }
+        } else if (this.isDetailPanePresentation()) {
+          Stack({ alignContent: Alignment.BottomEnd }) {
+            Stack({ alignContent: Alignment.TopStart }) {
+              this.DetailPaneConfigContent()
+              this.DetailPaneModelsContent()
+            }
+            .width('100%')
+            .height('100%')
+
+            this.DetailPaneBottomTabs()
+          }
+          .width('100%')
+          .layoutWeight(1)
         } else {
           // Tab 分区：配置 | 模型（原生悬浮 Tab 栏）
           Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
@@ -816,7 +882,7 @@ export struct ProviderDetailPanel {
                 Column() {
                   this.ApiConfigCard()
 
-                  Column().height(20)
+                  Column().height(this.getConfigContentBottomSpacerHeight())
                 }
                 .width('100%')
               }
@@ -871,7 +937,8 @@ export struct ProviderDetailPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.isStandalonePagePresentation() ? $r('app.color.background') : Color.Transparent)
+    .backgroundColor(this.presentationMode === ProviderDetailPresentationMode.SHEET ? Color.Transparent
+      : $r('app.color.background'))
   }
 
   @Builder
@@ -906,6 +973,88 @@ export struct ProviderDetailPanel {
     .justifyContent(FlexAlign.Center)
     .height('100%')
     .padding({ left: 16, right: 16 })
+  }
+
+  @Builder
+  private DetailPaneConfigContent() {
+    Scroll() {
+      Column() {
+        this.ApiConfigCard()
+
+        Column().height(this.getConfigContentBottomSpacerHeight())
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .height('100%')
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.Spring)
+    .align(Alignment.Top)
+    .visibility(this.currentTabIndex === 0 ? Visibility.Visible : Visibility.Hidden)
+  }
+
+  @Builder
+  private DetailPaneModelsContent() {
+    Column() {
+      this.ModelsCard()
+    }
+    .width('100%')
+    .height('100%')
+    .visibility(this.currentTabIndex === 1 ? Visibility.Visible : Visibility.Hidden)
+  }
+
+  @Builder
+  private DetailPaneBottomTabs() {
+    Column() {
+      Row({ space: 12 }) {
+        this.DetailPaneBottomTabButton(0, $r('sys.symbol.gearshape'), $r('app.string.provider_tab_config'))
+        this.DetailPaneBottomTabButton(1, $r('sys.symbol.satellite_map'), $r('app.string.provider_tab_models'))
+      }
+      .width('100%')
+      .padding({
+        left: 24,
+        right: 24,
+        top: 8,
+        bottom: 8 + this.getBottomAvoidHeightVp()
+      })
+    }
+    .width('100%')
+    .height(this.getDetailPaneBottomBarHeight())
+    .backgroundColor($r('app.color.background'))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: { top: 1 }, color: $r('app.color.divider') })
+  }
+
+  @Builder
+  private DetailPaneBottomTabButton(index: number, icon: Resource, title: Resource) {
+    Button() {
+      Column({ space: 4 }) {
+        SymbolGlyph(icon)
+          .fontSize(18)
+          .fontColor([this.currentTabIndex === index ? this.themePrimary : $r('app.color.text_tertiary')])
+
+        Text(title)
+          .fontSize(12)
+          .fontWeight(this.currentTabIndex === index ? FontWeight.Bold : FontWeight.Medium)
+          .fontColor(this.currentTabIndex === index ? this.themePrimary : $r('app.color.text_secondary'))
+      }
+      .width('100%')
+      .height(44)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+    }
+    .type(ButtonType.Normal)
+    .stateEffect(false)
+    .layoutWeight(1)
+    .padding(0)
+    .borderRadius(16)
+    .backgroundColor(this.currentTabIndex === index ? this.themePrimaryLight : Color.Transparent)
+    .onClick(() => {
+      if (this.currentTabIndex === index) {
+        return
+      }
+      this.currentTabIndex = index
+    })
   }
 
   @Builder
@@ -1019,6 +1168,77 @@ export struct ProviderDetailPanel {
       .width('100%')
       .padding({ left: 16, right: 16, bottom: 6 })
       .backgroundColor($r('app.color.background'))
+    } else if (this.isDetailPanePresentation()) {
+      Column() {
+        Row({ space: 10 }) {
+          Button() {
+            SymbolGlyph(this.headerLeadingSymbol())
+              .fontSize(18)
+              .fontColor([$r('app.color.text_secondary')])
+          }
+          .type(ButtonType.Circle)
+          .width(36)
+          .height(36)
+          .backgroundColor($r('app.color.divider'))
+          .onClick(() => {
+            this.onClose()
+          })
+
+          Column({ space: 2 }) {
+            Text(this.isCreateMode ? $r('app.string.add_custom_provider') :
+              (this.provider?.name ?? $r('app.string.provider_detail_title')))
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.text_primary'))
+              .width('100%')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+            Text(this.currentTabIndex === 0 ? $r('app.string.provider_api_config') :
+              $r('app.string.provider_models_manage'))
+              .fontSize(11)
+              .fontColor($r('app.color.text_secondary'))
+              .width('100%')
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          if (!this.isCreateMode && this.provider !== null && !this.provider.isPreset) {
+            Button() {
+              SymbolGlyph($r('sys.symbol.clean'))
+                .fontSize(18)
+                .fontColor([$r('app.color.status_error')])
+            }
+            .type(ButtonType.Circle)
+            .width(36)
+            .height(36)
+            .backgroundColor($r('app.color.divider'))
+            .onClick(() => {
+              this.showDeleteConfirmDialog()
+            })
+          }
+
+          Button() {
+            SymbolGlyph(this.headerSaveSymbol())
+              .fontSize(18)
+              .fontColor([Color.White])
+          }
+          .type(ButtonType.Circle)
+          .width(36)
+          .height(36)
+          .backgroundColor(this.themePrimary)
+          .onClick(() => {
+            this.saveConfigAndClose()
+          })
+        }
+        .width('100%')
+        .height(64)
+        .padding({ left: 24, right: 24 })
+        .alignItems(VerticalAlign.Center)
+      }
+      .width('100%')
+      .backgroundColor($r('app.color.background'))
+      .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
     } else {
       Row() {
         // 关闭按钮
@@ -1132,7 +1352,7 @@ export struct ProviderDetailPanel {
 
   @Builder
   ProviderHeaderCard() {
-    if (this.isStandalonePagePresentation()) {
+    if (this.usesLargeProviderHeaderCard()) {
       Stack({ alignContent: Alignment.TopStart }) {
         Column({ space: 12 }) {
           Row({ space: 12 }) {
@@ -1870,7 +2090,7 @@ ModelsCard() {
             .virtualScroll({ totalCount: this.modelRenderRows.length })
 
           ListItem() {
-            Column().height(16)
+            Column().height(this.getModelsListBottomSpacerHeight())
           }
         }
         .width('100%')

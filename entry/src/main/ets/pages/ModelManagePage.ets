@@ -7,7 +7,7 @@ import {
   ProviderDetailPresentationMode,
   tryHandleProviderDetailInternalBack
 } from '../components/ProviderDetailSheet'
-import { ProviderIcon } from '../components/ProviderIcon'
+import { ProviderIcon, resolveProviderTextIconDisplayMode } from '../components/ProviderIcon'
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { ModelCapabilityMatcher } from '../services/ModelCapabilityMatcher'
 import { IconDownloadCache } from '../services/IconDownloadCache'
@@ -862,6 +862,7 @@ struct ProviderCardItem {
             textIcon: this.provider.textIcon,
             textIconBgColor: this.provider.textIconBgColor,
             customImagePath: this.provider.customImagePath,
+            textIconDisplayMode: resolveProviderTextIconDisplayMode(this.provider.isConnected),
             iconSize: 24,
             radius: 6,
             bgColor: $r('app.color.divider'),
@@ -870,7 +871,6 @@ struct ProviderCardItem {
             fallbackColor: $r('app.color.text_tertiary')
           })
             .margin({ right: 8 })
-            .opacity(this.provider.isConnected ? 1.0 : 0.5)
 
           Text(this.provider.name.toUpperCase())
             .fontSize(13)
