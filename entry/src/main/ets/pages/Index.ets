@@ -16,7 +16,6 @@ import { ServiceRegistry } from '../services/ServiceRegistry'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { SettingsRouteName } from '../config/SettingsRouteName'
 import {
-  getCenteredPageMaxWidth,
   getIndexChatListPaneWidth,
   getIndexPageHorizontalPadding,
   LayoutSizeClass
@@ -70,7 +69,9 @@ import { tryHandleModelManageInternalBack } from './ModelManagePage'
 struct Index {
   private static readonly COMPACT_TABS_BAR_HEIGHT: number = 56
   private static readonly COMPACT_TABS_FLOATING_SIDE_MARGIN: number = 16
-  @Local currentTabIndex: number = 1
+  private static readonly TAB_CHAT: number = 0
+  private static readonly TAB_SETTINGS: number = 1
+  @Local currentTabIndex: number = Index.TAB_CHAT
   @Local sessions: ChatSession[] = []
   @Local isLoading: boolean = false
   @Local currentThemeMode: ThemeMode = ThemeMode.SYSTEM
@@ -205,17 +206,17 @@ struct Index {
   }
 
   onLayoutSizeClassChanged(): void {
-    if (this.currentTabIndex === 2 && this.settingsNavPathStack.size() > 0) {
+    if (this.currentTabIndex === Index.TAB_SETTINGS && this.settingsNavPathStack.size() > 0) {
       this.syncSettingsDetailPresentationMode()
     }
     if (this.isSettingsSplitMode()) {
       this.dismissSettingsSheetForNavigation()
-      if (this.currentTabIndex === 2) {
+      if (this.currentTabIndex === Index.TAB_SETTINGS) {
         this.ensureSettingsSplitLandingRoute()
       }
       return
     }
-    if (this.currentTabIndex === 1 && this.currentTabletDetailParams !== null && this.navPathStack.size() === 0) {
+    if (this.currentTabIndex === Index.TAB_CHAT && this.currentTabletDetailParams !== null && this.navPathStack.size() === 0) {
       const params = this.currentTabletDetailParams
       this.clearTabletChatDetail(false)
       this.navPathStack.pushPath({ name: 'ChatPage', param: params as ChatPageRouteParams })
@@ -229,7 +230,7 @@ struct Index {
   }
 
   onWindowMetricsChanged(): void {
-    if (this.currentTabIndex !== 2) {
+    if (this.currentTabIndex !== Index.TAB_SETTINGS) {
       return
     }
     this.syncSettingsDetailPresentationMode()
@@ -252,10 +253,6 @@ struct Index {
 
   private getExpandedPageHorizontalPadding(): number {
     return getIndexPageHorizontalPadding(this.windowWidthVp)
-  }
-
-  private getExpandedCenterColumnMaxWidth(): number {
-    return getCenteredPageMaxWidth(this.windowWidthVp)
   }
 
   private getExpandedSettingsListWidth(): number {
@@ -311,15 +308,15 @@ struct Index {
   }
 
   private switchToTab(index: number, shouldEnsureSettingsSplitLanding: boolean = true): void {
-    if (index !== 2) {
+    if (index !== Index.TAB_SETTINGS) {
       this.dismissSettingsSheetForNavigation()
     }
     this.currentTabIndex = index
-    if (index === 1) {
+    if (index === Index.TAB_CHAT) {
       this.loadSessions()
       return
     }
-    if (index === 2 && shouldEnsureSettingsSplitLanding) {
+    if (index === Index.TAB_SETTINGS && shouldEnsureSettingsSplitLanding) {
       setAppUiStateValue(
         AppStorageKeys.SETTINGS_DETAIL_PRESENTATION_MODE,
         this.isSettingsSplitMode() ? SettingsPagePresentationMode.DETAIL_PANE : SettingsPagePresentationMode.PAGE
@@ -329,7 +326,7 @@ struct Index {
   }
 
   private openChatRoute(params: ChatPageRouteParams): void {
-    this.switchToTab(1)
+    this.switchToTab(Index.TAB_CHAT)
     if (this.isExpandedLayout()) {
       this.openTabletChatDetail(params)
       return
@@ -358,7 +355,7 @@ struct Index {
   }
 
   private openSettingsDestination(routeName: SettingsRouteName): void {
-    this.switchToTab(2, false)
+    this.switchToTab(Index.TAB_SETTINGS, false)
     this.dismissSettingsSheetForNavigation()
     this.currentSettingsRouteName = routeName
     this.syncSettingsDetailPresentationMode()
@@ -521,7 +518,7 @@ struct Index {
       return true
     }
 
-    if (this.currentTabIndex === 2 && this.settingsNavPathStack.size() > 0) {
+    if (this.currentTabIndex === Index.TAB_SETTINGS && this.settingsNavPathStack.size() > 0) {
       const topSettingsRouteName = this.getTopSettingsRouteName()
       if (topSettingsRouteName === 'ProviderDetailPage' && tryHandleProviderDetailInternalBack()) {
         return true
@@ -550,7 +547,7 @@ struct Index {
       return true
     }
 
-    if (this.isExpandedLayout() && this.currentTabIndex === 1 && this.tabletChatDetailPathStack.size() > 0) {
+    if (this.isExpandedLayout() && this.currentTabIndex === Index.TAB_CHAT && this.tabletChatDetailPathStack.size() > 0) {
       this.clearTabletChatDetail(false)
       return true
     }
@@ -1126,11 +1123,6 @@ struct Index {
 
       HdsTabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
         TabContent() {
-          this.AssistantTab()
-        }
-        .tabBar(this.TabBarAssistant())
-
-        TabContent() {
           this.ChatTab()
         }
         .tabBar(this.TabBarChat())
@@ -1148,7 +1140,7 @@ struct Index {
       .barBackgroundColor(Color.Transparent)
       .barFloatingStyle(this.getCompactTabsFloatingStyle())
       .scrollable(false)
-      .cachedMaxCount(3, TabsCacheMode.CACHE_LATEST_SWITCHED)
+      .cachedMaxCount(2, TabsCacheMode.CACHE_LATEST_SWITCHED)
       .onChange((index: number) => {
         if (this.currentTabIndex !== index) {
           this.switchToTab(index)
@@ -1172,9 +1164,7 @@ struct Index {
               .height(this.px2vp(this.topAvoidHeight))
           }
 
-          if (this.currentTabIndex === 0) {
-            this.ExpandedAssistantTab()
-          } else if (this.currentTabIndex === 1) {
+          if (this.currentTabIndex === Index.TAB_CHAT) {
             this.ExpandedChatTab()
           } else {
             this.ExpandedSettingsTab()
@@ -1196,9 +1186,8 @@ struct Index {
         .width('100%')
         .height(this.px2vp(this.topAvoidHeight))
 
-      this.RailTabButton(0, $r('sys.symbol.person_fill'), $r('sys.symbol.person'), $r('app.string.tab_assistant'))
-      this.RailTabButton(1, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
-      this.RailTabButton(2, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'), $r('app.string.tab_settings'))
+      this.RailTabButton(Index.TAB_CHAT, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
+      this.RailTabButton(Index.TAB_SETTINGS, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'), $r('app.string.tab_settings'))
 
       Blank()
     }
@@ -1209,25 +1198,6 @@ struct Index {
     .border({
       width: { right: 1 },
       color: $r('app.color.divider')
-    })
-  }
-
-  @Builder
-  ExpandedAssistantTab() {
-    Row() {
-      Column() {
-        this.AssistantTab()
-      }
-      .width('100%')
-      .constraintSize({ maxWidth: this.getExpandedCenterColumnMaxWidth() })
-    }
-    .width('100%')
-    .layoutWeight(1)
-    .justifyContent(FlexAlign.Center)
-    .padding({
-      left: this.getExpandedPageHorizontalPadding(),
-      right: this.getExpandedPageHorizontalPadding(),
-      bottom: 12
     })
   }
 
@@ -1315,19 +1285,9 @@ struct Index {
   }
 
   @Builder
-  TabBarAssistant() {
-    IndexBottomTabItem({
-      active: this.isTabActive(0),
-      activeIcon: $r('sys.symbol.person_fill'),
-      inactiveIcon: $r('sys.symbol.person'),
-      label: $r('app.string.tab_assistant')
-    })
-  }
-
-  @Builder
   TabBarChat() {
     IndexBottomTabItem({
-      active: this.isTabActive(1),
+      active: this.isTabActive(Index.TAB_CHAT),
       activeIcon: $r('sys.symbol.ellipsis_message_fill'),
       inactiveIcon: $r('sys.symbol.ellipsis_message'),
       label: $r('app.string.tab_chat')
@@ -1337,51 +1297,11 @@ struct Index {
   @Builder
   TabBarSettings() {
     IndexBottomTabItem({
-      active: this.isTabActive(2),
+      active: this.isTabActive(Index.TAB_SETTINGS),
       activeIcon: $r('sys.symbol.gearshape_fill'),
       inactiveIcon: $r('sys.symbol.gearshape'),
       label: $r('app.string.tab_settings')
     })
-  }
-
-  @Builder
-  AssistantTab() {
-    Navigation() {
-      Column() {
-        if (!this.isExpandedLayout()) {
-          Column()
-            .width('100%')
-            .height(this.px2vp(this.topAvoidHeight))
-        }
-
-        Row() {
-          Text($r('app.string.tab_assistant'))
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.text_primary'))
-        }
-        .width('100%')
-        .height(56)
-        .padding({ left: 8, right: 8 })
-        .alignItems(VerticalAlign.Center)
-
-        Column() {
-          Text($r('app.string.assistant_coming_soon'))
-            .fontSize(14)
-            .fontColor($r('app.color.text_secondary'))
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
-      }
-      .width('100%')
-      .layoutWeight(1)
-    }
-    .width('100%')
-    .layoutWeight(1)
-    .hideTitleBar(true)
-    .hideBackButton(true)
-    .backgroundColor($r('app.color.background'))
   }
 
   // 搜索框展开动画

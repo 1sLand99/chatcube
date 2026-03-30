@@ -13,10 +13,6 @@
       "value": "ChatCube"
     },
     {
-      "name": "app_name",
-      "value": "ChatCube"
-    },
-    {
       "name": "model_manage_title",
       "value": "服务商管理"
     },
@@ -35,10 +31,6 @@
     {
       "name": "test_connection",
       "value": "测试连接"
-    },
-    {
-      "name": "tab_assistant",
-      "value": "助手"
     },
     {
       "name": "tab_chat",
@@ -243,18 +235,6 @@
     {
       "name": "hand_adaptive_new_chat_desc",
       "value": "自适应悬浮新建对话按钮的位置。"
-    },
-    {
-      "name": "hand_adaptive_disabled",
-      "value": "已关闭"
-    },
-    {
-      "name": "hand_adaptive_summary_new_chat",
-      "value": "仅新建对话"
-    },
-    {
-      "name": "hand_adaptive_summary_none",
-      "value": "未选择快捷项"
     },
     {
       "name": "hand_adaptive_unsupported",
@@ -513,36 +493,12 @@
       "value": "推理"
     },
     {
-      "name": "chat_toolbar_reasoning_off",
-      "value": "关闭"
-    },
-    {
-      "name": "chat_toolbar_reasoning_on",
-      "value": "开启"
-    },
-    {
-      "name": "chat_toolbar_reasoning_low",
-      "value": "轻度推理"
-    },
-    {
-      "name": "chat_toolbar_reasoning_medium",
-      "value": "中度推理"
-    },
-    {
-      "name": "chat_toolbar_reasoning_high",
-      "value": "重度推理"
-    },
-    {
       "name": "search_service_config",
       "value": "搜索服务"
     },
     {
       "name": "search_engine",
       "value": "搜索引擎"
-    },
-    {
-      "name": "search_engine_current",
-      "value": "当前设置："
     },
     {
       "name": "search_engine_runtime_hint",
@@ -555,10 +511,6 @@
     {
       "name": "search_query_optimization_hint",
       "value": "仅对 Bing（本地）生效。用于把口语输入改写为更可检索的关键词。"
-    },
-    {
-      "name": "search_query_optimization_exa_hint",
-      "value": "Exa 模式下会默认跳过该优化，避免重复改写。"
     },
     {
       "name": "search_exa_api_key",
@@ -969,10 +921,6 @@
       "value": "对话已删除"
     },
     {
-      "name": "assistant_coming_soon",
-      "value": "AI 助手功能即将上线"
-    },
-    {
       "name": "theme_switched",
       "value": "主题已切换"
     },
@@ -1221,118 +1169,6 @@
       "value": "选择背景颜色"
     },
     {
-      "name": "assistant_center_title",
-      "value": "智能体中心"
-    },
-    {
-      "name": "assistant_center_subtitle",
-      "value": "任务化执行"
-    },
-    {
-      "name": "assistant_template_section",
-      "value": "助手模板"
-    },
-    {
-      "name": "assistant_input_section",
-      "value": "任务输入"
-    },
-    {
-      "name": "assistant_input_placeholder",
-      "value": "输入任务目标、约束和上下文信息..."
-    },
-    {
-      "name": "assistant_run_button",
-      "value": "一键执行助手任务"
-    },
-    {
-      "name": "assistant_recent_section",
-      "value": "最近任务"
-    },
-    {
-      "name": "assistant_recent_empty",
-      "value": "暂无任务记录"
-    },
-    {
-      "name": "assistant_select_template_first",
-      "value": "请先选择一个助手模板"
-    },
-    {
-      "name": "assistant_input_required",
-      "value": "请输入任务内容"
-    },
-    {
-      "name": "assistant_task_pending",
-      "value": "待执行"
-    },
-    {
-      "name": "assistant_task_running",
-      "value": "执行中"
-    },
-    {
-      "name": "assistant_task_completed",
-      "value": "已完成"
-    },
-    {
-      "name": "assistant_task_failed",
-      "value": "执行失败"
-    },
-    {
-      "name": "assistant_task_no_session",
-      "value": "该任务暂无可打开会话"
-    },
-    {
-      "name": "huawei_agent_section",
-      "value": "华为官方智能体入口"
-    },
-    {
-      "name": "huawei_agent_config_hint",
-      "value": "提示：不同设备的官方智能体包名和能力名可能不同，请按实际设备配置。"
-    },
-    {
-      "name": "huawei_agent_feature_switch",
-      "value": "启用官方智能体入口"
-    },
-    {
-      "name": "huawei_agent_launch_button",
-      "value": "拉起"
-    },
-    {
-      "name": "huawei_agent_launch_success",
-      "value": "已尝试拉起官方智能体"
-    },
-    {
-      "name": "huawei_agent_launch_failed",
-      "value": "拉起失败，请检查设备支持与入口配置"
-    },
-    {
-      "name": "huawei_agent_add_entry",
-      "value": "添加智能体入口"
-    },
-    {
-      "name": "huawei_agent_name_placeholder",
-      "value": "入口名称（例如：小艺智能体）"
-    },
-    {
-      "name": "huawei_agent_bundle_placeholder",
-      "value": "BundleName（包名）"
-    },
-    {
-      "name": "huawei_agent_ability_placeholder",
-      "value": "AbilityName（页面能力名）"
-    },
-    {
-      "name": "huawei_agent_save_entry",
-      "value": "保存入口"
-    },
-    {
-      "name": "huawei_agent_entry_required",
-      "value": "请完整填写入口名称、包名和能力名"
-    },
-    {
-      "name": "huawei_agent_entry_added",
-      "value": "官方智能体入口已添加"
-    },
-    {
       "name": "tools_center_title",
       "value": "工具服务"
     },
@@ -1343,10 +1179,6 @@
     {
       "name": "tools_builtin_section",
       "value": "内置工具"
-    },
-    {
-      "name": "tools_builtin_section_desc",
-      "value": "应用内置工具能力。"
     },
     {
       "name": "search_service_config_desc",
@@ -1517,14 +1349,6 @@
       "value": "结果: "
     },
     {
-      "name": "tool_call_executing",
-      "value": "执行中..."
-    },
-    {
-      "name": "tool_call_completed",
-      "value": "执行完成"
-    },
-    {
       "name": "match_icons",
       "value": "匹配图标"
     },
@@ -1643,10 +1467,6 @@
     {
       "name": "about_copyright",
       "value": "© 2026 ChatCube. 保留所有权利。"
-    },
-    {
-      "name": "about_link_copied",
-      "value": "链接已复制"
     },
     {
       "name": "provider_tab_config",

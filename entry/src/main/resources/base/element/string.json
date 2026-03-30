@@ -13,10 +13,6 @@
       "value": "ChatCube"
     },
     {
-      "name": "app_name",
-      "value": "ChatCube"
-    },
-    {
       "name": "model_manage_title",
       "value": "Provider Management"
     },
@@ -35,10 +31,6 @@
     {
       "name": "test_connection",
       "value": "Test Connection"
-    },
-    {
-      "name": "tab_assistant",
-      "value": "Assistant"
     },
     {
       "name": "tab_chat",
@@ -243,18 +235,6 @@
     {
       "name": "hand_adaptive_new_chat_desc",
       "value": "Adapt the floating New Chat button position."
-    },
-    {
-      "name": "hand_adaptive_disabled",
-      "value": "Off"
-    },
-    {
-      "name": "hand_adaptive_summary_new_chat",
-      "value": "New Chat only"
-    },
-    {
-      "name": "hand_adaptive_summary_none",
-      "value": "No shortcut selected"
     },
     {
       "name": "hand_adaptive_unsupported",
@@ -513,36 +493,12 @@
       "value": "Reasoning"
     },
     {
-      "name": "chat_toolbar_reasoning_off",
-      "value": "Off"
-    },
-    {
-      "name": "chat_toolbar_reasoning_on",
-      "value": "On"
-    },
-    {
-      "name": "chat_toolbar_reasoning_low",
-      "value": "Light Reasoning"
-    },
-    {
-      "name": "chat_toolbar_reasoning_medium",
-      "value": "Medium Reasoning"
-    },
-    {
-      "name": "chat_toolbar_reasoning_high",
-      "value": "High Reasoning"
-    },
-    {
       "name": "search_service_config",
       "value": "Search Service"
     },
     {
       "name": "search_engine",
       "value": "Search Engine"
-    },
-    {
-      "name": "search_engine_current",
-      "value": "Current: "
     },
     {
       "name": "search_engine_runtime_hint",
@@ -555,10 +511,6 @@
     {
       "name": "search_query_optimization_hint",
       "value": "Only applies to Bing (Local). Rewrites conversational input into searchable keywords."
-    },
-    {
-      "name": "search_query_optimization_exa_hint",
-      "value": "This optimization is skipped when Exa is selected to avoid double rewriting."
     },
     {
       "name": "search_exa_api_key",
@@ -969,10 +921,6 @@
       "value": "Conversation deleted"
     },
     {
-      "name": "assistant_coming_soon",
-      "value": "Assistant features are coming soon"
-    },
-    {
       "name": "theme_switched",
       "value": "Theme switched"
     },
@@ -1221,118 +1169,6 @@
       "value": "Pick Background Color"
     },
     {
-      "name": "assistant_center_title",
-      "value": "Agent Center"
-    },
-    {
-      "name": "assistant_center_subtitle",
-      "value": "Task Automation"
-    },
-    {
-      "name": "assistant_template_section",
-      "value": "Assistant Templates"
-    },
-    {
-      "name": "assistant_input_section",
-      "value": "Task Input"
-    },
-    {
-      "name": "assistant_input_placeholder",
-      "value": "Describe your goal, constraints, and context..."
-    },
-    {
-      "name": "assistant_run_button",
-      "value": "Run Assistant Task"
-    },
-    {
-      "name": "assistant_recent_section",
-      "value": "Recent Tasks"
-    },
-    {
-      "name": "assistant_recent_empty",
-      "value": "No recent tasks"
-    },
-    {
-      "name": "assistant_select_template_first",
-      "value": "Please select a template first"
-    },
-    {
-      "name": "assistant_input_required",
-      "value": "Please enter task content"
-    },
-    {
-      "name": "assistant_task_pending",
-      "value": "Pending"
-    },
-    {
-      "name": "assistant_task_running",
-      "value": "Running"
-    },
-    {
-      "name": "assistant_task_completed",
-      "value": "Completed"
-    },
-    {
-      "name": "assistant_task_failed",
-      "value": "Failed"
-    },
-    {
-      "name": "assistant_task_no_session",
-      "value": "No chat session available for this task yet"
-    },
-    {
-      "name": "huawei_agent_section",
-      "value": "Huawei Official Agent Entry"
-    },
-    {
-      "name": "huawei_agent_config_hint",
-      "value": "Tip: Official agent bundle and ability names vary by device. Configure based on your device."
-    },
-    {
-      "name": "huawei_agent_feature_switch",
-      "value": "Enable Official Agent Entry"
-    },
-    {
-      "name": "huawei_agent_launch_button",
-      "value": "Launch"
-    },
-    {
-      "name": "huawei_agent_launch_success",
-      "value": "Official agent launch requested"
-    },
-    {
-      "name": "huawei_agent_launch_failed",
-      "value": "Launch failed. Check device support and entry config"
-    },
-    {
-      "name": "huawei_agent_add_entry",
-      "value": "Add Agent Entry"
-    },
-    {
-      "name": "huawei_agent_name_placeholder",
-      "value": "Entry name (e.g. XiaoYi Agent)"
-    },
-    {
-      "name": "huawei_agent_bundle_placeholder",
-      "value": "BundleName"
-    },
-    {
-      "name": "huawei_agent_ability_placeholder",
-      "value": "AbilityName"
-    },
-    {
-      "name": "huawei_agent_save_entry",
-      "value": "Save Entry"
-    },
-    {
-      "name": "huawei_agent_entry_required",
-      "value": "Please fill name, bundle name and ability name"
-    },
-    {
-      "name": "huawei_agent_entry_added",
-      "value": "Official agent entry added"
-    },
-    {
       "name": "tools_center_title",
       "value": "Tool Services"
     },
@@ -1343,10 +1179,6 @@
     {
       "name": "tools_builtin_section",
       "value": "Built-in Tools"
-    },
-    {
-      "name": "tools_builtin_section_desc",
-      "value": "Built-in app tool capabilities."
     },
     {
       "name": "search_service_config_desc",
@@ -1517,14 +1349,6 @@
       "value": "Result: "
     },
     {
-      "name": "tool_call_executing",
-      "value": "Executing..."
-    },
-    {
-      "name": "tool_call_completed",
-      "value": "Completed"
-    },
-    {
       "name": "match_icons",
       "value": "Match Icons"
     },
@@ -1643,10 +1467,6 @@
     {
       "name": "about_copyright",
       "value": "© 2026 ChatCube. All rights reserved."
-    },
-    {
-      "name": "about_link_copied",
-      "value": "Link copied"
     },
     {
       "name": "provider_tab_config",
