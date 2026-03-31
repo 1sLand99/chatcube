@@ -16,7 +16,6 @@ export struct IndexSessionListSection {
   @Event onEnterMultiSelect: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onShareSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
   @Event onToggleFavorite: (session: ChatSession) => void = (_session: ChatSession): void => {}
-
   private sessionListScroller: ListScroller = new ListScroller()
 
   @Builder

@@ -2397,7 +2397,7 @@ export struct ChatPage {
   }
 
   private shouldShowScrollToTopButton(): boolean {
-    if (this.hasDraftContent()) {
+    if (this.hasDraftContent() || this.showImagePreview) {
       return false
     }
     return shouldShowScrollToTopButtonForChat(
@@ -2410,11 +2410,12 @@ export struct ChatPage {
   }
 
   private shouldShowScrollToBottomLoadingButton(): boolean {
-    return !this.hasDraftContent() && !this.isAtBottom && !this.isMultiSelectMode && this.isSending
+    return !this.hasDraftContent() && !this.showImagePreview && !this.isAtBottom && !this.isMultiSelectMode && this.isSending
   }
 
   private shouldShowStandardScrollToBottomButton(): boolean {
-    return !this.hasDraftContent() && this.messages.length > 0 && !this.isAtBottom && !this.isMultiSelectMode && !this.isSending
+    return !this.hasDraftContent() && !this.showImagePreview && this.messages.length > 0 && !this.isAtBottom &&
+      !this.isMultiSelectMode && !this.isSending
   }
 
   private handleMessageListDidScroll(scrollOffset: number, scrollState: ScrollState): void {

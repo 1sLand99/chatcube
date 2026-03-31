@@ -29,6 +29,8 @@ import {
 } from '../config/ProviderModelActions'
 import { getAppUiState } from '../state/AppUiState'
 import { applyModelDraft } from '../utils/ModelDraftUtils'
+import { getSettingsPageCompactTabsTotalInset } from '../utils/SettingsPageLayoutHelper'
+import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 
 export enum ProviderDetailPresentationMode {
   SHEET = 'sheet',
@@ -92,6 +94,9 @@ export struct ProviderDetailPanel {
   }
   private get bottomAvoidHeight(): number {
     return getAppUiState().bottomAvoidHeight
+  }
+  private get settingsDetailPresentationMode(): string {
+    return getAppUiState().settingsDetailPresentationMode
   }
 
   @Local provider: ModelProvider | null = null
@@ -765,9 +770,21 @@ export struct ProviderDetailPanel {
     return getProviderDetailPaneBottomInset(this.getBottomAvoidHeightVp(), this.presentationMode)
   }
 
+  private getCompactSettingsTabsInset(): number {
+    return getSettingsPageCompactTabsTotalInset(this.getBottomAvoidHeightVp(), this.settingsDetailPresentationMode)
+  }
+
+  private shouldAvoidCompactSettingsTabs(): boolean {
+    return this.presentationMode === ProviderDetailPresentationMode.PAGE &&
+      this.settingsDetailPresentationMode !== SettingsPagePresentationMode.DETAIL_PANE
+  }
+
   private getConfigContentBottomSpacerHeight(): number {
     if (this.isDetailPanePresentation()) {
       return this.getDetailPaneBottomInset()
+    }
+    if (this.shouldAvoidCompactSettingsTabs()) {
+      return 24 + this.getCompactSettingsTabsInset()
     }
     return this.isStandalonePagePresentation() ? 12 : 20
   }
@@ -775,6 +792,9 @@ export struct ProviderDetailPanel {
   private getModelsListBottomSpacerHeight(): number {
     if (this.isDetailPanePresentation()) {
       return this.getDetailPaneBottomInset()
+    }
+    if (this.shouldAvoidCompactSettingsTabs()) {
+      return 24 + this.getCompactSettingsTabsInset()
     }
     return 16
   }

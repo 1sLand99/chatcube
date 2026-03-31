@@ -327,6 +327,11 @@ struct Index {
 
   private openChatRoute(params: ChatPageRouteParams): void {
     this.switchToTab(Index.TAB_CHAT)
+    if (this.isSearchExpanded) {
+      this.searchText = ''
+      this.isSearchExpanded = false
+      this.refreshSessionListProjection()
+    }
     if (this.isExpandedLayout()) {
       this.openTabletChatDetail(params)
       return
