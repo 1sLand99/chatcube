@@ -17,6 +17,14 @@
       "value": "Provider Management"
     },
     {
+      "name": "provider_tab_enabled",
+      "value": "Enabled"
+    },
+    {
+      "name": "provider_tab_disabled",
+      "value": "Disabled"
+    },
+    {
       "name": "input_placeholder",
       "value": "Type a message..."
     },

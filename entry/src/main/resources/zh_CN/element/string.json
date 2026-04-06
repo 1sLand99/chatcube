@@ -17,6 +17,14 @@
       "value": "服务商管理"
     },
     {
+      "name": "provider_tab_enabled",
+      "value": "已启用"
+    },
+    {
+      "name": "provider_tab_disabled",
+      "value": "已禁用"
+    },
+    {
       "name": "input_placeholder",
       "value": "输入消息..."
     },

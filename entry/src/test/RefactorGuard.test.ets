@@ -44,6 +44,12 @@ import {
   removeModelById,
   buildSelectedModelsWithPreservedConfig
 } from '../main/ets/config/ProviderModelActions'
+import {
+  ProviderManageTabKey,
+  buildProviderImportOrder,
+  filterProvidersByTab,
+  reorderProvidersWithinTab
+} from '../main/ets/config/ProviderOrderUtils'
 import { ServiceRegistry } from '../main/ets/services/ServiceRegistry'
 import { shouldShowScrollToTopButtonForChat } from '../main/ets/pages/chat/ChatPageUiHelper'
 import { ChatScrollUiFlow, ChatScrollUiFlowDependencies } from '../main/ets/pages/chat/ChatScrollUiFlow'
@@ -376,6 +382,48 @@ export default function refactorGuardTest() {
       setGroupModelsEnabled(emptyGroup, true)
       expect(getGroupEnabledCount(emptyGroup)).assertEqual(0)
       expect(isGroupAllEnabled(emptyGroup)).assertEqual(true)
+    })
+
+    it('providerOrderUtils_should_filter_providers_by_tab', 0, () => {
+      const enabledProvider = new ModelProvider('openai', 'OpenAI', ProviderType.CUSTOM, 'message', '#000000')
+      enabledProvider.isConnected = true
+      const disabledProvider = new ModelProvider('anthropic', 'Anthropic', ProviderType.CUSTOM, 'message', '#000000')
+      disabledProvider.isConnected = false
+
+      const enabledOnly = filterProvidersByTab([enabledProvider, disabledProvider], ProviderManageTabKey.ENABLED)
+      const disabledOnly = filterProvidersByTab([enabledProvider, disabledProvider], ProviderManageTabKey.DISABLED)
+
+      expect(enabledOnly.length).assertEqual(1)
+      expect(enabledOnly[0].id).assertEqual('openai')
+      expect(disabledOnly.length).assertEqual(1)
+      expect(disabledOnly[0].id).assertEqual('anthropic')
+    })
+
+    it('providerOrderUtils_should_reorder_enabled_providers_without_touching_disabled_slots', 0, () => {
+      const providerA = new ModelProvider('a', 'A', ProviderType.CUSTOM, 'message', '#000000')
+      providerA.isConnected = true
+      const providerX = new ModelProvider('x', 'X', ProviderType.CUSTOM, 'message', '#000000')
+      providerX.isConnected = false
+      const providerB = new ModelProvider('b', 'B', ProviderType.CUSTOM, 'message', '#000000')
+      providerB.isConnected = true
+      const providerY = new ModelProvider('y', 'Y', ProviderType.CUSTOM, 'message', '#000000')
+      providerY.isConnected = false
+      const providerC = new ModelProvider('c', 'C', ProviderType.CUSTOM, 'message', '#000000')
+      providerC.isConnected = true
+
+      const reordered = reorderProvidersWithinTab(
+        [providerA, providerX, providerB, providerY, providerC],
+        ProviderManageTabKey.ENABLED,
+        2,
+        0
+      )
+
+      expect(reordered.map((provider: ModelProvider) => provider.id).join(',')).assertEqual('c,x,a,y,b')
+    })
+
+    it('providerOrderUtils_should_build_import_order_with_local_tail_preserved', 0, () => {
+      const ordered = buildProviderImportOrder(['b', 'a', 'b'], ['a', 'c', 'd'])
+      expect(ordered.join(',')).assertEqual('b,a,c,d')
     })
 
     it('buildSelectedModelsWithPreservedConfig_should_keep_existing', 0, () => {

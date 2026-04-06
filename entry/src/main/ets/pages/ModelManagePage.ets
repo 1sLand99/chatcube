@@ -18,6 +18,11 @@ import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentati
 import { isSettingsPageExpandedLayout } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState, observeAppUiState } from '../state/AppUiState'
 import { ProviderDetailRouteParams } from './ProviderDetailPage'
+import {
+  ProviderManageTabKey,
+  filterProvidersByTab,
+  reorderProvidersWithinTab
+} from '../config/ProviderOrderUtils'
 
 let modelManagePagePathStack: NavPathStack | null = null
 let modelManageInternalBackHandler: (() => boolean) | null = null
@@ -38,6 +43,7 @@ struct ModelManagePage {
   @Local allProviders: ModelProvider[] = []
   @Local isLoading: boolean = false
   @Local searchKeywords: string = ''
+  @Local currentTabKey: ProviderManageTabKey = ProviderManageTabKey.ENABLED
   @Local selectedProviderId: string = ''
   @Local detailCreateMode: boolean = false
   @Local isMatchingIcons: boolean = false
@@ -127,6 +133,18 @@ struct ModelManagePage {
     }
     if (this.allProviders.length > 0) {
       this.selectedProviderId = this.allProviders[0].id
+    }
+  }
+
+  private ensureVisibleProviderTab(): void {
+    const enabledCount = filterProvidersByTab(this.allProviders, ProviderManageTabKey.ENABLED).length
+    const disabledCount = filterProvidersByTab(this.allProviders, ProviderManageTabKey.DISABLED).length
+    if (this.currentTabKey === ProviderManageTabKey.ENABLED && enabledCount === 0 && disabledCount > 0) {
+      this.currentTabKey = ProviderManageTabKey.DISABLED
+      return
+    }
+    if (this.currentTabKey === ProviderManageTabKey.DISABLED && disabledCount === 0 && enabledCount > 0) {
+      this.currentTabKey = ProviderManageTabKey.ENABLED
     }
   }
 
@@ -247,6 +265,7 @@ struct ModelManagePage {
 
     this.isLoading = false
     this.hasLoaded = true
+    this.ensureVisibleProviderTab()
     this.ensureExpandedDetailSelection()
   }
 
@@ -286,6 +305,7 @@ struct ModelManagePage {
     if (needsRebuild) {
       this.allProviders = cachedProviders
     }
+    this.ensureVisibleProviderTab()
   }
 
   // 从数据库完整刷新（仅在从其他页面返回时使用）
@@ -320,6 +340,7 @@ struct ModelManagePage {
     if (needsRebuild) {
       this.allProviders = savedProviders
     }
+    this.ensureVisibleProviderTab()
     this.ensureExpandedDetailSelection()
   }
 
@@ -344,13 +365,14 @@ struct ModelManagePage {
 
   // 获取过滤后的所有供应商
   private getFilteredProviders(): ModelProvider[] {
+    const tabProviders = filterProvidersByTab(this.allProviders, this.currentTabKey)
     if (this.searchKeywords.trim() === '') {
-      return this.allProviders
+      return tabProviders
     }
     const result: ModelProvider[] = []
-    for (let i = 0; i < this.allProviders.length; i++) {
-      if (this.matchesSearch(this.allProviders[i])) {
-        result.push(this.allProviders[i])
+    for (let i = 0; i < tabProviders.length; i++) {
+      if (this.matchesSearch(tabProviders[i])) {
+        result.push(tabProviders[i])
       }
     }
     return result
@@ -510,7 +532,7 @@ struct ModelManagePage {
   @Builder
   CompactManageBody() {
     Column() {
-        this.ProviderListPane(false)
+      this.ProviderListPane(false)
     }
     .width('100%')
     .layoutWeight(1)
@@ -520,6 +542,8 @@ struct ModelManagePage {
   @Builder
   ProviderListPane(isExpandedPane: boolean) {
     Column() {
+      this.ProviderStatusTabs(isExpandedPane)
+
       Row() {
         Row({ space: 8 }) {
           SymbolGlyph($r('sys.symbol.magnifyingglass'))
@@ -577,7 +601,6 @@ struct ModelManagePage {
               .margin({ left: 16, right: 16 })
               .borderRadius(16)
               .clip(true)
-              .transition({ type: TransitionType.All, opacity: 0 })
             })
             .key((item: ModelProvider) => {
               return item.id
@@ -587,8 +610,7 @@ struct ModelManagePage {
               if (this.searchKeywords.trim() !== '') {
                 return
               }
-              let temp = this.allProviders.splice(from, 1)
-              this.allProviders.splice(to, 0, temp[0])
+              this.allProviders = reorderProvidersWithinTab(this.allProviders, this.currentTabKey, from, to)
               this.saveOrder()
             })
 
@@ -656,6 +678,46 @@ struct ModelManagePage {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.background'))
+  }
+
+  @Builder
+  private ProviderStatusTabs(isExpandedPane: boolean) {
+    Row({ space: 20 }) {
+      this.ProviderStatusTabButton(ProviderManageTabKey.ENABLED, $r('app.string.provider_tab_enabled'))
+      this.ProviderStatusTabButton(ProviderManageTabKey.DISABLED, $r('app.string.provider_tab_disabled'))
+      Blank()
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: isExpandedPane ? 16 : 8, bottom: 8 })
+  }
+
+  @Builder
+  private ProviderStatusTabButton(tabKey: ProviderManageTabKey, title: Resource) {
+    Button() {
+      Column({ space: 6 }) {
+        Text(title)
+          .fontSize(15)
+          .fontWeight(this.currentTabKey === tabKey ? FontWeight.Bold : FontWeight.Medium)
+          .fontColor(this.currentTabKey === tabKey ? $r('app.color.text_primary') : $r('app.color.text_secondary'))
+
+        Column()
+          .width(this.currentTabKey === tabKey ? 24 : 14)
+          .height(3)
+          .borderRadius(2)
+          .backgroundColor(this.currentTabKey === tabKey ? this.themePrimary : Color.Transparent)
+      }
+      .alignItems(HorizontalAlign.Start)
+    }
+    .type(ButtonType.Normal)
+    .stateEffect(false)
+    .padding({ left: 0, right: 0, top: 4, bottom: 4 })
+    .backgroundColor(Color.Transparent)
+    .onClick(() => {
+      if (this.currentTabKey === tabKey) {
+        return
+      }
+      this.currentTabKey = tabKey
+    })
   }
 
   @Builder
