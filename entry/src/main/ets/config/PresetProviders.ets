@@ -3,7 +3,7 @@
  * 定义内置的模型供应商，这些供应商不可删除
  */
 
-import { ProviderType, ApiStyle } from '../models/ChatModels'
+import { ProviderType, ApiStyle, OpenAITransport } from '../models/ChatModels'
 
 // 预设供应商配置接口
 export interface PresetProviderConfig {
@@ -11,6 +11,7 @@ export interface PresetProviderConfig {
   name: string
   type: ProviderType
   apiStyle: ApiStyle
+  openaiTransport?: OpenAITransport
   baseUrl: string
   requiresApiKey?: boolean
   iconPath: string      // SVG 图标路径（已弃用，置空）
@@ -27,6 +28,7 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     name: 'OpenAI',
     type: ProviderType.OPENAI,
     apiStyle: ApiStyle.OPENAI,
+    openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
     baseUrl: 'https://api.openai.com/v1',
     iconPath: '',
     brandColorHex: '#10A37F',
@@ -38,6 +40,7 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     name: 'Claude',
     type: ProviderType.ANTHROPIC,
     apiStyle: ApiStyle.ANTHROPIC,
+    openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
     baseUrl: 'https://api.anthropic.com',
     iconPath: '',
     brandColorHex: '#C45C3A',
@@ -49,6 +52,7 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     name: 'DeepSeek',
     type: ProviderType.DEEPSEEK,
     apiStyle: ApiStyle.OPENAI,
+    openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
     baseUrl: 'https://api.deepseek.com/v1',
     iconPath: '',
     brandColorHex: '#4D6BFE',
@@ -60,6 +64,7 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     name: 'Gemini',
     type: ProviderType.CUSTOM,
     apiStyle: ApiStyle.GOOGLE,
+    openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     iconPath: '',
     brandColorHex: '#4285F4',

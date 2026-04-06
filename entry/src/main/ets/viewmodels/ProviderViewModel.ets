@@ -5,6 +5,7 @@ import {
   ModelInfo,
   ProviderType,
   ApiStyle,
+  OpenAITransport,
   ModelCapabilities,
   ModelParameters,
   ModelType,
@@ -189,6 +190,7 @@ export class ProviderViewModel {
     target.requiresApiKey = source.requiresApiKey
     target.baseUrl = source.baseUrl
     target.apiPath = source.apiPath
+    target.openaiTransport = source.openaiTransport
     target.customHeadersJson = source.customHeadersJson
     target.apiStyle = source.apiStyle
     target.type = source.type
@@ -281,6 +283,9 @@ export class ProviderViewModel {
     provider.isPreset = config.isPreset || isPresetProvider(config.id)
     provider.iconPath = config.iconPath !== '' ? config.iconPath : getPresetProviderIconPath(config.id)
     provider.apiPath = config.apiPath !== undefined ? config.apiPath : ''
+    provider.openaiTransport = config.openaiTransport === OpenAITransport.RESPONSES
+      ? OpenAITransport.RESPONSES
+      : OpenAITransport.CHAT_COMPLETIONS
     provider.customHeadersJson = config.customHeadersJson !== undefined ? config.customHeadersJson : ''
 
     // 设置图标类型相关字段
@@ -359,6 +364,7 @@ export class ProviderViewModel {
       apiKey: getEffectiveApiKey(provider.id, provider.apiKey),
       baseUrl: provider.baseUrl,
       apiPath: provider.apiPath || undefined,
+      openaiTransport: provider.openaiTransport,
       customHeadersJson: provider.customHeadersJson || undefined  // 传递自定义请求头
     }
   }
@@ -505,6 +511,7 @@ export class ProviderViewModel {
     siliconflow.isPreset = true
     siliconflow.iconPath = ''
     siliconflow.apiPath = ''
+    siliconflow.openaiTransport = OpenAITransport.CHAT_COMPLETIONS
     siliconflow.iconType = ProviderIconType.TEXT
     siliconflow.textIcon = 'SF'
     siliconflow.textIconBgColor = '#7C3AED'
@@ -556,6 +563,7 @@ export class ProviderViewModel {
           provider.isPreset = true
           provider.iconPath = ''
           provider.apiPath = ''
+          provider.openaiTransport = preset.openaiTransport !== undefined ? preset.openaiTransport : OpenAITransport.CHAT_COMPLETIONS
           provider.iconType = ProviderIconType.TEXT
           provider.textIcon = preset.textIcon
           provider.textIconBgColor = preset.textIconBgColor

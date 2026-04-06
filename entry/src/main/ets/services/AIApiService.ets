@@ -9,7 +9,8 @@ import {
   ReasoningLevel,
   ToolDefinition,
   ToolCall,
-  ToolResult
+  ToolResult,
+  OpenAITransport
 } from '../models/ChatModels'
 import {
   AnthropicAuthStrategy,
@@ -209,11 +210,34 @@ interface OpenAIRequestBody {
   reasoning_effort?: string  // OpenAI o1/o3 系列推理级别: low, medium, high
   reasoning_split?: boolean  // MiniMax 推理内容分离（reasoning_details 字段）
   thinking?: ThinkingConfig  // 小米 MiMo / 智谱 GLM 思考模式配置
+  enable_thinking?: boolean  // SiliconFlow chat/completions 思考开关
+  thinking_budget?: number   // SiliconFlow chat/completions 思考预算
   tools?: OpenAITool[]       // Function Calling 工具定义
   tool_choice?: string       // 工具选择策略: "auto" | "none" | "required"
   top_p?: number             // Top P 采样参数
   presence_penalty?: number  // 存在惩罚
   frequency_penalty?: number // 频率惩罚
+}
+
+interface OpenAIResponsesContentPart {
+  type: string
+  text?: string
+  image_url?: string
+  detail?: string
+}
+
+interface OpenAIResponsesInputItem {
+  role: string
+  content: OpenAIResponsesContentPart[]
+}
+
+interface OpenAIResponsesRequestBody {
+  model: string
+  input: OpenAIResponsesInputItem[] | string
+  instructions?: string
+  temperature?: number
+  max_output_tokens?: number
+  stream?: boolean
 }
 
 // Anthropic 思考配置接口
@@ -323,6 +347,7 @@ export interface AIApiConfig {
   apiKey: string
   baseUrl: string
   apiPath?: string  // 可选的自定义 API 路径（如 /v1/chat/completions）
+  openaiTransport?: string
   customHeadersJson?: string  // 可选的服务商级自定义请求头
   modelReasoningStrategyOverride?: string
   // 模型参数（可选）
@@ -424,6 +449,36 @@ interface GoogleCandidate {
 
 interface GoogleResponse {
   candidates: GoogleCandidate[]
+}
+
+interface OpenAIResponsesOutputContentItem {
+  type: string
+  text?: string
+  refusal?: string
+}
+
+interface OpenAIResponsesOutputItem {
+  type: string
+  role?: string
+  content?: OpenAIResponsesOutputContentItem[]
+}
+
+interface OpenAIResponsesUsageInfo {
+  input_tokens?: number
+  output_tokens?: number
+  total_tokens?: number
+}
+
+interface OpenAIResponsesResponse {
+  output_text?: string
+  output?: OpenAIResponsesOutputItem[]
+  usage?: OpenAIResponsesUsageInfo
+}
+
+interface OpenAIResponsesStreamEvent {
+  type?: string
+  delta?: string
+  error?: ApiError
 }
 
 // OpenAI 流式响应块增量
@@ -529,6 +584,7 @@ interface StreamChunkResult {
   // Function Calling 工具调用增量
   toolCallDeltas?: ToolCallDelta[]
   finishReason?: string
+  errorMessage?: string
 }
 
 // 工具调用增量（用于流式响应累积）
@@ -614,6 +670,52 @@ export class AIApiService {
     const incrementalContent = rawContent.substring(this.minimaxContentBuffer.length)
     this.minimaxContentBuffer = rawContent
     return incrementalContent
+  }
+
+
+  private shouldUseOpenAIResponses(config: AIApiConfig, forceChatCompletions: boolean = false): boolean {
+    return !forceChatCompletions &&
+      config.apiStyle === ApiStyle.OPENAI &&
+      config.openaiTransport === OpenAITransport.RESPONSES
+  }
+
+  private buildResponsesUsageInfo(usage?: OpenAIResponsesUsageInfo): UsageInfo | null {
+    if (usage === undefined || usage === null) {
+      return null
+    }
+    return {
+      prompt_tokens: usage.input_tokens !== undefined ? usage.input_tokens : 0,
+      completion_tokens: usage.output_tokens !== undefined ? usage.output_tokens : 0,
+      total_tokens: usage.total_tokens !== undefined ? usage.total_tokens : 0
+    }
+  }
+
+  private extractOpenAIResponsesContent(response: OpenAIResponsesResponse): string {
+    if (response.output_text !== undefined && response.output_text !== null && response.output_text !== '') {
+      return response.output_text
+    }
+
+    let content = ''
+    if (response.output === undefined || response.output === null) {
+      return content
+    }
+
+    for (let i = 0; i < response.output.length; i++) {
+      const item = response.output[i]
+      if (item.type !== 'message' || item.content === undefined || item.content === null) {
+        continue
+      }
+      for (let j = 0; j < item.content.length; j++) {
+        const part = item.content[j]
+        if ((part.type === 'output_text' || part.type === 'text') && part.text !== undefined) {
+          content += part.text
+        } else if (part.type === 'refusal' && part.refusal !== undefined) {
+          content += part.refusal
+        }
+      }
+    }
+
+    return content
   }
 
   // 获取累积的工具调用（流式响应完成后调用）
@@ -724,7 +826,6 @@ export class AIApiService {
     const url = this.buildChatUrl(config, model)
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel)
     this.configureStreamState(config, model)
-
     const response = await this.postWithResolvedAuth(
       config,
       url,
@@ -743,7 +844,7 @@ export class AIApiService {
       return result
     }
 
-    return this.parseResponse(config.apiStyle, response.data)
+    return this.parseResponse(config, response.data)
   }
 
   // 测试连接
@@ -780,6 +881,13 @@ export class AIApiService {
         temperature: 0.7
       }
       requestBodyStr = JSON.stringify(anthropicBody)
+    } else if (this.shouldUseOpenAIResponses(config)) {
+      const responsesBody: OpenAIResponsesRequestBody = {
+        model: testModel,
+        input: 'Hi',
+        max_output_tokens: 10
+      }
+      requestBodyStr = JSON.stringify(responsesBody)
     } else {
       const openaiBody: TestRequestBody = {
         model: testModel,
@@ -865,7 +973,7 @@ export class AIApiService {
   }
 
   // 构建聊天 API URL
-  private buildChatUrl(config: AIApiConfig, model: string = ''): string {
+  private buildChatUrl(config: AIApiConfig, model: string = '', forceChatCompletions: boolean = false): string {
     // 如果提供了自定义 apiPath，直接使用
     if (config.apiPath && config.apiPath.trim() !== '') {
       return ApiUrlResolver.buildUrl(config.baseUrl, config.apiPath)
@@ -894,12 +1002,13 @@ export class AIApiService {
       return `${baseUrl}/v1/messages`
     }
 
-    // OpenAI 兼容格式
-    // 检查 baseUrl 是否已包含版本路径（如 /v1、/v2、/v3 等）
+    const openAIPath = this.shouldUseOpenAIResponses(config, forceChatCompletions)
+      ? '/responses'
+      : '/chat/completions'
     if (/\/v\d+\w*/.test(baseUrl)) {
-      return `${baseUrl}/chat/completions`
+      return `${baseUrl}${openAIPath}`
     }
-    return `${baseUrl}/v1/chat/completions`
+    return `${baseUrl}/v1${openAIPath}`
   }
 
   // 构建模型列表 API URL
@@ -1063,8 +1172,9 @@ export class AIApiService {
     maxTokens: number,
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF,
     tools?: ToolDefinition[],
-    toolChoice?: string
-  ): OpenAIRequestBody | AnthropicRequestBody | GoogleRequestBody {
+    toolChoice?: string,
+    forceChatCompletions: boolean = false
+  ): OpenAIRequestBody | OpenAIResponsesRequestBody | AnthropicRequestBody | GoogleRequestBody {
     const reasoningRequestStrategy = this.getReasoningRequestStrategy(config, model)
     const normalizedReasoningLevel = normalizeReasoningLevelForControl(reasoningLevel)
 
@@ -1231,6 +1341,74 @@ export class AIApiService {
       return body
     }
 
+    const useOpenAIResponses = this.shouldUseOpenAIResponses(config, forceChatCompletions) &&
+      (tools === undefined || tools.length === 0)
+
+    if (useOpenAIResponses) {
+      const responseInputs: OpenAIResponsesInputItem[] = []
+      const instructionParts: string[] = []
+
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i]
+        if (msg.role === 'system') {
+          if (msg.content.trim() !== '') {
+            instructionParts.push(msg.content.trim())
+          }
+          continue
+        }
+
+        const contentParts: OpenAIResponsesContentPart[] = []
+        let fileTextContent = ''
+
+        for (let j = 0; j < msg.attachments.length; j++) {
+          const attachment = msg.attachments[j]
+          if (attachment.base64Data === '') {
+            continue
+          }
+          if (attachment.type === AttachmentType.IMAGE) {
+            contentParts.push({
+              type: 'input_image',
+              image_url: `data:${attachment.mimeType};base64,${attachment.base64Data}`,
+              detail: 'auto'
+            })
+          } else {
+            fileTextContent += `[附件: ${attachment.name} (${attachment.mimeType})]`
+          }
+        }
+
+        let textContent = msg.content
+        if (fileTextContent !== '') {
+          textContent = textContent !== '' ? `${fileTextContent}\n${textContent}` : fileTextContent
+        }
+        if (textContent !== '') {
+          contentParts.unshift({
+            type: 'input_text',
+            text: textContent
+          })
+        }
+
+        if (contentParts.length === 0) {
+          continue
+        }
+
+        responseInputs.push({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: contentParts
+        })
+      }
+
+      const responsesBody: OpenAIResponsesRequestBody = {
+        model: model,
+        input: responseInputs,
+        temperature: temperature,
+        max_output_tokens: maxTokens
+      }
+      if (instructionParts.length > 0) {
+        responsesBody.instructions = instructionParts.join('\n\n')
+      }
+      return responsesBody
+    }
+
     // OpenAI 兼容格式
     const openaiMessages: (MessageContent | MultimodalMessageContent | ToolResultMessageContent | AssistantMessageWithToolCalls)[] = []
     for (let i = 0; i < messages.length; i++) {
@@ -1366,6 +1544,14 @@ export class AIApiService {
         requestBody.thinking = { type: 'disabled' }
       }
     }
+
+    if (this.shouldUseSiliconFlowThinkingControl(config, model, forceChatCompletions)) {
+      const enableThinking = this.getSiliconFlowThinkingEnabled(config, normalizedReasoningLevel)
+      requestBody.enable_thinking = enableThinking
+      if (enableThinking) {
+        requestBody.thinking_budget = this.getSiliconFlowThinkingBudget(normalizedReasoningLevel)
+      }
+    }
     // 添加 Function Calling 工具定义
     if (tools !== undefined && tools.length > 0) {
       const openaiTools: OpenAITool[] = []
@@ -1390,7 +1576,7 @@ export class AIApiService {
   }
 
   // 解析响应
-  private parseResponse(apiStyle: ApiStyle, responseData: string): AIApiResult {
+  private parseResponse(config: AIApiConfig, responseData: string): AIApiResult {
     try {
       // 先尝试解析为错误响应
       const errorCheck = JSON.parse(responseData) as ApiErrorResponse
@@ -1405,17 +1591,17 @@ export class AIApiService {
         return result
       }
 
-      if (apiStyle === ApiStyle.GOOGLE) {
-        // Google Gemini 响应格式
+      if (config.apiStyle === ApiStyle.GOOGLE) {
         return this.parseGoogleResponse(responseData)
       }
 
-      if (apiStyle === ApiStyle.ANTHROPIC) {
-        // Anthropic 响应格式
+      if (config.apiStyle === ApiStyle.ANTHROPIC) {
         return this.parseAnthropicResponse(responseData)
       }
 
-      // OpenAI 兼容响应格式
+      if (this.shouldUseOpenAIResponses(config)) {
+        return this.parseOpenAIResponsesResponse(responseData)
+      }
       return this.parseOpenAIResponse(responseData)
     } catch (error) {
       const result: AIApiResult = {
@@ -1426,6 +1612,18 @@ export class AIApiService {
         reasoningContent: ''
       }
       return result
+    }
+  }
+
+  private parseOpenAIResponsesResponse(responseData: string): AIApiResult {
+    const response = JSON.parse(responseData) as OpenAIResponsesResponse
+    const content = this.extractOpenAIResponsesContent(response)
+    return {
+      success: content !== '',
+      content: content,
+      errorMessage: content !== '' ? '' : 'No output in response',
+      usage: this.buildResponsesUsageInfo(response.usage),
+      reasoningContent: ''
     }
   }
 
@@ -1617,6 +1815,57 @@ export class AIApiService {
     }
   }
 
+  private isSiliconFlowOpenAIProvider(config: AIApiConfig): boolean {
+    if (config.apiStyle !== ApiStyle.OPENAI) {
+      return false
+    }
+    const normalizedBaseUrl = config.baseUrl.trim().toLowerCase()
+    return config.providerId === 'siliconflow' || normalizedBaseUrl.includes('api.siliconflow.cn')
+  }
+
+  private supportsSiliconFlowThinkingModel(model: string): boolean {
+    const modelLower = model.trim().toLowerCase()
+    return modelLower.startsWith('pro/zai-org/glm-5') ||
+      modelLower.startsWith('pro/zai-org/glm-4.7') ||
+      modelLower.startsWith('zai-org/glm-4.6') ||
+      modelLower.startsWith('zai-org/glm-4.5v') ||
+      modelLower.startsWith('deepseek-ai/deepseek-v3.2') ||
+      modelLower.startsWith('pro/deepseek-ai/deepseek-v3.2') ||
+      modelLower.startsWith('deepseek-ai/deepseek-v3.1-terminus') ||
+      modelLower.startsWith('pro/deepseek-ai/deepseek-v3.1-terminus') ||
+      modelLower.startsWith('qwen/qwen3') ||
+      modelLower === 'tencent/hunyuan-a13b-instruct'
+  }
+
+  private shouldUseSiliconFlowThinkingControl(
+    config: AIApiConfig,
+    model: string,
+    forceChatCompletions: boolean = false
+  ): boolean {
+    return this.isSiliconFlowOpenAIProvider(config) &&
+      this.supportsSiliconFlowThinkingModel(model) &&
+      !this.shouldUseOpenAIResponses(config, forceChatCompletions)
+  }
+
+  private getSiliconFlowThinkingEnabled(config: AIApiConfig, reasoningLevel: ReasoningLevel): boolean {
+    if (config.modelReasoningStrategyOverride === ReasoningRequestStrategy.NONE) {
+      return false
+    }
+    return reasoningLevel !== ReasoningLevel.OFF
+  }
+
+  private getSiliconFlowThinkingBudget(level: ReasoningLevel): number {
+    switch (level) {
+      case ReasoningLevel.LOW:
+        return 2048
+      case ReasoningLevel.HIGH:
+        return 8192
+      case ReasoningLevel.MEDIUM:
+      default:
+        return 4096
+    }
+  }
+
   private collectGoogleSystemPrompt(messages: RequestMessage[]): string {
     const parts: string[] = []
     for (let i = 0; i < messages.length; i++) {
@@ -1721,9 +1970,9 @@ export class AIApiService {
     onImageData?: (base64Data: string, mimeType: string) => void,
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF  // 推理级别参数
   ): http.HttpRequest {
-    // 重置 thinking 状态（用于 DeepSeek-R1 的 <think> 标签解析）
     this.resetThinkingState()
 
+    const useOpenAIResponses = this.shouldUseOpenAIResponses(config)
     let url = this.buildChatUrl(config, model)
     const headers = this.buildHeaders(config)
     if (config.apiStyle !== ApiStyle.GOOGLE) {
@@ -1732,15 +1981,17 @@ export class AIApiService {
     const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel)
     this.configureStreamState(config, model)
 
-    // 添加流式请求标志
     if (config.apiStyle === ApiStyle.OPENAI) {
-      (requestBody as OpenAIRequestBody).stream = true
+      if (useOpenAIResponses) {
+        (requestBody as OpenAIResponsesRequestBody).stream = true
+      } else {
+        (requestBody as OpenAIRequestBody).stream = true
+      }
     } else if (config.apiStyle === ApiStyle.ANTHROPIC) {
       (requestBody as AnthropicRequestBody).stream = true
     }
-    // Google API URL 需要改为 streamGenerateContent
     if (config.apiStyle === ApiStyle.GOOGLE) {
-       url = url.replace('generateContent', 'streamGenerateContent')
+      url = url.replace('generateContent', 'streamGenerateContent')
     }
 
     console.info('AIApiService', `Streaming request to: ${url}`)
@@ -1758,12 +2009,11 @@ export class AIApiService {
           const text = textDecoder.decodeToString(new Uint8Array(chunk), { stream: true })
           buffer += text
 
-          // 处理 buffer 中的每一行
           const lines = buffer.split('\n')
-          buffer = lines.pop() || '' // 保留最后一行（可能不完整）
+          buffer = lines.pop() || ''
 
           for (let i = 0; i < lines.length; i++) {
-            this.handleStreamLine(config.apiStyle, lines[i], onData, onReasoningData, onImageData)
+            this.handleStreamLine(config.apiStyle, useOpenAIResponses, lines[i], onData, onError, onReasoningData, onImageData)
           }
         } catch (e) {
           console.error('AIApiService', `Stream decode error: ${JSON.stringify(e)}`)
@@ -1771,7 +2021,7 @@ export class AIApiService {
       },
       (response) => {
         if (buffer.trim() !== '') {
-          this.handleStreamLine(config.apiStyle, buffer, onData, onReasoningData, onImageData)
+          this.handleStreamLine(config.apiStyle, useOpenAIResponses, buffer, onData, onError, onReasoningData, onImageData)
           buffer = ''
         }
         if (!response.success) {
@@ -1806,26 +2056,23 @@ export class AIApiService {
     toolChoice?: string,
     onToolCallDelta?: (toolCallDeltas: ToolCallDelta[]) => void
   ): http.HttpRequest {
-    // 重置 thinking 状态（用于 DeepSeek-R1 的 <think> 标签解析）
     this.resetThinkingState()
 
-    let url = this.buildChatUrl(config, model)
+    let url = this.buildChatUrl(config, model, true)
     const headers = this.buildHeaders(config)
     if (config.apiStyle !== ApiStyle.GOOGLE) {
       headers['Accept'] = 'text/event-stream'
     }
-    const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel, tools, toolChoice)
+    const requestBody = this.buildRequestBody(config, messages, model, temperature, maxTokens, reasoningLevel, tools, toolChoice, true)
     this.configureStreamState(config, model)
 
-    // 添加流式请求标志
     if (config.apiStyle === ApiStyle.OPENAI) {
       (requestBody as OpenAIRequestBody).stream = true
     } else if (config.apiStyle === ApiStyle.ANTHROPIC) {
       (requestBody as AnthropicRequestBody).stream = true
     }
-    // Google API URL 需要改为 streamGenerateContent
     if (config.apiStyle === ApiStyle.GOOGLE) {
-       url = url.replace('generateContent', 'streamGenerateContent')
+      url = url.replace('generateContent', 'streamGenerateContent')
     }
 
     console.info('AIApiService', `Streaming request with tools to: ${url}`)
@@ -1843,12 +2090,11 @@ export class AIApiService {
           const text = textDecoder.decodeToString(new Uint8Array(chunk), { stream: true })
           buffer += text
 
-          // 处理 buffer 中的每一行
           const lines = buffer.split('\n')
-          buffer = lines.pop() || '' // 保留最后一行（可能不完整）
+          buffer = lines.pop() || ''
 
           for (let i = 0; i < lines.length; i++) {
-            this.handleStreamLineWithTools(config.apiStyle, lines[i], onData, onReasoningData, onImageData, onToolCallDelta)
+            this.handleStreamLineWithTools(config.apiStyle, false, lines[i], onData, onError, onReasoningData, onImageData, onToolCallDelta)
           }
         } catch (e) {
           console.error('AIApiService', `Stream decode error: ${JSON.stringify(e)}`)
@@ -1856,7 +2102,7 @@ export class AIApiService {
       },
       (response) => {
         if (buffer.trim() !== '') {
-          this.handleStreamLineWithTools(config.apiStyle, buffer, onData, onReasoningData, onImageData, onToolCallDelta)
+          this.handleStreamLineWithTools(config.apiStyle, false, buffer, onData, onError, onReasoningData, onImageData, onToolCallDelta)
           buffer = ''
         }
         if (!response.success) {
@@ -1865,7 +2111,6 @@ export class AIApiService {
           return
         }
         console.info('AIApiService', 'Stream completed successfully')
-        // 返回累积的工具调用
         const accumulatedToolCalls = this.getAccumulatedToolCalls()
         onComplete(accumulatedToolCalls)
       },
@@ -1879,8 +2124,10 @@ export class AIApiService {
   // 处理流式响应行（支持工具调用回调）
   private handleStreamLineWithTools(
     apiStyle: ApiStyle,
+    useOpenAIResponses: boolean,
     line: string,
     onData: (content: string) => void,
+    onError: (error: string) => void,
     onReasoningData?: (content: string) => void,
     onImageData?: (base64Data: string, mimeType: string) => void,
     onToolCallDelta?: (toolCallDeltas: ToolCallDelta[]) => void
@@ -1908,9 +2155,8 @@ export class AIApiService {
 
     try {
       const json = JSON.parse(jsonStr) as object
-      this.emitStreamContentWithTools(apiStyle, json, onData, onReasoningData, onImageData, onToolCallDelta)
-    } catch (e) {
-      // 记录解析错误以便调试
+      this.emitStreamContentWithTools(apiStyle, useOpenAIResponses, json, onData, onError, onReasoningData, onImageData, onToolCallDelta)
+    } catch (_e) {
       console.warn('AIApiService', `JSON parse error for line: ${jsonStr.substring(0, 100)}...`)
     }
   }
@@ -1918,8 +2164,10 @@ export class AIApiService {
   // 发送流式内容（支持工具调用回调）
   private emitStreamContentWithTools(
     apiStyle: ApiStyle,
+    useOpenAIResponses: boolean,
     json: object,
     onData: (content: string) => void,
+    onError: (error: string) => void,
     onReasoningData?: (content: string) => void,
     onImageData?: (base64Data: string, mimeType: string) => void,
     onToolCallDelta?: (toolCallDeltas: ToolCallDelta[]) => void
@@ -1927,7 +2175,10 @@ export class AIApiService {
     if (Array.isArray(json)) {
       const items = json as object[]
       for (let i = 0; i < items.length; i++) {
-        const result = this.parseStreamChunk(apiStyle, items[i])
+        const result = this.parseStreamChunk(apiStyle, useOpenAIResponses, items[i])
+        if (result.errorMessage !== undefined && result.errorMessage !== '') {
+          onError(result.errorMessage)
+        }
         if (result.content !== '') {
           onData(result.content)
         }
@@ -1952,7 +2203,10 @@ export class AIApiService {
       return
     }
 
-    const result = this.parseStreamChunk(apiStyle, json)
+    const result = this.parseStreamChunk(apiStyle, useOpenAIResponses, json)
+    if (result.errorMessage !== undefined && result.errorMessage !== '') {
+      onError(result.errorMessage)
+    }
     if (result.content !== '') {
       onData(result.content)
     }
@@ -1989,22 +2243,17 @@ export class AIApiService {
 
     while (remaining.length > 0) {
       if (this.isInThinkingBlock) {
-        // 当前在 <think> 块内，查找 </think>
         const endIndex = remaining.indexOf('</think>')
         if (endIndex !== -1) {
-          // 找到结束标签
           reasoningParts.push(remaining.substring(0, endIndex))
-          remaining = remaining.substring(endIndex + 8) // 8 = '</think>'.length
+          remaining = remaining.substring(endIndex + 8)
           this.isInThinkingBlock = false
         } else {
-          // 没有找到完整的结束标签，检查是否有部分标签
-          // </think> 的可能前缀: <, </, </t, </th, </thi, </thin, </think
           const partialEndTags = ['</think', '</thin', '</thi', '</th', '</t', '</', '<']
           let foundPartial = false
           for (let i = 0; i < partialEndTags.length; i++) {
             const partial = partialEndTags[i]
             if (remaining.endsWith(partial)) {
-              // 找到部分标签，缓冲起来
               this.partialTagBuffer = partial
               reasoningParts.push(remaining.substring(0, remaining.length - partial.length))
               remaining = ''
@@ -2013,30 +2262,24 @@ export class AIApiService {
             }
           }
           if (!foundPartial) {
-            // 没有部分标签，整个内容都是推理内容
             reasoningParts.push(remaining)
             remaining = ''
           }
         }
       } else {
-        // 当前不在 <think> 块内，查找 <think>
         const startIndex = remaining.indexOf('<think>')
         if (startIndex !== -1) {
-          // 找到开始标签
           if (startIndex > 0) {
             contentParts.push(remaining.substring(0, startIndex))
           }
-          remaining = remaining.substring(startIndex + 7) // 7 = '<think>'.length
+          remaining = remaining.substring(startIndex + 7)
           this.isInThinkingBlock = true
         } else {
-          // 没有找到完整的开始标签，检查是否有部分标签
-          // <think> 的可能前缀: <, <t, <th, <thi, <thin, <think
           const partialStartTags = ['<think', '<thin', '<thi', '<th', '<t', '<']
           let foundPartial = false
           for (let i = 0; i < partialStartTags.length; i++) {
             const partial = partialStartTags[i]
             if (remaining.endsWith(partial)) {
-              // 找到部分标签，缓冲起来
               this.partialTagBuffer = partial
               contentParts.push(remaining.substring(0, remaining.length - partial.length))
               remaining = ''
@@ -2045,7 +2288,6 @@ export class AIApiService {
             }
           }
           if (!foundPartial) {
-            // 没有部分标签，整个内容都是正常内容
             contentParts.push(remaining)
             remaining = ''
           }
@@ -2058,17 +2300,27 @@ export class AIApiService {
     return result
   }
 
-  private parseStreamChunk(apiStyle: ApiStyle, json: object): StreamChunkResult {
+  private parseStreamChunk(apiStyle: ApiStyle, useOpenAIResponses: boolean, json: object): StreamChunkResult {
     const result: StreamChunkResult = { content: '', reasoningContent: '' }
     let hasReasoningDetails: boolean = false
 
     if (apiStyle === ApiStyle.OPENAI) {
+      if (useOpenAIResponses) {
+        const event = json as OpenAIResponsesStreamEvent
+        if (event.type === 'response.output_text.delta' && event.delta !== undefined) {
+          result.content = event.delta
+        } else if (event.type === 'response.completed') {
+          result.finishReason = 'stop'
+        } else if (event.type === 'error' && event.error !== undefined) {
+          result.errorMessage = event.error.message
+        }
+        return result
+      }
+
       const chunk = json as OpenAIStreamChunk
       if (chunk.choices && chunk.choices.length > 0) {
         const delta = chunk.choices[0].delta
         let rawContent = delta?.content || ''
-        // 处理推理内容（支持多种格式）
-        // 1. MiniMax reasoning_details (数组格式，优先处理)
         if (delta?.reasoning_details && delta.reasoning_details.length > 0) {
           hasReasoningDetails = true
           result.reasoningIsStructured = true
@@ -2076,7 +2328,6 @@ export class AIApiService {
           for (let i = 0; i < details.length; i++) {
             const detail = details[i]
             if (detail.text && detail.text.length > 0) {
-              // MiniMax 返回的是累积的完整内容，需要计算增量
               const fullText = detail.text
               if (fullText.length > this.minimaxReasoningBuffer.length) {
                 result.reasoningContent = fullText.substring(this.minimaxReasoningBuffer.length)
@@ -2084,47 +2335,36 @@ export class AIApiService {
               }
             }
           }
-          // MiniMax 的 content 字段也是累积的，需要计算增量并过滤 <think> 标签
           const incrementalContent = this.getMiniMaxIncrementalContent(rawContent)
           if (incrementalContent !== '') {
             const parsed = this.parseThinkingTags(incrementalContent)
             result.content = parsed.content
-            // 如果 reasoning_details 为空但 content 中有 <think> 标签，也提取推理内容
             if (result.reasoningContent === '' && parsed.reasoningContent !== '') {
               result.reasoningContent = parsed.reasoningContent
             }
           } else {
             result.content = ''
           }
-        }
-        // 2. 其他 API 的 reasoning_content (字符串格式)
-        else if (delta?.reasoning_content && delta.reasoning_content.length > 0) {
+        } else if (delta?.reasoning_content && delta.reasoning_content.length > 0) {
           result.reasoningContent = delta.reasoning_content
           result.reasoningIsStructured = true
           result.content = rawContent || ''
-        }
-        // 2.1 其他 API 的 reasoning (字符串格式)
-        else if (delta?.reasoning && delta.reasoning.length > 0) {
+        } else if (delta?.reasoning && delta.reasoning.length > 0) {
           result.reasoningContent = delta.reasoning
           result.reasoningIsStructured = true
           result.content = rawContent || ''
-        }
-        // 3. MiniMax OpenAI content 使用累计全文语义，即使没有 reasoning_details 也要做 diff。
-        else if (this.currentOpenAIStreamUsesCumulativeContent && rawContent !== '') {
+        } else if (this.currentOpenAIStreamUsesCumulativeContent && rawContent !== '') {
           const incrementalContent = this.getMiniMaxIncrementalContent(rawContent)
           if (incrementalContent !== '') {
             const parsed = this.parseThinkingTags(incrementalContent)
             result.content = parsed.content
-            // 如果 content 中有 <think> 标签内容，也提取推理内容
             if (parsed.reasoningContent !== '') {
               result.reasoningContent = parsed.reasoningContent
             }
           } else {
             result.content = ''
           }
-        }
-        // 4. DeepSeek-R1 的标签（在 content 中）
-        else if (rawContent !== '') {
+        } else if (rawContent !== '') {
           const parsed = this.parseThinkingTags(rawContent)
           result.content = parsed.content
           result.reasoningContent = parsed.reasoningContent
@@ -2132,21 +2372,16 @@ export class AIApiService {
           result.content = rawContent
         }
 
-        // 处理图片响应（base64 格式）
         if (delta?.image_base64 && delta?.image_mime_type) {
           result.imageData = delta.image_base64
           result.imageMimeType = delta.image_mime_type
           console.info('AIApiService', `Received OpenAI image: ${delta.image_mime_type}, size: ${delta.image_base64.length}`)
-        }
-        // 处理图片 URL（需要下载或直接使用）
-        else if (delta?.image_url) {
-          // 暂时将 URL 作为图片数据传递，ViewModel 可选择下载或直接显示
+        } else if (delta?.image_url) {
           result.imageData = delta.image_url
-          result.imageMimeType = 'image/jpeg' // 默认 MIME 类型，实际应从响应中获取
+          result.imageMimeType = 'image/jpeg'
           console.info('AIApiService', `Received OpenAI image URL: ${delta.image_url}`)
         }
 
-        // 处理 Function Calling 工具调用增量
         if (delta?.tool_calls && delta.tool_calls.length > 0) {
           const toolCallDeltas: ToolCallDelta[] = []
           for (let i = 0; i < delta.tool_calls.length; i++) {
@@ -2161,7 +2396,6 @@ export class AIApiService {
             }
             toolCallDeltas.push(tcDelta)
 
-            // 累积工具调用
             let existingToolCall = this.streamToolCalls.get(tc.index)
             if (existingToolCall === undefined) {
               existingToolCall = new ToolCall('', '', '')
@@ -2181,7 +2415,6 @@ export class AIApiService {
           result.toolCallDeltas = toolCallDeltas
         }
 
-        // 记录 finish_reason
         const finishReason = chunk.choices[0].finish_reason
         if (finishReason !== undefined && finishReason !== null) {
           result.finishReason = finishReason
@@ -2192,12 +2425,10 @@ export class AIApiService {
       if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
         result.content = chunk.delta.text
       }
-      // Anthropic 思考内容处理
       if (chunk.type === 'thinking_delta' && chunk.delta?.text) {
         result.reasoningContent = chunk.delta.text
         result.reasoningIsStructured = true
       }
-      // Anthropic 图片响应处理（image_block_delta）
       if (chunk.type === 'content_block_delta' && chunk.delta?.image_source) {
         result.imageData = chunk.delta.image_source.data
         result.imageMimeType = chunk.delta.image_source.media_type
@@ -2209,7 +2440,6 @@ export class AIApiService {
         const candidate = chunk.candidates[0]
         result.finishReason = candidate.finishReason
         if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-          // 遍历所有 parts，处理文本和图片
           for (let i = 0; i < candidate.content.parts.length; i++) {
             const part = candidate.content.parts[i]
             if (part.text) {
@@ -2219,7 +2449,6 @@ export class AIApiService {
                 result.content += part.text
               }
             } else if (part.inline_data) {
-              // Gemini 生成的图片
               result.imageData = part.inline_data.data
               result.imageMimeType = part.inline_data.mime_type
               console.info('AIApiService', `Received image: ${part.inline_data.mime_type}, size: ${part.inline_data.data.length}`)
@@ -2281,7 +2510,6 @@ export class AIApiService {
       return trimmed
     }
     const first = trimmed.charAt(0)
-    // overlap 裁剪后，如果正文以“逗号/句号”等开头，通常是裁剪到了句中；这里做最小化清理。
     const punctuations = [',', '，', '。', ';', '；', ':', '：']
     for (let i = 0; i < punctuations.length; i++) {
       if (first === punctuations[i]) {
@@ -2293,8 +2521,10 @@ export class AIApiService {
 
   private handleStreamLine(
     apiStyle: ApiStyle,
+    useOpenAIResponses: boolean,
     line: string,
     onData: (content: string) => void,
+    onError: (error: string) => void,
     onReasoningData?: (content: string) => void,
     onImageData?: (base64Data: string, mimeType: string) => void
   ): void {
@@ -2321,24 +2551,28 @@ export class AIApiService {
 
     try {
       const json = JSON.parse(jsonStr) as object
-      this.emitStreamContent(apiStyle, json, onData, onReasoningData, onImageData)
-    } catch (e) {
-      // 记录解析错误以便调试
+      this.emitStreamContent(apiStyle, useOpenAIResponses, json, onData, onError, onReasoningData, onImageData)
+    } catch (_e) {
       console.warn('AIApiService', `JSON parse error for line: ${jsonStr.substring(0, 100)}...`)
     }
   }
 
   private emitStreamContent(
     apiStyle: ApiStyle,
+    useOpenAIResponses: boolean,
     json: object,
     onData: (content: string) => void,
+    onError: (error: string) => void,
     onReasoningData?: (content: string) => void,
     onImageData?: (base64Data: string, mimeType: string) => void
   ): void {
     if (Array.isArray(json)) {
       const items = json as object[]
       for (let i = 0; i < items.length; i++) {
-        const result = this.parseStreamChunk(apiStyle, items[i])
+        const result = this.parseStreamChunk(apiStyle, useOpenAIResponses, items[i])
+        if (result.errorMessage !== undefined && result.errorMessage !== '') {
+          onError(result.errorMessage)
+        }
         if (result.content !== '') {
           onData(result.content)
         }
@@ -2346,7 +2580,6 @@ export class AIApiService {
           onReasoningData(result.reasoningContent)
         }
         if (result.imageData && result.imageMimeType && onImageData) {
-          // 使用 try-catch 包装，防止异常阻断流程
           try {
             onImageData(result.imageData, result.imageMimeType)
           } catch (e) {
@@ -2357,7 +2590,10 @@ export class AIApiService {
       return
     }
 
-    const result = this.parseStreamChunk(apiStyle, json)
+    const result = this.parseStreamChunk(apiStyle, useOpenAIResponses, json)
+    if (result.errorMessage !== undefined && result.errorMessage !== '') {
+      onError(result.errorMessage)
+    }
     if (result.content !== '') {
       onData(result.content)
     }
@@ -2365,7 +2601,6 @@ export class AIApiService {
       onReasoningData(result.reasoningContent)
     }
     if (result.imageData && result.imageMimeType && onImageData) {
-      // 使用 try-catch 包装，防止异常阻断流程
       try {
         onImageData(result.imageData, result.imageMimeType)
       } catch (e) {

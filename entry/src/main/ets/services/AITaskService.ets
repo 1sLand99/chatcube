@@ -2,7 +2,8 @@
 import { getAIApiService, AIApiService, AIApiConfig, RequestMessage } from './AIApiService'
 import { getDefaultModelService, DefaultModelService } from './DefaultModelService'
 import { getProviderViewModel, ProviderViewModel } from '../viewmodels/ProviderViewModel'
-import { ModelRole } from '../models/ChatModels'
+import { ReasoningRequestStrategy } from './ProviderCompatibilityRegistry'
+import { ModelRole, OpenAITransport } from '../models/ChatModels'
 import { getEffectiveApiKey } from '../config/PresetProviders'
 
 // 翻译/标题生成结果
@@ -242,7 +243,19 @@ export class AITaskService {
       apiStyle: provider.apiStyle,
       apiKey: effectiveApiKey,
       baseUrl: provider.baseUrl,
+      apiPath: provider.apiPath !== '' ? provider.apiPath : undefined,
+      openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
       customHeadersJson: provider.customHeadersJson || undefined
+    }
+
+    for (let i = 0; i < provider.models.length; i++) {
+      if (provider.models[i].id === titleModel.modelId) {
+        apiConfig.topP = provider.models[i].parameters.topP
+        apiConfig.presencePenalty = provider.models[i].parameters.presencePenalty
+        apiConfig.frequencyPenalty = provider.models[i].parameters.frequencyPenalty
+        apiConfig.modelReasoningStrategyOverride = ReasoningRequestStrategy.NONE
+        break
+      }
     }
 
     // 构建 Prompt（使用 system + user 双消息模式）
@@ -261,7 +274,6 @@ export class AITaskService {
         0.3, // 低温度以获得更稳定的输出
         100  // 标题只需要少量 token
       )
-
       if (result.success) {
         // 清理标题
         let title = this.cleanTitle(result.content)
@@ -314,7 +326,18 @@ export class AITaskService {
       apiStyle: provider.apiStyle,
       apiKey: effectiveApiKey,
       baseUrl: provider.baseUrl,
+      apiPath: provider.apiPath !== '' ? provider.apiPath : undefined,
       customHeadersJson: provider.customHeadersJson || undefined
+    }
+
+    for (let i = 0; i < provider.models.length; i++) {
+      if (provider.models[i].id === translateModel.modelId) {
+        apiConfig.topP = provider.models[i].parameters.topP
+        apiConfig.presencePenalty = provider.models[i].parameters.presencePenalty
+        apiConfig.frequencyPenalty = provider.models[i].parameters.frequencyPenalty
+        apiConfig.modelReasoningStrategyOverride = provider.models[i].reasoningStrategyOverride
+        break
+      }
     }
 
     // 构建 Prompt

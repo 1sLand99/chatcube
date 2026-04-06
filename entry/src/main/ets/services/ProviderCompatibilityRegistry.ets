@@ -172,6 +172,20 @@ export function resolveProviderCompatibilityProfile(info: CompatibilityProviderI
     }
   }
 
+  if (info.apiStyle === ApiStyle.ANTHROPIC) {
+    return {
+      modelDiscoveryStrategy: ModelDiscoveryStrategy.REMOTE_ENDPOINT,
+      staticModels: [],
+      defaultTestModel: '',
+      anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY,
+      anthropicBearerRetryOnAuthFailure: true,
+      openAIStreamContentMode: OpenAIStreamContentMode.INCREMENTAL,
+      preserveAssistantReasoningDetails: false,
+      reasoningControlMode: ReasoningControlMode.NONE,
+      defaultReasoningRequestStrategy: ReasoningRequestStrategy.NONE
+    }
+  }
+
   if (info.apiStyle === ApiStyle.OPENAI && isOfficialOpenAIProvider(info)) {
     return {
       modelDiscoveryStrategy: ModelDiscoveryStrategy.REMOTE_ENDPOINT,

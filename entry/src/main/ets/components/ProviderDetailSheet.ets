@@ -1,5 +1,13 @@
 import { KeyboardAvoidMode } from '@kit.ArkUI'
-import { ModelProvider, ModelInfo, ModelInfoExtendedJson, ProviderType, ProviderIconType, ApiStyle } from '../models/ChatModels'
+import {
+  ModelProvider,
+  ModelInfo,
+  ModelInfoExtendedJson,
+  ProviderType,
+  ProviderIconType,
+  ApiStyle,
+  OpenAITransport
+} from '../models/ChatModels'
 import { ModelEditSheet } from '../components/ModelEditSheet'
 import { ModelPickerSheetHost } from '../components/ModelPickerSheetHost'
 import { ProviderViewModel } from '../viewmodels/ProviderViewModel'
@@ -14,8 +22,10 @@ import { ModelCapabilityMatcher } from '../services/ModelCapabilityMatcher'
 import { buildModelIconRenderData, ModelIconRenderData } from '../utils/ModelIconRenderUtils'
 import {
   ApiStyleOption,
+  OpenAITransportOption,
   ProviderModelGroup,
   getDefaultApiStyleOptions,
+  getDefaultOpenAITransportOptions,
   buildProviderModelGroups,
   filterProviderModelsByKeyword
 } from '../config/ProviderDetailShared'
@@ -158,6 +168,7 @@ export struct ProviderDetailPanel {
 
   // API 风格选项（仅用于自定义服务商）
   private apiStyleOptions: ApiStyleOption[] = getDefaultApiStyleOptions()
+  private openaiTransportOptions: OpenAITransportOption[] = getDefaultOpenAITransportOptions()
   private readonly reservedProviderHeaderNames: string[] = [
     'authorization',
     'content-type',
@@ -218,6 +229,7 @@ export struct ProviderDetailPanel {
       )
       provider.isConnected = true
       provider.isPreset = false
+      provider.openaiTransport = OpenAITransport.CHAT_COMPLETIONS
       // 生成默认文字图标
       const iconConfig = generateDefaultTextIcon('')
       provider.iconType = 'text' as ProviderIconType
@@ -938,6 +950,13 @@ export struct ProviderDetailPanel {
     return 'OpenAI'
   }
 
+  private getCurrentOpenAITransportName(): string {
+    if (this.provider?.openaiTransport === OpenAITransport.RESPONSES) {
+      return 'Responses'
+    }
+    return 'Chat Completions'
+  }
+
   private headerLeadingSymbol(): Resource {
     if (this.isStandalonePagePresentation()) {
       return $r('sys.symbol.chevron_left')
@@ -1634,6 +1653,21 @@ export struct ProviderDetailPanel {
             .padding({ left: 8, right: 8, top: 5, bottom: 5 })
             .backgroundColor($r('app.color.background'))
             .borderRadius(14)
+
+            if (this.provider?.apiStyle === ApiStyle.OPENAI) {
+              Row({ space: 6 }) {
+                SymbolGlyph($r('sys.symbol.arrow_clockwise'))
+                  .fontSize(12)
+                  .fontColor([$r('app.color.text_secondary')])
+                Text(this.getCurrentOpenAITransportName())
+                  .fontSize(11)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor($r('app.color.text_secondary'))
+              }
+              .padding({ left: 8, right: 8, top: 5, bottom: 5 })
+              .backgroundColor($r('app.color.background'))
+              .borderRadius(14)
+            }
           }
           .width('100%')
         }
@@ -1834,6 +1868,65 @@ export struct ProviderDetailPanel {
         Divider()
           .color($r('app.color.divider'))
           .margin({ left: 16, right: 16, top: 16, bottom: 16 })
+
+        if (this.provider?.apiStyle === ApiStyle.OPENAI) {
+          Column() {
+            Text('OpenAI 协议')
+              .fontSize(13)
+              .fontColor($r('app.color.text_secondary'))
+              .width('100%')
+
+            Column() {
+              ForEach(this.openaiTransportOptions, (option: OpenAITransportOption, index: number) => {
+                Row() {
+                  Radio({ value: option.transport, group: 'openaiTransportSheet' })
+                    .checked(this.provider?.openaiTransport === option.transport)
+                    .onChange((isChecked: boolean) => {
+                      if (isChecked && this.provider !== null) {
+                        this.provider.openaiTransport = option.transport
+                      }
+                    })
+
+                  Column() {
+                    Text(option.name)
+                      .fontSize(14)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor($r('app.color.text_primary'))
+
+                    Text(option.description)
+                      .fontSize(11)
+                      .fontColor($r('app.color.text_secondary'))
+                      .margin({ top: 2 })
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .margin({ left: 8 })
+                  .layoutWeight(1)
+                }
+                .width('100%')
+                .padding({ left: 8, right: 8, top: 10, bottom: 10 })
+                .onClick(() => {
+                  if (this.provider !== null) {
+                    this.provider.openaiTransport = option.transport
+                  }
+                })
+
+                if (index < this.openaiTransportOptions.length - 1) {
+                  Divider().color($r('app.color.divider')).margin({ left: 40 })
+                }
+              })
+            }
+            .width('100%')
+            .backgroundColor($r('app.color.background'))
+            .borderRadius(8)
+            .margin({ top: 8 })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16 })
+
+          Divider()
+            .color($r('app.color.divider'))
+            .margin({ left: 16, right: 16, top: 16, bottom: 16 })
+        }
       }
 
       if (this.provider !== null && !this.provider.isPreset) {

@@ -212,6 +212,7 @@ export class DatabaseService {
         name TEXT,
         type TEXT,
         api_style TEXT,
+        openai_transport TEXT DEFAULT 'chat_completions',
         api_key TEXT,
         requires_api_key INTEGER DEFAULT 1,
         base_url TEXT,
@@ -275,6 +276,7 @@ export class DatabaseService {
       // 尝试添加 is_preset 和 icon_path 字段（用于供应商图标管理）
       await this.addProviderIconColumnsIfNeeded()
       await this.addApiPathColumnIfNeeded()
+      await this.addOpenAITransportColumnIfNeeded()
       await this.addProviderCustomHeadersColumnIfNeeded()
       await this.addProviderRequiresApiKeyColumnIfNeeded()
       // 尝试添加同步相关字段（为 WebDAV 同步预留）
@@ -822,6 +824,19 @@ export class DatabaseService {
       await this.rdbStore.update(valueBucket, predicates)
     } catch (error) {
       console.error('DatabaseService', `Failed to update session: ${JSON.stringify(error)}`)
+    }
+  }
+
+  private async addOpenAITransportColumnIfNeeded(): Promise<void> {
+    if (this.rdbStore === null) {
+      return
+    }
+    try {
+      await this.rdbStore.executeSql(
+        `ALTER TABLE ${TableNames.PROVIDERS} ADD COLUMN openai_transport TEXT DEFAULT 'chat_completions'`
+      )
+    } catch (error) {
+      console.info('DatabaseService', 'openai_transport column may already exist')
     }
   }
 
@@ -1592,6 +1607,7 @@ export class DatabaseService {
       name: provider.name,
       type: provider.type,
       api_style: provider.apiStyle,
+      openai_transport: provider.openaiTransport,
       api_key: provider.apiKey,
       requires_api_key: provider.requiresApiKey ? 1 : 0,
       base_url: provider.baseUrl,
@@ -1684,6 +1700,12 @@ export class DatabaseService {
         } catch (e) {
           apiPath = ''
         }
+        let openaiTransport = 'chat_completions'
+        try {
+          openaiTransport = resultSet.getString(resultSet.getColumnIndex('openai_transport'))
+        } catch (e) {
+          openaiTransport = 'chat_completions'
+        }
         // 安全读取图标类型相关字段
         let iconType = 'svg'
         try {
@@ -1727,6 +1749,7 @@ export class DatabaseService {
           name: resultSet.getString(resultSet.getColumnIndex('name')),
           type: resultSet.getString(resultSet.getColumnIndex('type')),
           apiStyle: resultSet.getString(resultSet.getColumnIndex('api_style')),
+          openaiTransport: openaiTransport,
           apiKey: resultSet.getString(resultSet.getColumnIndex('api_key')),
           requiresApiKey: requiresApiKey,
           baseUrl: resultSet.getString(resultSet.getColumnIndex('base_url')),
@@ -2090,6 +2113,7 @@ export interface ProviderConfig {
   name: string
   type: string
   apiStyle: string
+  openaiTransport: string
   apiKey: string
   requiresApiKey: boolean
   baseUrl: string

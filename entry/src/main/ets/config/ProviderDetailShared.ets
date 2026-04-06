@@ -1,7 +1,13 @@
-import { ApiStyle, ModelInfo } from '../models/ChatModels'
+import { ApiStyle, ModelInfo, OpenAITransport } from '../models/ChatModels'
 
 export interface ApiStyleOption {
   style: ApiStyle
+  name: string
+  description: string
+}
+
+export interface OpenAITransportOption {
+  transport: OpenAITransport
   name: string
   description: string
 }
@@ -31,6 +37,21 @@ export function getDefaultApiStyleOptions(): ApiStyleOption[] {
       style: ApiStyle.GOOGLE,
       name: 'Google',
       description: 'Google Gemini API 格式'
+    }
+  ]
+}
+
+export function getDefaultOpenAITransportOptions(): OpenAITransportOption[] {
+  return [
+    {
+      transport: OpenAITransport.CHAT_COMPLETIONS,
+      name: 'Chat Completions',
+      description: '兼容范围更广，保留当前默认行为'
+    },
+    {
+      transport: OpenAITransport.RESPONSES,
+      name: 'Responses',
+      description: '优先适配官方 OpenAI，支持官方图片输入格式'
     }
   ]
 }
