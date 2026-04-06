@@ -1,4 +1,4 @@
-import { ChatMessage, MessageAttachment } from '../../models/ChatModels'
+import { ChatMessage, MessageAttachment, MessageRole } from '../../models/ChatModels'
 import { DraftPreviewBubble } from './DraftPreviewBubble'
 import { CHAT_NAVIGATION_BAR_DEFAULT_HEIGHT } from '../../config/ChatLayout'
 import { shouldShowMessageHeader } from '../../utils/MessageListUtils'
@@ -155,6 +155,14 @@ export struct ChatMessageListSection {
     return 4
   }
 
+  private getMessageRowReuseId(item: ChatMessageRowData): string {
+    const message = item.message
+    if (message.role === MessageRole.ASSISTANT && (message.isGenerating || message.isSearching)) {
+      return `${CHAT_MESSAGE_LIST_ITEM_REUSE_ID}_live_${message.id}`
+    }
+    return CHAT_MESSAGE_LIST_ITEM_REUSE_ID
+  }
+
   private syncMessageRows(forceReload: boolean = false): void {
     const selectedMessageIdSet = new Set<string>(this.selectedMessageIds)
     const nextRows: ChatMessageRowData[] = []
@@ -261,7 +269,7 @@ export struct ChatMessageListSection {
                 }
               })
                 .width('100%')
-                .reuse({ reuseId: (): string => CHAT_MESSAGE_LIST_ITEM_REUSE_ID })
+                .reuse({ reuseId: (): string => this.getMessageRowReuseId(item) })
             }
           }, (item: ChatMessageRowData): string => item.key)
 

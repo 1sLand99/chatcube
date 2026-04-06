@@ -6,6 +6,7 @@ import { getModelIconPath, buildIconResourcePath } from '../utils/ProviderIconUt
 import { SearchReferenceCard } from './SearchReferenceCard'
 import { ToolCallCard } from './ToolCallCard'
 import { HtmlPreviewCard } from './HtmlPreviewCard'
+import { TypingDots } from './TypingDots'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { SymbolGlyphModifier } from '@kit.ArkUI'
 import { getAppUiState } from '../state/AppUiState'
@@ -85,9 +86,6 @@ export struct MessageBubble {
 
   // ========== 流式渲染优化 ==========
   // lv-markdown-in 自带流式渲染，无需手动节流
-  // 跳动点动画：setInterval 切换 step，.animation() 声明式驱动过渡
-  @Local dotStep: number = -1
-  private dotTimer: number = -1
   private boundMessageId: string = ''
   private translationRequestToken: number = 0
   private get speakingMessageId(): string {
@@ -183,9 +181,6 @@ export struct MessageBubble {
     // 配置 Markdown 样式
     this.configureMarkdownStyles()
 
-    // 只在需要时启动跳动点动画（优化性能）
-    this.syncDotAnimationState()
-
     this.isReasoningExpanded = false
   }
 
@@ -194,14 +189,12 @@ export struct MessageBubble {
   onMessageStateChange(): void {
     this.syncMessageScopedState()
     this.syncDerivedRenderCaches()
-    this.syncDotAnimationState()
   }
 
   @Monitor('renderSignature')
   onRenderSignatureChange(): void {
     this.syncMessageScopedState()
     this.syncDerivedRenderCaches()
-    this.syncDotAnimationState()
   }
 
   @Monitor('previewContent')
@@ -313,24 +306,6 @@ export struct MessageBubble {
     this.cachedMessageFileAttachments = this.getFileAttachments(this.message.attachments)
     this.cachedPreviewImageGridRows = this.buildImageGridRows(this.cachedPreviewImageEntries.length)
     this.cachedMessageImageGridRows = this.buildImageGridRows(this.cachedMessageImageEntries.length)
-  }
-
-  // 判断是否应该显示跳动点动画
-  private shouldShowDotAnimation(): boolean {
-    // 正在生成且无内容时需要显示跳动点动画
-    const isGeneratingWithoutContent = this.message.isGenerating &&
-      this.message.content.length === 0 &&
-      this.message.reasoningContent.length === 0
-    // 正在搜索时也需要显示跳动点动画（联网查询等待状态）
-    return isGeneratingWithoutContent || this.message.isSearching
-  }
-
-  private syncDotAnimationState(): void {
-    if (this.shouldShowDotAnimation()) {
-      this.startDotAnimation()
-      return
-    }
-    this.stopDotAnimation()
   }
 
   // 配置 Markdown 样式
@@ -485,31 +460,6 @@ export struct MessageBubble {
   // 计算是否应该显示推理内容（生成中自动展开）
   private get shouldShowReasoning(): boolean {
     return this.isReasoningExpanded || (this.message.isGenerating && this.message.reasoningContent.length > 0)
-  }
-
-  aboutToDisappear(): void {
-    // 清理动画定时器
-    this.stopDotAnimation()
-  }
-
-  // 启动跳动点动画：setInterval 循环 step，.animation() 声明式驱动视觉过渡
-  private startDotAnimation(): void {
-    if (this.dotTimer !== -1) {
-      return
-    }
-    this.dotStep = 0
-    this.dotTimer = setInterval(() => {
-      this.dotStep = (this.dotStep + 1) % 3
-    }, 400)
-  }
-
-  // 停止跳动点动画
-  private stopDotAnimation(): void {
-    if (this.dotTimer !== -1) {
-      clearInterval(this.dotTimer)
-      this.dotTimer = -1
-    }
-    this.dotStep = -1
   }
 
   build() {
@@ -1281,6 +1231,7 @@ export struct MessageBubble {
 
         // 内容区域 - 无气泡，全宽显示
         Column() {
+          Column() {
             // ========== 工具调用区域 ==========
             if (this.message.hasToolCalls()) {
               ForEach(this.message.toolCalls, (toolCall: ToolCall, index: number) => {
@@ -1364,61 +1315,68 @@ export struct MessageBubble {
             if (this.showTranslation) {
               this.TranslationCard()
             }
+          }
+          .width('100%')
+          .onClick(() => {
+            if (!this.isMultiSelectMode && (this.speakingMessageId === this.message.id)) {
+              this.onTTSStop()
+            }
+          })
 
-            // ========== 工具栏 ==========
-            if (this.shouldShowAssistantToolbar()) {
-              Row() {
-                // 复制
-                if (this.canCopyMessageContent()) {
-                  SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
-                    .fontSize(14)
-                    .fontColor([$r('app.color.text_tertiary')])
-                    .onClick(() => { this.handleCopy() })
-                }
-
-                // 重新生成
-                SymbolGlyph($r('sys.symbol.arrow_clockwise'))
+          // ========== 工具栏 ==========
+          if (this.shouldShowAssistantToolbar()) {
+            Row() {
+              // 复制
+              if (this.canCopyMessageContent()) {
+                SymbolGlyph($r('sys.symbol.checkmark_square_on_square'))
                   .fontSize(14)
                   .fontColor([$r('app.color.text_tertiary')])
-                  .margin({ left: this.canCopyMessageContent() ? 16 : 0 })
-                  .onClick(() => { this.onRegenerate() })
+                  .onClick(() => { this.handleCopy() })
+              }
 
-                // 朗读
-                if (this.canReadMessageContent()) {
-                  SymbolGlyph((this.speakingMessageId === this.message.id) ? $r('sys.symbol.pause') : $r('sys.symbol.speaker_wave_2'))
-                    .fontSize(14)
-                    .fontColor([(this.speakingMessageId === this.message.id) ? this.themePrimary : $r('app.color.text_tertiary')])
-                    .margin({ left: 16 })
-                    .onClick(() => {
-                      if ((this.speakingMessageId === this.message.id)) { this.onTTSStop() } else { this.onTTS(this.message.id, this.message.content) }
-                    })
-                }
+              // 重新生成
+              SymbolGlyph($r('sys.symbol.arrow_clockwise'))
+                .fontSize(14)
+                .fontColor([$r('app.color.text_tertiary')])
+                .margin({ left: this.canCopyMessageContent() ? 16 : 0 })
+                .onClick(() => { this.onRegenerate() })
 
-                // 翻译
-                if (this.canTranslateMessageContent()) {
-                  SymbolGlyph($r('sys.symbol.translate'))
-                    .fontSize(14)
-                    .fontColor([$r('app.color.text_tertiary')])
-                    .margin({ left: 16 })
-                    .bindMenu(this.TranslateSubMenu())
-                }
+              // 朗读
+              if (this.canReadMessageContent()) {
+                SymbolGlyph((this.speakingMessageId === this.message.id) ? $r('sys.symbol.pause') : $r('sys.symbol.speaker_wave_2'))
+                  .fontSize(14)
+                  .fontColor([(this.speakingMessageId === this.message.id) ? this.themePrimary : $r('app.color.text_tertiary')])
+                  .margin({ left: 16 })
+                  .onClick(() => {
+                    if ((this.speakingMessageId === this.message.id)) { this.onTTSStop() } else { this.onTTS(this.message.id, this.message.content) }
+                  })
+              }
 
-                // 更多
-                SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
+              // 翻译
+              if (this.canTranslateMessageContent()) {
+                SymbolGlyph($r('sys.symbol.translate'))
                   .fontSize(14)
                   .fontColor([$r('app.color.text_tertiary')])
                   .margin({ left: 16 })
-                  .bindMenu(this.AssistantMoreMenu())
-
-                Blank()
+                  .bindMenu(this.TranslateSubMenu())
               }
-              .width('100%')
-              .margin({ top: 6 })
+
+              // 更多
+              SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
+                .fontSize(14)
+                .fontColor([$r('app.color.text_tertiary')])
+                .margin({ left: 16 })
+                .bindMenu(this.AssistantMoreMenu())
+
+              Blank()
             }
+            .width('100%')
+            .margin({ top: 6 })
           }
-          .width('100%')
-          .margin({ top: this.showHeader ? 8 : 0 })
-          .padding({ left: 14, right: 14, top: 12, bottom: 10 })
+        }
+        .width('100%')
+        .margin({ top: this.showHeader ? 8 : 0 })
+        .padding({ left: 14, right: 14, top: 12, bottom: 10 })
           .backgroundColor(this.isMultiSelectMode && this.isSelected
             ? this.themePrimary + '15'
             : this.themeAiBubble)
@@ -1431,8 +1389,6 @@ export struct MessageBubble {
       .onClick(() => {
         if (this.isMultiSelectMode) {
           this.onSelect(this.message.id)
-        } else if ((this.speakingMessageId === this.message.id)) {
-          this.onTTSStop()
         }
       })
       .hitTestBehavior(this.getBubbleHitTestMode())
@@ -1447,37 +1403,7 @@ export struct MessageBubble {
   TypingIndicator() {
     Row() {
       // 三个跳动的点
-      Row({ space: 5 }) {
-        // 第一个点
-        Column()
-          .width(7)
-          .height(7)
-          .borderRadius(3.5)
-          .backgroundColor(this.themePrimary)
-          .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
-          .opacity(this.dotStep === 0 ? 1.0 : 0.8)
-          .animation({ duration: 300, curve: Curve.EaseInOut })
-
-        // 第二个点
-        Column()
-          .width(7)
-          .height(7)
-          .borderRadius(3.5)
-          .backgroundColor(this.themePrimary)
-          .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
-          .opacity(this.dotStep === 1 ? 1.0 : 0.8)
-          .animation({ duration: 300, curve: Curve.EaseInOut })
-
-        // 第三个点
-        Column()
-          .width(7)
-          .height(7)
-          .borderRadius(3.5)
-          .backgroundColor(this.themePrimary)
-          .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
-          .opacity(this.dotStep === 2 ? 1.0 : 0.8)
-          .animation({ duration: 300, curve: Curve.EaseInOut })
-      }
+      TypingDots({ dotSize: 7, spacing: 5 })
       .padding({ left: 14, right: 14, top: 10, bottom: 10 })
       .backgroundColor(this.themeAiBubble)
       .borderRadius({
@@ -1517,31 +1443,7 @@ export struct MessageBubble {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         // 三个跳动的点
-        Row({ space: 2 }) {
-          Column()
-            .width(4)
-            .height(4)
-            .borderRadius(2)
-            .backgroundColor(this.themePrimary)
-            .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
-            .animation({ duration: 300, curve: Curve.EaseInOut })
-
-          Column()
-            .width(4)
-            .height(4)
-            .borderRadius(2)
-            .backgroundColor(this.themePrimary)
-            .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
-            .animation({ duration: 300, curve: Curve.EaseInOut })
-
-          Column()
-            .width(4)
-            .height(4)
-            .borderRadius(2)
-            .backgroundColor(this.themePrimary)
-            .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
-            .animation({ duration: 300, curve: Curve.EaseInOut })
-        }
+        TypingDots({ dotSize: 4, spacing: 2 })
       }
       .constraintSize({ maxWidth: 220 })
       .padding({ left: 10, right: 10, top: 5, bottom: 5 })
@@ -1648,31 +1550,7 @@ export struct MessageBubble {
               .fontColor(this.themePrimary)
 
             // 三个跳动的点
-            Row({ space: 2 }) {
-              Column()
-                .width(4)
-                .height(4)
-                .borderRadius(2)
-                .backgroundColor(this.themePrimary)
-                .scale({ x: this.dotStep === 0 ? 1.0 : 0.6, y: this.dotStep === 0 ? 1.0 : 0.6 })
-                .animation({ duration: 300, curve: Curve.EaseInOut })
-
-              Column()
-                .width(4)
-                .height(4)
-                .borderRadius(2)
-                .backgroundColor(this.themePrimary)
-                .scale({ x: this.dotStep === 1 ? 1.0 : 0.6, y: this.dotStep === 1 ? 1.0 : 0.6 })
-                .animation({ duration: 300, curve: Curve.EaseInOut })
-
-              Column()
-                .width(4)
-                .height(4)
-                .borderRadius(2)
-                .backgroundColor(this.themePrimary)
-                .scale({ x: this.dotStep === 2 ? 1.0 : 0.6, y: this.dotStep === 2 ? 1.0 : 0.6 })
-                .animation({ duration: 300, curve: Curve.EaseInOut })
-            }
+            TypingDots({ dotSize: 4, spacing: 2 })
           }
           .margin({ left: 6 })
         } else {
