@@ -16,6 +16,7 @@ import {
   ModelInfoExtendedJson,
   ProviderType,
   ApiStyle,
+  OpenAITransport,
   ProviderIconType,
   MessageAttachment,
   AttachmentType,
@@ -30,6 +31,8 @@ import { getPreferencesService, PreferenceKeys } from './PreferencesService'
 import { getThemeService } from './ThemeService'
 import { getSettingsManager } from '../viewmodels/SettingsManager'
 import { getAppStateManager } from '../viewmodels/AppStateManager'
+import { getProviderViewModel } from '../viewmodels/ProviderViewModel'
+import { buildProviderImportOrder } from '../config/ProviderOrderUtils'
 
 // 导出选项
 export interface ExportOptions {
@@ -83,6 +86,7 @@ export interface ProviderExportData {
   name: string
   type: string
   apiStyle: string
+  openaiTransport: string
   apiKey: string
   requiresApiKey: boolean
   baseUrl: string
@@ -385,6 +389,7 @@ export class ImportExportService {
         name: p.name,
         type: p.type,
         apiStyle: p.apiStyle,
+        openaiTransport: p.openaiTransport,
         apiKey: options.includeApiKeys ? p.apiKey : '',
         requiresApiKey: p.requiresApiKey,
         baseUrl: p.baseUrl,
@@ -1001,9 +1006,11 @@ export class ImportExportService {
 
     // 导入供应商数据
     if (options.importProviders && importData.providers.length > 0) {
-      for (const providerData of importData.providers) {
+      const sortedProviders = this.sortImportedProviders(importData.providers)
+      for (const providerData of sortedProviders) {
         await this.importProvider(providerData)
       }
+      await this.restoreProviderOrder(sortedProviders)
     }
 
     // 导入偏好设置
@@ -1068,6 +1075,9 @@ export class ImportExportService {
     provider.isPreset = providerData.isPreset
     provider.iconPath = providerData.iconPath
     provider.apiPath = providerData.apiPath
+    provider.openaiTransport = providerData.openaiTransport === OpenAITransport.RESPONSES
+      ? OpenAITransport.RESPONSES
+      : OpenAITransport.CHAT_COMPLETIONS
     provider.customHeadersJson = providerData.customHeadersJson !== undefined ? providerData.customHeadersJson : ''
     provider.iconType = iconType
     provider.textIcon = providerData.textIcon
@@ -1077,6 +1087,39 @@ export class ImportExportService {
 
     // 保存到数据库
     await this.dbService.saveProvider(provider)
+  }
+
+  private sortImportedProviders(providers: ProviderExportData[]): ProviderExportData[] {
+    const sortedProviders = [...providers]
+    sortedProviders.sort((a: ProviderExportData, b: ProviderExportData) => {
+      const leftOrder = a.sortOrder !== undefined ? a.sortOrder : Number.MAX_SAFE_INTEGER
+      const rightOrder = b.sortOrder !== undefined ? b.sortOrder : Number.MAX_SAFE_INTEGER
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder
+      }
+      return a.name.localeCompare(b.name)
+    })
+    return sortedProviders
+  }
+
+  private async restoreProviderOrder(importedProviders: ProviderExportData[]): Promise<void> {
+    const localProviders = await this.dbService.getAllProviders()
+    const importedProviderIds: string[] = []
+    const localProviderIds: string[] = []
+
+    for (let i = 0; i < importedProviders.length; i++) {
+      importedProviderIds.push(importedProviders[i].id)
+    }
+    for (let i = 0; i < localProviders.length; i++) {
+      localProviderIds.push(localProviders[i].id)
+    }
+
+    const orderedProviderIds = buildProviderImportOrder(importedProviderIds, localProviderIds)
+    if (orderedProviderIds.length <= 0) {
+      return
+    }
+    await this.dbService.updateProvidersOrder(orderedProviderIds)
+    await getProviderViewModel().loadAllProviders()
   }
 
   private async importPreferences(preferences: PreferenceEntry[]): Promise<number> {
