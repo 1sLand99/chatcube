@@ -207,6 +207,7 @@ export struct ChatInputBar {
           .id('chatInputTextArea')
           .placeholderColor($r('app.color.text_tertiary'))
           .placeholderFont({ size: 16 })
+          .enterKeyType(EnterKeyType.Send)
           .fontSize(16)
           .fontColor($r('app.color.text_primary'))
           .backgroundColor(Color.Transparent)
@@ -220,6 +221,11 @@ export struct ChatInputBar {
           })
           .onChange((value: string) => {
             this.onInputTextChange(value)
+          })
+          .onSubmit(() => {
+            if (!this.isSending && this.computeHasContent()) {
+              this.onSend()
+            }
           })
           .onFocus(() => {
             this.onInputFocus()
