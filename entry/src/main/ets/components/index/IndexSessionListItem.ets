@@ -8,7 +8,7 @@ export struct IndexSessionListItem {
   @Param item: SessionListItemData = new SessionListItemData(new ChatSession('', '', ''), false, false)
   @Param isMultiSelectMode: boolean = false
   @Event onToggleSelection: (sessionId: string) => void = (_sessionId: string): void => {}
-  @Event onOpenSession: (sessionId: string) => void = (_sessionId: string): void => {}
+  @Event onOpenSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
   @Event onDeleteSession: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onEnterMultiSelect: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onShareSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
@@ -23,7 +23,7 @@ export struct IndexSessionListItem {
       this.onToggleSelection(this.item.session.id)
       return
     }
-    this.onOpenSession(this.item.session.id)
+    this.onOpenSession(this.item.session)
   }
 
   build() {

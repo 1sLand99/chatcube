@@ -11,7 +11,7 @@ export struct IndexSessionListSection {
   @Param bottomSpacerHeight: number = 100
   @Event onGetGroupTitle: (groupKey: string) => Resource = (_groupKey: string): Resource => $r('app.string.group_older')
   @Event onToggleSelection: (sessionId: string) => void = (_sessionId: string): void => {}
-  @Event onOpenSession: (sessionId: string) => void = (_sessionId: string): void => {}
+  @Event onOpenSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
   @Event onDeleteSession: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onEnterMultiSelect: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onShareSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
@@ -97,8 +97,8 @@ export struct IndexSessionListSection {
             onToggleSelection: (sessionId: string): void => {
               this.onToggleSelection(sessionId)
             },
-            onOpenSession: (sessionId: string): void => {
-              this.onOpenSession(sessionId)
+            onOpenSession: (session: ChatSession): void => {
+              this.onOpenSession(session)
             },
             onDeleteSession: (sessionId: string): void => {
               this.onDeleteSession(sessionId)

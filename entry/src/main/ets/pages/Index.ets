@@ -1143,6 +1143,7 @@ struct Index {
       .barHeight(this.getCompactTabsBarHeight())
       .barOverlap(true)
       .barBackgroundColor(Color.Transparent)
+      .barBackgroundBlurStyle(BlurStyle.COMPONENT_THIN)
       .barFloatingStyle(this.getCompactTabsFloatingStyle())
       .scrollable(false)
       .cachedMaxCount(2, TabsCacheMode.CACHE_LATEST_SWITCHED)
@@ -1283,8 +1284,8 @@ struct Index {
       barSideMargin: Index.COMPACT_TABS_FLOATING_SIDE_MARGIN,
       barBottomMargin: this.getCompactTabsFloatingBottomMargin(),
       systemMaterialEffect: {
-        materialType: hdsMaterial.MaterialType.IMMERSIVE,
-        materialLevel: hdsMaterial.MaterialLevel.EXQUISITE
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
       }
     }
   }
@@ -1570,8 +1571,13 @@ struct Index {
             onToggleSelection: (sessionId: string): void => {
               this.handleSessionCardClick(sessionId)
             },
-            onOpenSession: (sessionId: string): void => {
-              this.openChatRoute({ sessionId: sessionId } as ChatPageRouteParams)
+            onOpenSession: (session: ChatSession): void => {
+              this.openChatRoute({
+                sessionId: session.id,
+                sessionTitle: session.title,
+                modelId: session.modelId,
+                providerId: session.providerId
+              } as ChatPageRouteParams)
             },
             onDeleteSession: (sessionId: string): void => {
               this.deleteSession(sessionId)

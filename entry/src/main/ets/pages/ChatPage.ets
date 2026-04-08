@@ -1,5 +1,16 @@
-import { KeyboardAvoidMode } from '@kit.ArkUI'
+import { KeyboardAvoidMode, LengthMetrics } from '@kit.ArkUI'
 import { common } from '@kit.AbilityKit'
+import {
+  BlurStrategy,
+  HdsNavDestination,
+  HdsNavDestinationTitleMode,
+  HdsNavigationMenuContentOptions,
+  HdsNavigationMenuItemOptions,
+  HdsNavigationTitleBarOptions,
+  IconStyleMode,
+  ScrollEffectType,
+  hdsMaterial
+} from '@kit.UIDesignKit'
 import {
   ChatMessage,
   MessageRole,
@@ -15,7 +26,6 @@ import {
 } from '../models/ChatModels'
 import { AttachmentPicker } from '../components/AttachmentPicker'
 import { ImagePreview } from '../components/ImagePreview'
-import { ChatNavigationBar } from '../components/ChatNavigationBar'
 import { ScrollToBottomButton } from '../components/ScrollToBottomButton'
 import { ScrollToBottomLoadingButton } from '../components/ScrollToBottomLoadingButton'
 import { MultiSelectToolbar } from '../components/MultiSelectToolbar'
@@ -42,6 +52,10 @@ import { ChatInputAreaSection } from '../components/chat/ChatInputAreaSection'
 import { ChatMessageListSection } from '../components/chat/ChatMessageListSection'
 import { ChatToolPickerSheetContent } from '../components/chat/ChatToolPickerSheetContent'
 import { ChatToolExecutionApprovalSheetContent } from '../components/chat/ChatToolExecutionApprovalSheetContent'
+import {
+  ChatNavigationTitleContent,
+  CHAT_NAVIGATION_TITLE_STACK_BUILDER_HEIGHT
+} from '../components/ChatNavigationTitleContent'
 import {
   normalizeReasoningLevelForControl
 } from '../services/ProviderCompatibilityRegistry'
@@ -90,9 +104,18 @@ class EditedMessageToolContext {
   selectedToolIds: string[] = []
 }
 
+const HDS_NAV_DESTINATION_MINI_TITLE_BAR_HEIGHT: number = 56
+const HDS_NAV_TITLE_CONTENT_LEFT_SAFE_INSET: number = 52
+const HDS_NAV_TITLE_CONTENT_RIGHT_SAFE_INSET_SINGLE: number = 52
+const HDS_NAV_TITLE_CONTENT_RIGHT_SAFE_INSET_DOUBLE: number = 96
+const HDS_NAV_TITLE_CONTENT_EDIT_LEFT_SAFE_INSET: number = 64
+const HDS_NAV_TITLE_CONTENT_EDIT_RIGHT_SAFE_INSET_SINGLE: number = 64
+const HDS_NAV_TITLE_CONTENT_EDIT_RIGHT_SAFE_INSET_DOUBLE: number = 108
+
 @ComponentV2
 export struct ChatPage {
   @Local navPathStack: NavPathStack = new NavPathStack()
+  @Param routeParamsSeed: ChatPageRouteParams | null = null
   @Local routeParams: ChatPageRouteParams | null = null
   @Local messages: ChatMessage[] = []
   @Local inputText: string = ''
@@ -141,9 +164,8 @@ export struct ChatPage {
   @Local sessionTitle: string = ''
   @Local isTitleGenerating: boolean = false
   @Local titleGenerateFailed: boolean = false
-  // 更多菜单显示状态
-  @Local showMoreMenu: boolean = false
-  // 标题内联编辑状态（已迁移到 ChatNavigationBar，保留用于回调）
+  @Local showTitleActionSheet: boolean = false
+  @Local titleEditRequestVersion: number = 0
   // 图片预览状态
   @Local showImagePreview: boolean = false
   @Local previewImages: Array<string> = []
@@ -152,6 +174,7 @@ export struct ChatPage {
   @Local messageWebSheetUrl: string = ''
   @Local messageWebSheetTitle: string = ''
   private messageSheetWebController: webview.WebviewController = new webview.WebviewController()
+  private hasInitializedRoute: boolean = false
   // 当前正在朗读的消息ID
   private get speakingMessageId(): string {
     return getAppUiState().speakingMessageId
@@ -295,6 +318,10 @@ export struct ChatPage {
   }
 
   aboutToAppear(): void {
+    if (this.routeParams === null && this.routeParamsSeed !== null) {
+      this.routeParams = this.routeParamsSeed
+      this.applyRouteDisplaySeed(this.routeParamsSeed)
+    }
     if (this.sessionTitle === '') {
       this.sessionTitle = this.getDefaultSessionTitle()
     }
@@ -333,12 +360,21 @@ export struct ChatPage {
     // 如果通过 navDestination builder 传入了 routeParams，直接初始化
     // 否则等 onReady 回调设置 routeParams 后再初始化
     if (this.routeParams !== null) {
-      this.initWithParams(this.routeParams)
+      this.tryInitWithParams(this.routeParams)
     }
+  }
+
+  private tryInitWithParams(params: ChatPageRouteParams | null): void {
+    if (this.hasInitializedRoute) {
+      return
+    }
+    this.hasInitializedRoute = true
+    this.initWithParams(params)
   }
 
   // 从路由参数初始化页面（aboutToAppear 或 onReady 触发）
   private initWithParams(params: ChatPageRouteParams | null): void {
+    this.applyRouteDisplaySeed(params)
     if (params !== null && params !== undefined) {
       console.info('ChatPage', `[initWithParams] sessionId=${params.sessionId ?? ''}`)
       if (params.sessionId !== undefined && params.sessionId !== '') {
@@ -351,6 +387,19 @@ export struct ChatPage {
       this.isNewChatTransition = true
     }
     this.loadData()
+  }
+
+  private applyRouteDisplaySeed(params: ChatPageRouteParams | null): void {
+    if (params === null || params === undefined) {
+      return
+    }
+    if (params.sessionTitle !== undefined && params.sessionTitle.trim() !== '') {
+      this.sessionTitle = params.sessionTitle.trim()
+    }
+    if (this.currentModel === '' && params.modelId !== undefined && params.modelId.trim() !== '') {
+      this.currentModelId = params.modelId.trim()
+      this.currentModel = params.modelId.trim()
+    }
   }
 
   // 修复页面恢复时可能的不一致状态
@@ -1688,8 +1737,238 @@ export struct ChatPage {
     return this.px2vp(this.topAvoidHeight)
   }
 
+  private getMessageListTopSpacerHeight(): number {
+    return HDS_NAV_DESTINATION_MINI_TITLE_BAR_HEIGHT + this.getPageTopAvoidHeight()
+  }
+
+  private getTitleContentRightSafeInset(): number {
+    return this.shouldShowTitleBarNewChatAction() ?
+      HDS_NAV_TITLE_CONTENT_RIGHT_SAFE_INSET_DOUBLE :
+      HDS_NAV_TITLE_CONTENT_RIGHT_SAFE_INSET_SINGLE
+  }
+
+  private getTitleContentEditRightSafeInset(): number {
+    return this.shouldShowTitleBarNewChatAction() ?
+      HDS_NAV_TITLE_CONTENT_EDIT_RIGHT_SAFE_INSET_DOUBLE :
+      HDS_NAV_TITLE_CONTENT_EDIT_RIGHT_SAFE_INSET_SINGLE
+  }
+
+  private isExistingSessionSeeded(): boolean {
+    const seededSessionId = this.routeParams?.sessionId ?? this.routeParamsSeed?.sessionId ?? ''
+    return seededSessionId.trim() !== ''
+  }
+
+  private shouldShowTitleBarNewChatAction(): boolean {
+    if (!this.hasInitializedRoute) {
+      return this.isExistingSessionSeeded()
+    }
+    if (this.messages.length > 0) {
+      return true
+    }
+    return !this.isNewChatTransition && this.sessionId.trim() !== ''
+  }
+
+  private getTitleBarMenuOptions(): HdsNavigationMenuContentOptions {
+    const items = new Array<HdsNavigationMenuItemOptions>()
+    if (this.shouldShowTitleBarNewChatAction()) {
+      items.push({
+        content: {
+          label: $r('app.string.new_chat'),
+          icon: $r('sys.symbol.plus'),
+          type: IconStyleMode.SMALL,
+          action: (): void => {
+            void this.handleNewChat()
+          }
+        }
+      })
+    }
+    items.push({
+      content: {
+        label: $r('app.string.action_more'),
+        icon: $r('sys.symbol.dot_grid_2x2'),
+        type: IconStyleMode.SMALL,
+        action: (): void => {
+          this.showTitleActionSheet = true
+        }
+      }
+    })
+    return {
+      value: items,
+      maxCount: 2
+    }
+  }
+
+  private getTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return {
+      padding: {
+        start: LengthMetrics.vp(8),
+        end: LengthMetrics.vp(8)
+      },
+      content: {
+        title: {
+          mainTitle: ' '
+        },
+        stackBuilder: (): void => this.ChatTitleStackBuilder(),
+        backIcon: {
+          label: $r('app.string.action_back'),
+          icon: $r('sys.symbol.chevron_left'),
+          type: IconStyleMode.SMALL,
+          isEnabled: true
+        },
+        menu: this.getTitleBarMenuOptions()
+      },
+      style: {
+        scrollEffectOpts: {
+          enableScrollEffect: true,
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR,
+          blurEffectiveStartOffset: LengthMetrics.vp(0),
+          blurEffectiveEndOffset: LengthMetrics.vp(40)
+        },
+        originalStyle: {
+          backgroundStyle: {
+            backgroundColor: $r('sys.color.ohos_id_color_background')
+          },
+          contentStyle: {
+            menuStyle: {
+              backgroundColor: $r('sys.color.comp_background_tertiary')
+            },
+            backIconStyle: {
+              backgroundColor: $r('sys.color.comp_background_tertiary')
+            }
+          }
+        },
+        scrollEffectStyle: {
+          backgroundStyle: {
+            backgroundColor: $r('sys.color.ohos_id_color_background_transparent'),
+            maskExtraHeight: 180
+          },
+          contentStyle: {
+            menuStyle: {
+              backgroundColor: Color.Transparent
+            },
+            backIconStyle: {
+              backgroundColor: Color.Transparent
+            }
+          }
+        },
+        blurStrategy: BlurStrategy.ENABLE,
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE,
+          materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        }
+      },
+      avoidLayoutSafeArea: true,
+      enableComponentSafeArea: false
+    }
+  }
+
+  @Builder
+  private ChatTitleStackBuilder() {
+    ChatNavigationTitleContent({
+      sessionTitle: this.sessionTitle !== '' ? this.sessionTitle : this.getDefaultSessionTitle(),
+      currentModelId: this.currentModelId,
+      currentProviderId: this.currentProvider?.id ?? '',
+      currentModelName: this.currentModel,
+      currentProviderName: this.currentProvider?.name ?? '',
+      currentProviderIconType: this.currentProvider?.iconType ?? 'svg',
+      currentProviderIconPath: this.currentProvider?.iconPath ?? '',
+      currentProviderTextIcon: this.currentProvider?.textIcon ?? '',
+      currentProviderTextIconBgColor: this.currentProvider?.textIconBgColor ?? '',
+      currentProviderCustomImagePath: this.currentProvider?.customImagePath ?? '',
+      currentProviderBrandColor: this.currentProvider?.brandColor ?? '',
+      isTitleGenerating: this.isTitleGenerating,
+      titleGenerateFailed: this.titleGenerateFailed,
+      editRequestVersion: this.titleEditRequestVersion,
+      leftSafeInset: HDS_NAV_TITLE_CONTENT_LEFT_SAFE_INSET,
+      rightSafeInset: this.getTitleContentRightSafeInset(),
+      editLeftSafeInset: HDS_NAV_TITLE_CONTENT_EDIT_LEFT_SAFE_INSET,
+      editRightSafeInset: this.getTitleContentEditRightSafeInset(),
+      onModelSelect: (): void => {
+        this.safeStopInputSession()
+        this.isModelSelectorVisible = true
+        this.modelSheetActivePanel = 'selector'
+      },
+      onRegenerateTitle: (): void => {
+        void this.handleRegenerateTitle()
+      },
+      onWillEditTitle: (): void => {
+        this.safeStopInputSession()
+      },
+      onTitleChanged: (newTitle: string): void => {
+        this.handleSaveTitle(newTitle).catch((error: Object) => {
+          console.error('ChatPage', `Failed to save inline title: ${JSON.stringify(error)}`)
+          this.showError($r('app.string.action_failed_retry'))
+        })
+      }
+    })
+  }
+
+  @Builder
+  private ChatTitleActionSheetBuilder() {
+    Column({ space: 8 }) {
+      Row({ space: 12 }) {
+        SymbolGlyph($r('sys.symbol.square_and_pencil'))
+          .fontSize(18)
+          .fontColor([$r('app.color.text_primary')])
+        Text($r('app.string.edit_chat_title'))
+          .fontSize(16)
+          .fontColor($r('app.color.text_primary'))
+        Blank()
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .borderRadius(18)
+      .backgroundColor($r('sys.color.comp_background_tertiary'))
+      .onClick(() => {
+        this.showTitleActionSheet = false
+        this.requestInlineTitleEdit()
+      })
+
+      Row({ space: 12 }) {
+        SymbolGlyph($r('sys.symbol.arrow_clockwise'))
+          .fontSize(18)
+          .fontColor([$r('app.color.text_primary')])
+        Text($r('app.string.regenerate_title'))
+          .fontSize(16)
+          .fontColor($r('app.color.text_primary'))
+        Blank()
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .borderRadius(18)
+      .backgroundColor($r('sys.color.comp_background_tertiary'))
+      .opacity((this.isTitleGenerating || this.isSending) ? 0.45 : 1)
+      .enabled(!this.isTitleGenerating && !this.isSending)
+      .onClick(() => {
+        this.showTitleActionSheet = false
+        void this.handleRegenerateTitle()
+      })
+
+      Row({ space: 12 }) {
+        SymbolGlyph($r('sys.symbol.trash'))
+          .fontSize(18)
+          .fontColor([$r('app.color.status_error')])
+        Text($r('app.string.delete_chat'))
+          .fontSize(16)
+          .fontColor($r('app.color.status_error'))
+        Blank()
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .borderRadius(18)
+      .backgroundColor($r('sys.color.comp_background_tertiary'))
+      .onClick(() => {
+        this.showTitleActionSheet = false
+        this.handleDeleteChat()
+      })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .backgroundColor(Color.Transparent)
+  }
+
   build() {
-    NavDestination() {
+    HdsNavDestination() {
       Stack() {
         // 消息列表 - 占满全屏
         ChatMessageListSection({
@@ -1707,7 +1986,7 @@ export struct ChatPage {
           showDraftPreview: this.hasDraftContent(),
           draftPreviewTimeText: this.getPreviewTimeText(),
           bottomPadding: this.getListBottomPadding(),
-          topInsetHeight: this.getPageTopAvoidHeight(),
+          topInsetHeight: this.getMessageListTopSpacerHeight(),
           currentModelId: this.currentModelId,
           chatFontSize: this.chatFontSize,
           themeRenderKey: this.messageThemeRenderKey,
@@ -1783,60 +2062,6 @@ export struct ChatPage {
               this.handleCancelEdit()
             })
         }
-
-        // 顶部导航栏 - 使用独立组件
-        ChatNavigationBar({
-          sessionTitle: this.sessionTitle,
-          currentModelId: this.currentModelId,
-          currentProviderId: this.currentProvider?.id ?? '',
-          currentModelName: this.currentModel,
-          currentProviderName: this.currentProvider?.name ?? '',
-          currentProviderIconType: this.currentProvider?.iconType ?? 'svg',
-          currentProviderIconPath: this.currentProvider?.iconPath ?? '',
-          currentProviderTextIcon: this.currentProvider?.textIcon ?? '',
-          currentProviderTextIconBgColor: this.currentProvider?.textIconBgColor ?? '',
-          currentProviderCustomImagePath: this.currentProvider?.customImagePath ?? '',
-          currentProviderBrandColor: this.currentProvider?.brandColor ?? '',
-          hasMessages: this.messages.length > 0,
-          isTitleGenerating: this.isTitleGenerating,
-          titleGenerateFailed: this.titleGenerateFailed,
-          contentMaxWidth: this.getChatContentMaxWidth(),
-          isSending: this.isSending,
-          topInsetHeight: this.getPageTopAvoidHeight(),
-          onBack: () => {
-            this.handleBack()
-          },
-          onModelSelect: () => {
-            this.isModelSelectorVisible = true
-            this.modelSheetActivePanel = 'selector'
-          },
-          onNewChat: () => {
-            this.handleNewChat()
-          },
-          onRegenerateTitle: () => {
-            this.handleRegenerateTitle()
-          },
-          onTitleChanged: (newTitle: string) => {
-            this.handleSaveTitle(newTitle)
-          },
-          onDeleteChat: () => {
-            this.handleDeleteChat()
-          }
-        })
-          .position({ x: 0, y: 0 })
-          .bindSheet($$this.isModelSelectorVisible, this.ModelSelectorSheetBuilder(), {
-            height: SheetSize.LARGE,
-            dragBar: true,
-            showClose: false,
-            blurStyle: BlurStyle.Thick,
-            preferType: SheetType.BOTTOM,
-            onDisappear: () => {
-              this.isModelSelectorVisible = false
-              this.modelSheetActivePanel = 'selector'
-              this.editingModel = null
-              this.editingModelProvider = null
-            }
-          })
 
         // 快速到顶部按钮
         ScrollToBottomButton({
@@ -1980,6 +2205,38 @@ export struct ChatPage {
       Column()
         .width(0)
         .height(0)
+        .bindSheet($$this.isModelSelectorVisible, this.ModelSelectorSheetBuilder(), {
+          height: SheetSize.LARGE,
+          dragBar: true,
+          showClose: false,
+          blurStyle: BlurStyle.Thick,
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.isModelSelectorVisible = false
+            this.modelSheetActivePanel = 'selector'
+            this.editingModel = null
+            this.editingModelProvider = null
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showTitleActionSheet, this.ChatTitleActionSheetBuilder(), {
+          height: SheetSize.FIT_CONTENT,
+          dragBar: true,
+          showClose: false,
+          backgroundColor: $r('app.color.background'),
+          blurStyle: BlurStyle.Thick,
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.showTitleActionSheet = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
         .bindSheet($$this.showMessageWebSheet, this.MessageWebSheetBuilder(), {
           height: SheetSize.LARGE,
           detents: [SheetSize.LARGE],
@@ -2087,10 +2344,14 @@ export struct ChatPage {
       .width('100%')
       .height('100%')
       .clip(true)
+      .backgroundColor($r('app.color.background'))
     }
-    .hideTitleBar(true)
-    .hideBackButton(true)
-    .backgroundColor(Color.Transparent)
+    .titleBar(this.getTitleBarOptions())
+    .bindToScrollable([this.scroller])
+    .titleMode(HdsNavDestinationTitleMode.MINI)
+    .hideBackButton(false)
+    .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
+    .backgroundColor($r('app.color.background'))
     .onReady((context: NavDestinationContext) => {
       this.navPathStack = context.pathStack
       const param = context.pathInfo.param as ChatPageRouteParams
@@ -2098,8 +2359,8 @@ export struct ChatPage {
         this.routeParams = param
       }
       // 如果 aboutToAppear 时 routeParams 还没设置，这里触发初始化
-      if (this.sessionId === '') {
-        this.initWithParams(this.routeParams)
+      if (!this.hasInitializedRoute) {
+        this.tryInitWithParams(this.routeParams)
       }
     })
     .onShown(() => {
@@ -2849,6 +3110,8 @@ export struct ChatPage {
     this.clearDraftAutosaveTimer()
     // 创建新会话
     const session = await this.chatViewModel.createNewSession()
+    this.isNewChatTransition = true
+    this.routeParams = {} as ChatPageRouteParams
     this.inputText = ''
     this.pendingAttachments = []
     // 清空当前消息
@@ -2897,6 +3160,11 @@ export struct ChatPage {
         }
       }
     })
+  }
+
+  private requestInlineTitleEdit(): void {
+    this.safeStopInputSession()
+    this.titleEditRequestVersion += 1
   }
 
   // 处理保存编辑的标题
@@ -3046,5 +3314,7 @@ export struct ChatPage {
 
 @Builder
 export function ChatPageBuilder(name: string, param: Object) {
-  ChatPage()
+  ChatPage({
+    routeParamsSeed: param as ChatPageRouteParams
+  })
 }

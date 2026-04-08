@@ -1,6 +1,5 @@
 import { ChatMessage, MessageAttachment, MessageRole } from '../../models/ChatModels'
 import { DraftPreviewBubble } from './DraftPreviewBubble'
-import { CHAT_NAVIGATION_BAR_DEFAULT_HEIGHT } from '../../config/ChatLayout'
 import { shouldShowMessageHeader } from '../../utils/MessageListUtils'
 import { CHAT_MESSAGE_LIST_ITEM_REUSE_ID, ChatMessageListItem } from './ChatMessageListItem'
 import {
@@ -215,7 +214,7 @@ export struct ChatMessageListSection {
         List({ scroller: this.scroller }) {
           ListItem() {
             Column() {
-              Column().height(CHAT_NAVIGATION_BAR_DEFAULT_HEIGHT + this.topInsetHeight)
+              Column().height(this.topInsetHeight)
             }
           }
 

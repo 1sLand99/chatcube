@@ -465,6 +465,10 @@
       "value": "聊天、标题生成、翻译"
     },
     {
+      "name": "edit_chat_title",
+      "value": "编辑标题"
+    },
+    {
       "name": "regenerate_title",
       "value": "重新生成标题"
     },
@@ -825,6 +829,10 @@
       "value": "关闭"
     },
     {
+      "name": "action_more",
+      "value": "更多"
+    },
+    {
       "name": "provider_api_config",
       "value": "API 配置"
     },
@@ -935,6 +943,10 @@
     {
       "name": "action_failed_retry",
       "value": "操作失败，请重试"
+    },
+    {
+      "name": "chat_title_input_placeholder",
+      "value": "输入标题"
     },
     {
       "name": "selected_message_not_found",

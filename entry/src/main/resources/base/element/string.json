@@ -465,6 +465,10 @@
       "value": "Chat, title generation, translation"
     },
     {
+      "name": "edit_chat_title",
+      "value": "Edit Title"
+    },
+    {
       "name": "regenerate_title",
       "value": "Regenerate Title"
     },
@@ -825,6 +829,10 @@
       "value": "Close"
     },
     {
+      "name": "action_more",
+      "value": "More"
+    },
+    {
       "name": "provider_api_config",
       "value": "API Configuration"
     },
@@ -935,6 +943,10 @@
     {
       "name": "action_failed_retry",
       "value": "Action failed. Please try again"
+    },
+    {
+      "name": "chat_title_input_placeholder",
+      "value": "Enter title"
     },
     {
       "name": "selected_message_not_found",
