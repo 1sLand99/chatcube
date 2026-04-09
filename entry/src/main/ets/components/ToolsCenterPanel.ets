@@ -981,6 +981,7 @@ export struct ToolsCenterPanel {
       Row() {
         Button() {
           SymbolGlyph($r('sys.symbol.xmark'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(18)
             .fontColor([$r('app.color.text_secondary')])
         }
@@ -1002,6 +1003,7 @@ export struct ToolsCenterPanel {
 
         Button() {
           SymbolGlyph($r('sys.symbol.checkmark'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(18)
             .fontColor([Color.White])
         }
@@ -1161,6 +1163,7 @@ export struct ToolsCenterPanel {
       Row() {
         Button() {
           SymbolGlyph($r('sys.symbol.xmark'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(18)
             .fontColor([$r('app.color.text_secondary')])
         }
@@ -1182,6 +1185,7 @@ export struct ToolsCenterPanel {
 
         Button() {
           SymbolGlyph($r('sys.symbol.checkmark'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(18)
             .fontColor([Color.White])
         }
@@ -1204,6 +1208,7 @@ export struct ToolsCenterPanel {
             Row({ space: 12 }) {
               Column() {
                 SymbolGlyph($r('sys.symbol.cloud'))
+                  .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                   .fontSize(22)
                   .fontColor([this.themePrimary])
               }
@@ -1427,6 +1432,7 @@ export struct ToolsCenterPanel {
               Row({ space: 10 }) {
                 Column() {
                   SymbolGlyph($r('sys.symbol.checkmark_circle'))
+                    .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                     .fontSize(16)
                     .fontColor([this.themePrimary])
                 }
@@ -1488,6 +1494,7 @@ export struct ToolsCenterPanel {
                 Button() {
                   Row({ space: 4 }) {
                     SymbolGlyph($r('sys.symbol.plus'))
+                      .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                       .fontSize(13)
                       .fontColor([Color.White])
                     Text(pickLocalizedText('新增请求头', 'Add header'))
@@ -1749,6 +1756,7 @@ export struct ToolsCenterPanel {
                   Button() {
                     Row({ space: 4 }) {
                       SymbolGlyph($r('sys.symbol.plus'))
+                        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                         .fontSize(13)
                         .fontColor([Color.White])
                       Text(pickLocalizedText('新增', 'Add'))
@@ -1781,13 +1789,15 @@ export struct ToolsCenterPanel {
                 Row({ space: 12 }) {
                   Column() {
                     SymbolGlyph($r('sys.symbol.puzzle'))
+                      .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                       .fontSize(22)
                       .fontColor([this.themePrimary])
                   }
                   .width(42)
                   .height(42)
                   .borderRadius(16)
-                  .backgroundColor(`${this.themePrimary}${this.isDarkMode ? '24' : '10'}`)
+                  .backgroundColor(this.backgroundHex)
+                  .border({ width: 1, color: this.themePrimary })
                   .justifyContent(FlexAlign.Center)
 
                   Column({ space: 4 }) {
@@ -1931,6 +1941,7 @@ struct SearchServiceCardItem {
       Row({ space: 12 }) {
         Column() {
           SymbolGlyph($r('sys.symbol.magnifyingglass'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(20)
             .fontColor([this.searchEnabled ? this.themePrimary : $r('app.color.text_secondary')])
         }
@@ -1972,6 +1983,7 @@ struct SearchServiceCardItem {
           .fontColor(this.themePrimary)
 
         SymbolGlyph($r('sys.symbol.chevron_right'))
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(12)
           .fontColor([this.themePrimary])
       }
@@ -2138,6 +2150,7 @@ struct McpServerCardItem {
       Row({ space: 12 }) {
         Column() {
           SymbolGlyph($r('sys.symbol.cloud'))
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(22)
             .fontColor([this.serverEnabled ? this.themePrimary : this.secondaryTextHex])
         }
@@ -2246,6 +2259,7 @@ struct McpServerCardItem {
                 .fontColor(this.themePrimary)
 
               SymbolGlyph($r('sys.symbol.chevron_down'))
+                .renderingStrategy(SymbolRenderingStrategy.SINGLE)
                 .fontSize(12)
                 .fontColor([this.themePrimary])
                 .rotate({ angle: this.isToolsExpanded ? 180 : 0 })

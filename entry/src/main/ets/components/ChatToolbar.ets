@@ -25,6 +25,44 @@ export struct ChatToolbar {
     return getAppUiState().themePrimary
   }
 
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
+
+  private get themeDivider(): string {
+    return getAppUiState().themeDivider
+  }
+
+  private get isDarkMode(): boolean {
+    return getAppUiState().isDarkMode
+  }
+
+  private withAlpha(color: string, alphaHex: string): string {
+    if (color.startsWith('#') && color.length === 7) {
+      return `#${alphaHex}${color.slice(1)}`
+    }
+    if (color.startsWith('#') && color.length === 9) {
+      return `#${alphaHex}${color.slice(3)}`
+    }
+    return color
+  }
+
+  private getChipBackgroundColor(): string {
+    return this.withAlpha(this.themeSurface, this.isDarkMode ? '14' : '1A')
+  }
+
+  private getInactiveChipBorderColor(): string {
+    return this.withAlpha(this.themeDivider, this.isDarkMode ? 'A6' : '73')
+  }
+
+  private getActiveChipBorderColor(): string {
+    return this.themePrimary
+  }
+
+  private getChipShadowColor(): string {
+    return this.isDarkMode ? 'rgba(0, 0, 0, 0.18)' : 'rgba(15, 23, 42, 0.06)'
+  }
+
   build() {
     Row() {
       if (this.webSearchAvailable) {
@@ -32,22 +70,25 @@ export struct ChatToolbar {
           Row() {
             SymbolGlyph($r('sys.symbol.magnifyingglass'))
               .fontSize(16)
-              .fontColor([this.webSearchEnabled ? Color.White : $r('app.color.text_secondary')])
+              .fontColor([this.webSearchEnabled ? this.themePrimary : $r('app.color.text_secondary')])
 
             Text($r('app.string.chat_toolbar_web_search'))
               .fontSize(14)
-              .fontColor(this.webSearchEnabled ? Color.White : $r('app.color.text_secondary'))
+              .fontColor(this.webSearchEnabled ? this.themePrimary : $r('app.color.text_secondary'))
+              .fontWeight(this.webSearchEnabled ? FontWeight.Medium : FontWeight.Regular)
               .margin({ left: 4 })
           }
         }
         .height(32)
         .padding({ left: 12, right: 12 })
         .borderRadius(16)
-        .backgroundColor(this.webSearchEnabled ? this.themePrimary : $r('app.color.surface'))
+        .backgroundColor(this.getChipBackgroundColor())
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.webSearchEnabled ? 1 : 0.5,
-          color: this.webSearchEnabled ? this.themePrimary : $r('app.color.divider')
+          width: this.webSearchEnabled ? 1.4 : 0.5,
+          color: this.webSearchEnabled ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
+        .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
         .animation({ duration: 200, curve: Curve.EaseOut })
         .onClick(() => {
           this.onToggleWebSearch()
@@ -59,22 +100,25 @@ export struct ChatToolbar {
           Row() {
             SymbolGlyph($r('sys.symbol.gearshape'))
               .fontSize(16)
-              .fontColor([this.hasSelectedTools ? Color.White : $r('app.color.text_secondary')])
+              .fontColor([this.hasSelectedTools ? this.themePrimary : $r('app.color.text_secondary')])
 
             Text($r('app.string.chat_toolbar_tools'))
               .fontSize(14)
-              .fontColor(this.hasSelectedTools ? Color.White : $r('app.color.text_secondary'))
+              .fontColor(this.hasSelectedTools ? this.themePrimary : $r('app.color.text_secondary'))
+              .fontWeight(this.hasSelectedTools ? FontWeight.Medium : FontWeight.Regular)
               .margin({ left: 4 })
           }
         }
         .height(32)
         .padding({ left: 12, right: 12 })
         .borderRadius(16)
-        .backgroundColor(this.hasSelectedTools ? this.themePrimary : $r('app.color.surface'))
+        .backgroundColor(this.getChipBackgroundColor())
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.hasSelectedTools ? 1 : 0.5,
-          color: this.hasSelectedTools ? this.themePrimary : $r('app.color.divider')
+          width: this.hasSelectedTools ? 1.4 : 0.5,
+          color: this.hasSelectedTools ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
+        .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
         .margin({ left: this.webSearchAvailable ? 8 : 0 })
         .animation({ duration: 200, curve: Curve.EaseOut })
         .onClick(() => {
@@ -88,22 +132,25 @@ export struct ChatToolbar {
           Row() {
             SymbolGlyph($r('sys.symbol.lightbulb'))
               .fontSize(16)
-              .fontColor([this.isReasoningEnabled() ? Color.White : $r('app.color.text_secondary')])
+              .fontColor([this.isReasoningEnabled() ? this.themePrimary : $r('app.color.text_secondary')])
 
             Text($r('app.string.chat_toolbar_reasoning'))
               .fontSize(14)
-              .fontColor(this.isReasoningEnabled() ? Color.White : $r('app.color.text_secondary'))
+              .fontColor(this.isReasoningEnabled() ? this.themePrimary : $r('app.color.text_secondary'))
+              .fontWeight(this.isReasoningEnabled() ? FontWeight.Medium : FontWeight.Regular)
               .margin({ left: 4 })
           }
         }
         .height(32)
         .padding({ left: 12, right: 12 })
         .borderRadius(16)
-        .backgroundColor(this.isReasoningEnabled() ? this.themePrimary : $r('app.color.surface'))
+        .backgroundColor(this.getChipBackgroundColor())
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.isReasoningEnabled() ? 1 : 0.5,
-          color: this.isReasoningEnabled() ? this.themePrimary : $r('app.color.divider')
+          width: this.isReasoningEnabled() ? 1.4 : 0.5,
+          color: this.isReasoningEnabled() ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
+        .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
         .margin({ left: this.webSearchAvailable || this.toolSelectionAvailable ? 8 : 0 })
         .animation({ duration: 200, curve: Curve.EaseOut })
         .onClick(() => {
