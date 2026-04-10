@@ -25,6 +25,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit'
 export struct ImagePreview {
   @Param images: Array<string> = []
   @Param currentIndex: number = 0
+  @Param topSafeAreaVp: number = 0
+  @Param bottomSafeAreaVp: number = 0
   @Event onClose: () => void = () => {}
 
   // 缩放状态
@@ -43,18 +45,110 @@ export struct ImagePreview {
   // 背景透明度（下拉退出时渐变）
   @Local backgroundOpacity: number = 1
 
+  // 下拉关闭时的缩放（"抽离"效果）
+  @Local dragScale: number = 1
+
+  // 是否正在执行关闭动画（防止重复触发）
+  @Local isDismissing: boolean = false
+
   // 保存状态
   @Local isSaving: boolean = false
 
   // 拖动方向锁定
   private panDirection: string = 'none'
+  private readonly overlayHorizontalMarginVp: number = 16
+  private readonly overlayBottomMarginVp: number = 20
+  private readonly overlayTopMarginVp: number = 12
+  private readonly saveButtonWidthVp: number = 104
+  private readonly saveButtonHeightVp: number = 48
 
   aboutToAppear(): void {
     this.displayIndex = this.currentIndex
   }
 
+  /**
+   * 统一关闭入口：淡出遮罩后关闭。
+   * 状态栏由宿主 ChatPage 统一管理，本组件不介入。
+   */
+  private dismiss(): void {
+    if (this.isDismissing) return
+    this.isDismissing = true
+    this.getUIContext().animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+      this.backgroundOpacity = 0
+    })
+    setTimeout(() => this.onClose(), 210)
+  }
+
   private showImageToast(message: string | Resource, duration: number = 2000): void {
     showToast(this.getUIContext(), message, duration)
+  }
+
+  private getOverlayControlBackgroundColor(): string {
+    return 'rgba(12, 16, 24, 0.72)'
+  }
+
+  private getOverlayControlBorderColor(): string {
+    return 'rgba(255, 255, 255, 0.16)'
+  }
+
+  private getOverlayControlShadowColor(): string {
+    return 'rgba(0, 0, 0, 0.34)'
+  }
+
+  private getSaveButtonTranslateX(): number {
+    return -(this.saveButtonWidthVp + this.overlayHorizontalMarginVp)
+  }
+
+  private getSaveButtonTranslateY(): number {
+    return -(this.saveButtonHeightVp + this.overlayBottomMarginVp + this.bottomSafeAreaVp)
+  }
+
+  private getIndicatorTranslateY(): number {
+    return -(this.saveButtonHeightVp + this.overlayBottomMarginVp + this.bottomSafeAreaVp + 28)
+  }
+
+  @Builder
+  private SaveActionButtonBuilder() {
+    Button({ type: ButtonType.Capsule, stateEffect: false }) {
+      Row({ space: 8 }) {
+        if (this.isSaving) {
+          LoadingProgress()
+            .width(18)
+            .height(18)
+            .color(Color.White)
+        } else {
+          Stack({ alignContent: Alignment.Center }) {
+            Column()
+              .width(28)
+              .height(28)
+              .borderRadius(14)
+              .backgroundColor('rgba(255, 255, 255, 0.10)')
+
+            SymbolGlyph($r('sys.symbol.square_and_arrow_down'))
+              .fontSize(16)
+              .fontColor([Color.White])
+          }
+          .width(28)
+          .height(28)
+        }
+
+        Text($r('app.string.save'))
+          .fontSize(14)
+          .fontColor(Color.White)
+          .fontWeight(FontWeight.Medium)
+      }
+    }
+    .width(this.saveButtonWidthVp)
+    .height(this.saveButtonHeightVp)
+    .padding({ left: 12, right: 14 })
+    .backgroundColor(this.getOverlayControlBackgroundColor())
+    .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+    .border({ width: 0.8, color: this.getOverlayControlBorderColor() })
+    .shadow({ radius: 22, color: this.getOverlayControlShadowColor(), offsetX: 0, offsetY: 8 })
+    .enabled(!this.isSaving)
+    .onClick(() => {
+      this.saveCurrentImage()
+    })
   }
 
   build() {
@@ -88,7 +182,7 @@ export struct ImagePreview {
       })
       .width('100%')
       .height('100%')
-      .scale({ x: this.imageScale, y: this.imageScale })
+      .scale({ x: this.imageScale * this.dragScale, y: this.imageScale * this.dragScale })
       .translate({ x: this.offsetX, y: this.offsetY })
 
       // 底部圆点指示器
@@ -106,31 +200,15 @@ export struct ImagePreview {
         .justifyContent(FlexAlign.Center)
         .width('100%')
         .position({ x: 0, y: '100%' })
-        .translate({ y: -90 })
+        .translate({ y: this.getIndicatorTranslateY() })
       }
 
-      // 底部保存按钮
-      Button({ type: ButtonType.Circle }) {
-        if (this.isSaving) {
-          LoadingProgress()
-            .width(24)
-            .height(24)
-            .color(Color.White)
-        } else {
-          SymbolGlyph($r('sys.symbol.square_and_arrow_down'))
-            .fontSize(22)
-            .fontColor([Color.White])
-        }
+      // 右下角保存按钮
+      Stack() {
+        this.SaveActionButtonBuilder()
       }
-      .width(44)
-      .height(44)
-      .backgroundColor('rgba(255, 255, 255, 0.2)')
-      .enabled(!this.isSaving)
-      .onClick(() => {
-        this.saveCurrentImage()
-      })
-      .position({ x: '100%', y: '100%' })
-      .translate({ x: -56, y: -50 })
+        .position({ x: '100%', y: '100%' })
+        .translate({ x: this.getSaveButtonTranslateX(), y: this.getSaveButtonTranslateY() })
 
       // 顶部关闭按钮 + 页码
       Row() {
@@ -139,11 +217,14 @@ export struct ImagePreview {
             .fontSize(20)
             .fontColor([Color.White])
         }
-        .width(36)
-        .height(36)
-        .backgroundColor('rgba(255, 255, 255, 0.2)')
+        .width(40)
+        .height(40)
+        .backgroundColor(this.getOverlayControlBackgroundColor())
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .border({ width: 0.8, color: this.getOverlayControlBorderColor() })
+        .shadow({ radius: 18, color: this.getOverlayControlShadowColor(), offsetX: 0, offsetY: 6 })
         .onClick(() => {
-          this.onClose()
+          this.dismiss()
         })
 
         Blank()
@@ -153,10 +234,19 @@ export struct ImagePreview {
             .fontSize(16)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Medium)
+            .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+            .backgroundColor('rgba(12, 16, 24, 0.58)')
+            .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+            .borderRadius(999)
+            .border({ width: 0.8, color: this.getOverlayControlBorderColor() })
         }
       }
       .width('100%')
-      .padding({ left: 16, right: 16, top: 50 })
+      .padding({
+        left: this.overlayHorizontalMarginVp,
+        right: this.overlayHorizontalMarginVp,
+        top: this.topSafeAreaVp + this.overlayTopMarginVp
+      })
       .position({ x: 0, y: 0 })
     }
     .width('100%')
@@ -192,7 +282,7 @@ export struct ImagePreview {
     .gesture(
       GestureGroup(GestureMode.Exclusive,
         // PanGesture 在前：手指移动超过阈值时胜出，TapGesture 被取消
-        PanGesture({ fingers: 1 })
+        PanGesture({ fingers: 1, distance: 12 })
           .onActionStart(() => {
             this.lastOffsetX = this.offsetX
             this.lastOffsetY = this.offsetY
@@ -215,8 +305,13 @@ export struct ImagePreview {
               }
 
               if (this.panDirection === 'vertical' && event.offsetY > 0) {
-                this.offsetY = event.offsetY * 0.5
-                this.backgroundOpacity = Math.max(0.3, 1 - event.offsetY / 400)
+                const rawY = event.offsetY
+                // 橡皮筋阻尼：阻力随距离递增，自然减速
+                this.offsetY = rawY * 0.55 / (1 + rawY / 500)
+                // 同步缩小图片，营造"抽离"效果
+                this.dragScale = 1 - Math.min(rawY / 600, 0.2)
+                // 背景同步淡出
+                this.backgroundOpacity = Math.max(0.15, 1 - rawY / 450)
               }
             }
           })
@@ -229,15 +324,22 @@ export struct ImagePreview {
             }
 
             // 未放大：下拉关闭
-            if (this.panDirection === 'vertical' && this.offsetY > 100) {
-              this.onClose()
+            if (this.panDirection === 'vertical' && this.offsetY > 70) {
+              this.isDismissing = true
+              this.getUIContext().animateTo({ duration: 280, curve: Curve.FastOutLinearIn }, () => {
+                this.offsetY = 2000
+                this.dragScale = 0.6
+                this.backgroundOpacity = 0
+              })
+              setTimeout(() => this.onClose(), 300)
               return
             }
 
-            // 回弹归位（切换失败或未触发时平滑回弹）
-            this.getUIContext().animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+            // 回弹归位
+            this.getUIContext().animateTo({ duration: 300, curve: Curve.FastOutSlowIn }, () => {
               this.offsetX = 0
               this.offsetY = 0
+              this.dragScale = 1
               this.backgroundOpacity = 1
             })
           }),
@@ -260,7 +362,7 @@ export struct ImagePreview {
           TapGesture({ count: 1 })
             .onAction(() => {
               if (this.imageScale <= 1) {
-                this.onClose()
+                this.dismiss()
               }
             })
         )
@@ -399,6 +501,7 @@ export struct ImagePreview {
     this.lastOffsetX = 0
     this.lastOffsetY = 0
     this.backgroundOpacity = 1
+    this.dragScale = 1
     this.panDirection = 'none'
   }
 }

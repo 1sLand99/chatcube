@@ -10,6 +10,7 @@ import {
 
 export const CHAT_NAVIGATION_TITLE_STACK_BUILDER_HEIGHT = 56
 const CHAT_NAVIGATION_ACTION_BUTTON_SIZE = 28
+const CHAT_NAVIGATION_CONTENT_VERTICAL_OFFSET = -5
 
 @ComponentV2
 export struct ChatNavigationTitleContent {
@@ -467,7 +468,7 @@ export struct ChatNavigationTitleContent {
     .width('100%')
     .height(CHAT_NAVIGATION_TITLE_STACK_BUILDER_HEIGHT)
     .padding({ left: 12, right: 12 })
-    .translate({ y: -2 })
+    .translate({ y: CHAT_NAVIGATION_CONTENT_VERTICAL_OFFSET })
     .backgroundColor(Color.Transparent)
   }
 }

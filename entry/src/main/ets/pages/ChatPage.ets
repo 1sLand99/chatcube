@@ -424,6 +424,24 @@ export struct ChatPage {
     }
   }
 
+  /**
+   * 状态栏联动：输入框隐藏 || 图片预览 → 隐藏状态栏。
+   * ChatPage 是状态栏可见性的唯一决策者，子组件不介入。
+   */
+  private updateStatusBar(): void {
+    this.setChatStatusBarVisible(this.isInputBarVisible && !this.showImagePreview)
+  }
+
+  private setChatStatusBarVisible(visible: boolean): void {
+    const hostContext = this.getUIContext().getHostContext()
+    if (hostContext === undefined || hostContext === null) {
+      return
+    }
+    const context = hostContext as common.UIAbilityContext
+    const mainWindow = context.windowStage.getMainWindowSync()
+    mainWindow.setSpecificSystemBarEnabled('status', visible).catch((): void => {})
+  }
+
   aboutToDisappear(): void {
     this.isPageVisible = false
     ServiceRegistry.toolExecution().setApprovalCallback(null)
@@ -436,6 +454,8 @@ export struct ChatPage {
     })
     this.unregisterAppUiStateObservers()
     this.syncActiveSessionBinding()
+    // 离开页面时确保状态栏恢复
+    this.setChatStatusBarVisible(true)
 
     if (this.shouldDeleteEmptySessionOnDisappear()) {
       this.chatViewModel.deleteSession(this.sessionId)
@@ -1544,6 +1564,7 @@ export struct ChatPage {
           this.isInputFocused = false
           inputMethod.getController().stopInputSession()
         }
+        this.updateStatusBar()
       },
       onSetCurrentScrollOffsetState: (value: number): void => {
         if (this.shouldSyncScrollOffsetToUi(value)) {
@@ -2210,6 +2231,7 @@ export struct ChatPage {
             bottomSafeAreaVp: this.px2vp(this.bottomAvoidHeight),
             onClose: () => {
               this.showImagePreview = false
+              this.updateStatusBar()
             }
           })
             .transition(TransitionEffect.OPACITY.animation({ duration: 200 }))
@@ -2223,7 +2245,7 @@ export struct ChatPage {
     .titleBar(this.getTitleBarOptions())
     .bindToScrollable([this.scroller])
     .titleMode(HdsNavDestinationTitleMode.MINI)
-    .hideTitleBar(this.showImagePreview, true)
+    .hideTitleBar(this.showImagePreview || !this.isInputBarVisible, true)
     .systemBarStyle(
       { statusBarContentColor: this.getStatusBarContentColor() },
       { statusBarContentColor: this.getStatusBarContentColor() }
@@ -2252,6 +2274,7 @@ export struct ChatPage {
     .onBackPressed((): boolean => {
       if (this.showImagePreview) {
         this.showImagePreview = false
+        this.updateStatusBar()
         return true
       }
       if (dismissActiveSnackBarOnBack()) {
@@ -2303,6 +2326,7 @@ export struct ChatPage {
     this.previewImages = images
     this.previewImageIndex = index
     this.showImagePreview = true
+    this.updateStatusBar()
   }
 
   @Builder
