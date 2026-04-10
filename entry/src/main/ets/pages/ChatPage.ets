@@ -431,21 +431,33 @@ export struct ChatPage {
   }
 
   /**
-   * 状态栏联动：输入框隐藏 || 图片预览 → 隐藏状态栏。
-   * ChatPage 是状态栏可见性的唯一决策者，子组件不介入。
+   * 状态栏联动：
+   * - 输入框隐藏 → 隐藏状态栏（setSpecificSystemBarEnabled）
+   * - 图片预览 → 保持状态栏启用，背景+图标全黑融入预览层（纯属性切换，零延迟）
+   *
+   * 不再对图片预览使用 setSpecificSystemBarEnabled(false/true)，
+   * 因为该 API 的 true 恢复有系统级渲染延迟，提前调用也无法消除。
    */
   private updateStatusBar(): void {
-    this.setChatStatusBarVisible(this.isInputBarVisible && !this.showImagePreview)
-  }
-
-  private setChatStatusBarVisible(visible: boolean): void {
     const hostContext = this.getUIContext().getHostContext()
     if (hostContext === undefined || hostContext === null) {
       return
     }
     const context = hostContext as common.UIAbilityContext
     const mainWindow = context.windowStage.getMainWindowSync()
-    mainWindow.setSpecificSystemBarEnabled('status', visible).catch((): void => {})
+
+    if (this.showImagePreview) {
+      // 全黑融入：背景黑色 + 图标黑色 = 状态栏区域完全不可见
+      // 关闭时只需切回正常模式，不涉及 show/hide 切换，瞬间完成
+      mainWindow.setWindowSystemBarProperties({
+        statusBarColor: '#000000',
+        statusBarContentColor: '#000000'
+      }).catch((): void => {})
+      mainWindow.setSpecificSystemBarEnabled('status', true).catch((): void => {})
+    } else {
+      // 正常模式：根据输入框显隐控制状态栏
+      mainWindow.setSpecificSystemBarEnabled('status', this.isInputBarVisible).catch((): void => {})
+    }
   }
 
   aboutToDisappear(): void {
@@ -461,7 +473,13 @@ export struct ChatPage {
     this.unregisterAppUiStateObservers()
     this.syncActiveSessionBinding()
     // 离开页面时确保状态栏恢复
-    this.setChatStatusBarVisible(true)
+    const hostContext = this.getUIContext().getHostContext()
+    if (hostContext !== undefined && hostContext !== null) {
+      const ctx = hostContext as common.UIAbilityContext
+      ctx.windowStage.getMainWindowSync()
+        .setSpecificSystemBarEnabled('status', true)
+        .catch((): void => {})
+    }
 
     if (this.shouldDeleteEmptySessionOnDisappear()) {
       this.chatViewModel.deleteSession(this.sessionId)

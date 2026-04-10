@@ -949,13 +949,9 @@ export struct MessageBubble {
         .borderRadius(8)
         .clip(true)
         .margin({ bottom: bottomMargin })
-        .hitTestBehavior(HitTestMode.Block)
-        .gesture(
-          TapGesture({ count: 1 })
-            .onAction(() => {
-              this.handleImagePreview(attachmentIndex)
-            })
-        )
+        .onClick(() => {
+          this.handleImagePreview(attachmentIndex)
+        })
     }
   }
 
@@ -970,13 +966,9 @@ export struct MessageBubble {
         .borderRadius(8)
         .clip(true)
         .layoutWeight(1)
-        .hitTestBehavior(HitTestMode.Block)
-        .gesture(
-          TapGesture({ count: 1 })
-            .onAction(() => {
-              this.handleImagePreview(attachmentIndex)
-            })
-        )
+        .onClick(() => {
+          this.handleImagePreview(attachmentIndex)
+        })
     }
   }
 
