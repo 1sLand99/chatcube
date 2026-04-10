@@ -85,7 +85,7 @@ export struct ChatToolbar {
         .backgroundColor(this.getChipBackgroundColor())
         .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.webSearchEnabled ? 1.4 : 0.5,
+          width: 1,
           color: this.webSearchEnabled ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
         .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
@@ -115,7 +115,7 @@ export struct ChatToolbar {
         .backgroundColor(this.getChipBackgroundColor())
         .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.hasSelectedTools ? 1.4 : 0.5,
+          width: 1,
           color: this.hasSelectedTools ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
         .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
@@ -147,7 +147,7 @@ export struct ChatToolbar {
         .backgroundColor(this.getChipBackgroundColor())
         .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .border({
-          width: this.isReasoningEnabled() ? 1.4 : 0.5,
+          width: 1,
           color: this.isReasoningEnabled() ? this.getActiveChipBorderColor() : this.getInactiveChipBorderColor()
         })
         .shadow({ radius: 10, color: this.getChipShadowColor(), offsetX: 0, offsetY: 2 })
