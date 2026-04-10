@@ -25,8 +25,8 @@ export struct ChatNavigationTitleContent {
   @Param currentProviderCustomImagePath: string = ''
   @Param currentProviderBrandColor: ResourceColor = ''
   @Param isTitleGenerating: boolean = false
+  @Param isSending: boolean = false
   @Param titleGenerateFailed: boolean = false
-  @Param editRequestVersion: number = 0
   @Param leftActionLaneWidth: number = 44
   @Param rightActionLaneWidth: number = 44
   @Param showNewChatAction: boolean = false
@@ -34,7 +34,7 @@ export struct ChatNavigationTitleContent {
   @Event onBack: () => void = () => {}
   @Event onModelSelect: () => void = () => {}
   @Event onNewChat: () => void = () => {}
-  @Event onMore: () => void = () => {}
+  @Event onDeleteChat: () => void = () => {}
   @Event onRegenerateTitle: () => void = () => {}
   @Event onWillEditTitle: () => void = () => {}
   @Event onTitleChanged: (newTitle: string) => void = (_newTitle: string): void => {}
@@ -72,14 +72,6 @@ export struct ChatNavigationTitleContent {
     }
   }
 
-  @Monitor('editRequestVersion')
-  onEditRequestVersionChange(): void {
-    if (this.editRequestVersion <= 0) {
-      return
-    }
-    this.startEditingTitle()
-  }
-
   private configureTitleMarkdownStyles(): void {
     const latexTextColor = this.isDarkMode ? 0xFFE0E0E0 : 0xFF333333
     this.titleMarkdownController
@@ -101,6 +93,10 @@ export struct ChatNavigationTitleContent {
 
   private getNavigationActionButtonBackgroundColor(): string {
     return this.isDarkMode ? '#30FFFFFF' : '#D9FFFFFF'
+  }
+
+  private getMoreMenuBackgroundColor(): string {
+    return this.isDarkMode ? '#A8212328' : '#BFFFFFFF'
   }
 
   private hasCurrentModelIdentity(): boolean {
@@ -292,9 +288,43 @@ export struct ChatNavigationTitleContent {
     .onTouch(createButtonTouchHandler((pressed: boolean): void => {
       this.moreBtnPressed = pressed
     }))
-    .onClick(() => {
-      this.onMore()
+    .bindMenu(this.MoreMenuBuilder(), {
+      placement: Placement.BottomRight,
+      offset: { x: 0, y: 10 },
+      backgroundColor: this.getMoreMenuBackgroundColor(),
+      backgroundBlurStyle: BlurStyle.Regular
     })
+  }
+
+  @Builder
+  private MoreMenuBuilder() {
+    Menu() {
+      MenuItem({
+        startIcon: $r('sys.symbol.square_and_pencil'),
+        content: $r('app.string.edit_chat_title')
+      })
+        .onClick(() => {
+          this.startEditingTitle()
+        })
+
+      MenuItem({
+        startIcon: $r('sys.symbol.arrow_clockwise'),
+        content: $r('app.string.regenerate_title')
+      })
+        .enabled(!this.isTitleGenerating && !this.isSending)
+        .onClick(() => {
+          this.onRegenerateTitle()
+        })
+
+      MenuItem({
+        startIcon: $r('sys.symbol.trash'),
+        content: $r('app.string.delete_chat')
+      })
+        .contentFontColor($r('app.color.status_error'))
+        .onClick(() => {
+          this.onDeleteChat()
+        })
+    }
   }
 
   build() {

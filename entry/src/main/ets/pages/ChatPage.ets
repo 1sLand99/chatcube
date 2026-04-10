@@ -158,8 +158,6 @@ export struct ChatPage {
   @Local sessionTitle: string = ''
   @Local isTitleGenerating: boolean = false
   @Local titleGenerateFailed: boolean = false
-  @Local showTitleActionSheet: boolean = false
-  @Local titleEditRequestVersion: number = 0
   // 图片预览状态
   @Local showImagePreview: boolean = false
   @Local previewImages: Array<string> = []
@@ -1742,6 +1740,9 @@ export struct ChatPage {
   }
 
   private getStatusBarContentColor(): string {
+    if (this.showImagePreview) {
+      return '#F5F7FA'
+    }
     return this.isDarkMode ? '#F5F7FA' : '#1F2329'
   }
 
@@ -1819,8 +1820,8 @@ export struct ChatPage {
       currentProviderCustomImagePath: this.currentProvider?.customImagePath ?? '',
       currentProviderBrandColor: this.currentProvider?.brandColor ?? '',
       isTitleGenerating: this.isTitleGenerating,
+      isSending: this.isSending,
       titleGenerateFailed: this.titleGenerateFailed,
-      editRequestVersion: this.titleEditRequestVersion,
       showNewChatAction: this.shouldShowTitleBarNewChatAction(),
       leftActionLaneWidth: HDS_NAV_TITLE_LEFT_ACTION_LANE_WIDTH,
       rightActionLaneWidth: this.getTitleRightActionLaneWidth(),
@@ -1835,8 +1836,8 @@ export struct ChatPage {
       onNewChat: (): void => {
         void this.handleNewChat()
       },
-      onMore: (): void => {
-        this.showTitleActionSheet = true
+      onDeleteChat: (): void => {
+        this.handleDeleteChat()
       },
       onRegenerateTitle: (): void => {
         void this.handleRegenerateTitle()
@@ -1851,70 +1852,6 @@ export struct ChatPage {
         })
       }
     })
-  }
-
-  @Builder
-  private ChatTitleActionSheetBuilder() {
-    Column({ space: 8 }) {
-      Row({ space: 12 }) {
-        SymbolGlyph($r('sys.symbol.square_and_pencil'))
-          .fontSize(18)
-          .fontColor([$r('app.color.text_primary')])
-        Text($r('app.string.edit_chat_title'))
-          .fontSize(16)
-          .fontColor($r('app.color.text_primary'))
-        Blank()
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-      .borderRadius(18)
-      .backgroundColor($r('sys.color.comp_background_tertiary'))
-      .onClick(() => {
-        this.showTitleActionSheet = false
-        this.requestInlineTitleEdit()
-      })
-
-      Row({ space: 12 }) {
-        SymbolGlyph($r('sys.symbol.arrow_clockwise'))
-          .fontSize(18)
-          .fontColor([$r('app.color.text_primary')])
-        Text($r('app.string.regenerate_title'))
-          .fontSize(16)
-          .fontColor($r('app.color.text_primary'))
-        Blank()
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-      .borderRadius(18)
-      .backgroundColor($r('sys.color.comp_background_tertiary'))
-      .opacity((this.isTitleGenerating || this.isSending) ? 0.45 : 1)
-      .enabled(!this.isTitleGenerating && !this.isSending)
-      .onClick(() => {
-        this.showTitleActionSheet = false
-        void this.handleRegenerateTitle()
-      })
-
-      Row({ space: 12 }) {
-        SymbolGlyph($r('sys.symbol.trash'))
-          .fontSize(18)
-          .fontColor([$r('app.color.status_error')])
-        Text($r('app.string.delete_chat'))
-          .fontSize(16)
-          .fontColor($r('app.color.status_error'))
-        Blank()
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-      .borderRadius(18)
-      .backgroundColor($r('sys.color.comp_background_tertiary'))
-      .onClick(() => {
-        this.showTitleActionSheet = false
-        this.handleDeleteChat()
-      })
-    }
-    .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .backgroundColor(Color.Transparent)
   }
 
   build() {
@@ -2172,21 +2109,6 @@ export struct ChatPage {
       Column()
         .width(0)
         .height(0)
-        .bindSheet($$this.showTitleActionSheet, this.ChatTitleActionSheetBuilder(), {
-          height: SheetSize.FIT_CONTENT,
-          dragBar: true,
-          showClose: false,
-          backgroundColor: $r('app.color.background'),
-          blurStyle: BlurStyle.Thick,
-          preferType: SheetType.BOTTOM,
-          onDisappear: () => {
-            this.showTitleActionSheet = false
-          }
-        })
-
-      Column()
-        .width(0)
-        .height(0)
         .bindSheet($$this.showMessageWebSheet, this.MessageWebSheetBuilder(), {
           height: SheetSize.LARGE,
           detents: [SheetSize.LARGE],
@@ -2284,6 +2206,8 @@ export struct ChatPage {
           ImagePreview({
             images: this.previewImages,
             currentIndex: this.previewImageIndex,
+            topSafeAreaVp: this.px2vp(this.topAvoidHeight),
+            bottomSafeAreaVp: this.px2vp(this.bottomAvoidHeight),
             onClose: () => {
               this.showImagePreview = false
             }
@@ -2299,6 +2223,7 @@ export struct ChatPage {
     .titleBar(this.getTitleBarOptions())
     .bindToScrollable([this.scroller])
     .titleMode(HdsNavDestinationTitleMode.MINI)
+    .hideTitleBar(this.showImagePreview, true)
     .systemBarStyle(
       { statusBarContentColor: this.getStatusBarContentColor() },
       { statusBarContentColor: this.getStatusBarContentColor() }
@@ -3114,11 +3039,6 @@ export struct ChatPage {
         }
       }
     })
-  }
-
-  private requestInlineTitleEdit(): void {
-    this.safeStopInputSession()
-    this.titleEditRequestVersion += 1
   }
 
   // 处理保存编辑的标题
