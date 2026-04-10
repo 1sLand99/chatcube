@@ -4,7 +4,7 @@ import { formBindingData, formInfo, formProvider } from '@kit.FormKit'
 import resourceManager from '@ohos.resourceManager'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { ColorTheme, ThemeColorConfig, getThemeColors } from '../models/ThemeColors'
-import { getPreferencesService, PreferenceKeys, ThemeMode } from '../services/PreferencesService'
+import { getPreferencesService, PreferenceKeys } from '../services/PreferencesService'
 
 const FORM_IDS_PREF_KEY = 'entry_form_ids_json'
 const PREFERENCES_NAME = 'chatbox_preferences'
@@ -65,6 +65,10 @@ export function readFormIdFromWant(want: Want): string {
   return formId ?? ''
 }
 
+function resolveContextSystemDarkMode(context: Context): boolean {
+  return context.resourceManager.getConfigurationSync().colorMode === resourceManager.ColorMode.DARK
+}
+
 export function createNewChatFormBindingData(colors: ThemeColorConfig, isSystemDarkMode?: boolean): formBindingData.FormBindingData {
   const formData = new NewChatFormData()
   formData.themePrimary = colors.primary
@@ -113,24 +117,19 @@ export async function unregisterThemeAwareFormId(context: Context, formId: strin
   await writeRegisteredFormIds(context, nextFormIds)
 }
 
-async function resolveWidgetIsDarkMode(context: Context): Promise<boolean> {
-  const store = await getFormPreferences(context)
-  const themeMode = await store.get(PreferenceKeys.THEME_MODE, ThemeMode.SYSTEM) as string
-  if (themeMode === ThemeMode.DARK) {
-    return true
-  }
-  if (themeMode === ThemeMode.LIGHT) {
-    return false
-  }
-  const configuration = context.resourceManager.getConfigurationSync()
-  return configuration.colorMode === resourceManager.ColorMode.DARK
+async function resolveStoredSystemDarkMode(): Promise<boolean> {
+  return await getPreferencesService().getBoolean(PreferenceKeys.SYSTEM_DARK_MODE, false)
+}
+
+async function loadStoredWidgetThemeId(): Promise<ColorTheme> {
+  const themeId = await getPreferencesService().getString(AppStorageKeys.COLOR_THEME, ColorTheme.DEFAULT)
+  return themeId as ColorTheme
 }
 
 export async function loadWidgetThemeColors(context: Context): Promise<ThemeColorConfig> {
   const store = await getFormPreferences(context)
   const themeId = await store.get(AppStorageKeys.COLOR_THEME, ColorTheme.DEFAULT) as string
-  const isDarkMode = await resolveWidgetIsDarkMode(context)
-  return getThemeColors(themeId as ColorTheme, isDarkMode)
+  return getThemeColors(themeId as ColorTheme, resolveContextSystemDarkMode(context))
 }
 
 export async function refreshThemeAwareForm(formId: string, colors: ThemeColorConfig, isSystemDarkMode?: boolean): Promise<void> {
@@ -142,11 +141,14 @@ export async function refreshThemeAwareForm(formId: string, colors: ThemeColorCo
 
 export async function refreshThemeAwareFormWithStoredTheme(context: Context, formId: string): Promise<void> {
   const colors = await loadWidgetThemeColors(context)
-  const isSystemDarkMode = context.resourceManager.getConfigurationSync().colorMode === resourceManager.ColorMode.DARK
+  const isSystemDarkMode = resolveContextSystemDarkMode(context)
   await refreshThemeAwareForm(formId, colors, isSystemDarkMode)
 }
 
-export async function refreshAllThemeAwareForms(colors: ThemeColorConfig, isSystemDarkMode?: boolean): Promise<void> {
+export async function refreshAllThemeAwareForms(themeId?: ColorTheme): Promise<void> {
+  const resolvedThemeId = themeId ?? await loadStoredWidgetThemeId()
+  const isSystemDarkMode = await resolveStoredSystemDarkMode()
+  const colors = getThemeColors(resolvedThemeId, isSystemDarkMode)
   const rawValue = await getPreferencesService().getString(FORM_IDS_PREF_KEY, '[]')
   const formIds = parseStoredFormIds(rawValue)
   for (let i = 0; i < formIds.length; i++) {

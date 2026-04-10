@@ -188,8 +188,7 @@ export class ThemeService {
   }
 
   private async refreshDesktopForms(): Promise<void> {
-    const colors = this.getCurrentColors()
-    await refreshAllThemeAwareForms(colors, this.currentIsDarkMode)
+    await refreshAllThemeAwareForms(this.currentTheme)
   }
 
   // 通知所有回调

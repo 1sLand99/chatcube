@@ -1,7 +1,7 @@
 import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
-import { ThemeMode, AppLanguage } from '../services/PreferencesService';
+import { getPreferencesService, PreferenceKeys, ThemeMode, AppLanguage } from '../services/PreferencesService';
 import { SettingsChangeCallback } from '../viewmodels/SettingsManager';
 import { WindowManager } from '@kit.SpeechKit';
 import { AppStorageKeys } from '../config/AppStorageKeys';
@@ -120,6 +120,7 @@ export default class EntryAbility extends UIAbility {
       // 助手模块暂缓，启动阶段不再初始化相关服务
 
       // 应用保存的主题设置
+      void this.persistSystemDarkMode(this.context.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
       const themeMode = ServiceRegistry.settings().getThemeMode();
       const targetColorMode = ServiceRegistry.settings().getColorModeFromTheme(themeMode);
       this.setAppColorMode(targetColorMode);
@@ -365,6 +366,7 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', 'Configuration updated: %{public}s', JSON.stringify(newConfig));
     // 使用 newConfig.colorMode 获取最新系统深浅色，this.context.config 在回调时可能尚未更新
     const latestColorMode = newConfig.colorMode ?? this.context.config.colorMode;
+    void this.persistSystemDarkMode(latestColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
     this.updateWindowBackgroundColor(latestColorMode);
     this.updateColorModeStorage(latestColorMode);
 
@@ -412,6 +414,10 @@ export default class EntryAbility extends UIAbility {
     } catch (error) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set window background color: %{public}s', JSON.stringify(error));
     }
+  }
+
+  private async persistSystemDarkMode(isDarkMode: boolean): Promise<void> {
+    await getPreferencesService().setBoolean(PreferenceKeys.SYSTEM_DARK_MODE, isDarkMode)
   }
 
   onWindowStageDestroy(): void {

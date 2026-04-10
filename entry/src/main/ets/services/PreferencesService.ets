@@ -10,6 +10,7 @@ export class PreferenceKeys {
   static readonly DEFAULT_TEMPERATURE: string = 'default_temperature'
   static readonly DEFAULT_MAX_TOKENS: string = 'default_max_tokens'
   static readonly THEME_MODE: string = 'theme_mode'
+  static readonly SYSTEM_DARK_MODE: string = 'system_dark_mode'
   static readonly LANGUAGE: string = 'language'
   static readonly PROVIDERS_CONFIG: string = 'providers_config'
 
