@@ -9,7 +9,7 @@ import {
 } from '../utils/ButtonAnimationUtils'
 
 export const CHAT_NAVIGATION_TITLE_STACK_BUILDER_HEIGHT = 56
-const CHAT_NAVIGATION_ACTION_BUTTON_SIZE = 28
+const CHAT_NAVIGATION_ACTION_BUTTON_SIZE = 30
 const CHAT_NAVIGATION_CONTENT_VERTICAL_OFFSET = -5
 
 @ComponentV2
@@ -235,7 +235,7 @@ export struct ChatNavigationTitleContent {
   private BackButtonBuilder() {
     Button({ type: ButtonType.Circle }) {
       SymbolGlyph($r('sys.symbol.chevron_left'))
-        .fontSize(14)
+        .fontSize(17)
         .fontColor([$r('app.color.text_primary')])
     }
     .width(CHAT_NAVIGATION_ACTION_BUTTON_SIZE)
@@ -256,7 +256,7 @@ export struct ChatNavigationTitleContent {
   private NewChatButtonBuilder() {
     Button({ type: ButtonType.Circle }) {
       SymbolGlyph($r('sys.symbol.plus'))
-        .fontSize(14)
+        .fontSize(17)
         .fontColor([$r('app.color.text_primary')])
     }
     .width(CHAT_NAVIGATION_ACTION_BUTTON_SIZE)
@@ -277,7 +277,7 @@ export struct ChatNavigationTitleContent {
   private MoreButtonBuilder() {
     Button({ type: ButtonType.Circle }) {
       SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
-        .fontSize(13)
+        .fontSize(16)
         .fontColor([$r('app.color.text_primary')])
     }
     .width(CHAT_NAVIGATION_ACTION_BUTTON_SIZE)
@@ -427,7 +427,7 @@ export struct ChatNavigationTitleContent {
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
 
                 SymbolGlyph($r('sys.symbol.chevron_down'))
-                  .fontSize(9)
+                  .fontSize(12)
                   .fontColor([this.getModelIdentityChevronColor()])
               }
               .width('100%')

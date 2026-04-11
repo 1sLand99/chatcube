@@ -1769,7 +1769,7 @@ export struct ChatPage {
   }
 
   private getTitleBarMaskExtraHeight(): number {
-    return 32
+    return 16
   }
 
   private isExistingSessionSeeded(): boolean {
@@ -1802,18 +1802,20 @@ export struct ChatPage {
       style: {
         scrollEffectOpts: {
           enableScrollEffect: false,
-          scrollEffectType: ScrollEffectType.GRADIENT_BLUR,
+          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR,
           blurEffectiveStartOffset: LengthMetrics.vp(0),
           blurEffectiveEndOffset: LengthMetrics.vp(8)
         },
         originalStyle: {
           backgroundStyle: {
-            maskExtraHeight: this.getTitleBarMaskExtraHeight()
+            maskExtraHeight: this.getTitleBarMaskExtraHeight(),
+            blurRadius: 20
           }
         },
         scrollEffectStyle: {
           backgroundStyle: {
-            maskExtraHeight: this.getTitleBarMaskExtraHeight()
+            maskExtraHeight: this.getTitleBarMaskExtraHeight(),
+            blurRadius: 20
           }
         },
         blurStrategy: BlurStrategy.ENABLE,
