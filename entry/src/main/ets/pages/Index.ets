@@ -1193,7 +1193,7 @@ struct Index {
         .width('100%')
         .layoutWeight(1)
         .barMode(BarMode.Fixed)
-        .barHeight(this.getCompactTabsBarHeight())
+        .barHeight(this.getCompactTabsHostBarHeight())
         .barOverlap(true)
         .barBackgroundColor(Color.Transparent)
         .barBackgroundBlurStyle(BlurStyle.COMPONENT_THIN)
@@ -1213,7 +1213,15 @@ struct Index {
   }
 
   private shouldHideCompactTabsHost(): boolean {
-    return this.currentTabIndex === Index.TAB_CHAT && this.isMultiSelectMode
+    // 多选工具栏会占据底部交互区，继续复用原先“直接隐藏整个 tabs 宿主”的策略。
+    if (this.currentTabIndex === Index.TAB_CHAT && this.isMultiSelectMode) {
+      return true
+    }
+    return false
+  }
+
+  private shouldHideCompactTabsBar(): boolean {
+    return this.currentTabIndex === Index.TAB_SETTINGS && this.currentSettingsRouteName !== ''
   }
 
   @Builder
@@ -1223,6 +1231,10 @@ struct Index {
     } else {
       this.SettingsTab()
     }
+  }
+
+  private getCompactTabsHostBarHeight(): number {
+    return this.shouldHideCompactTabsBar() ? 0 : this.getCompactTabsBarHeight()
   }
 
   @Builder
@@ -1334,10 +1346,13 @@ struct Index {
   }
 
   private getCompactTabsBottomInset(): number {
-    return this.getCompactTabsBarHeight() + this.getCompactTabsFloatingBottomMargin()
+    return this.getCompactTabsHostBarHeight() + this.getCompactTabsFloatingBottomMargin()
   }
 
   private getCompactTabsFloatingBottomMargin(): number {
+    if (this.shouldHideCompactTabsBar()) {
+      return 0
+    }
     return this.px2vp(this.bottomAvoidHeight) > 0 ? 24 : 12
   }
 

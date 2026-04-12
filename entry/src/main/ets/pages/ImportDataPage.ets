@@ -2,7 +2,10 @@ import { picker, fileIo } from '@kit.CoreFileKit'
 import { getImportExportService, ImportOptions, ImportPreview } from '../services/ImportExportService'
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
-import { getCompactTabsBarHeightForIndex, getSettingsPageContentMaxWidth } from '../utils/SettingsPageLayoutHelper'
+import {
+  getSettingsPageCompactTabsOverlayInset,
+  getSettingsPageContentMaxWidth
+} from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
 
 let importDataPathStack: NavPathStack | null = null
@@ -60,10 +63,7 @@ struct ImportDataPage {
   }
 
   private getCompactTabsOverlayInset(): number {
-    if (this.isDetailPaneMode()) {
-      return 0
-    }
-    return getCompactTabsBarHeightForIndex(this.getBaseBottomInset()) - this.getBaseBottomInset()
+    return getSettingsPageCompactTabsOverlayInset(this.getBaseBottomInset(), this.settingsDetailPresentationMode)
   }
 
   private getScrollBottomPadding(): number {
@@ -568,4 +568,3 @@ export function ImportDataPageBuilder(name: string, param: Object) {
     return true
   })
 }
-

@@ -36,16 +36,14 @@ export function getCompactTabsBarHeightForIndex(bottomAvoidHeightVp: number): nu
 
 export function getSettingsPageCompactTabsOverlayInset(bottomAvoidHeightVp: number,
   settingsDetailPresentationMode: string): number {
-  if (settingsDetailPresentationMode === SettingsPagePresentationMode.DETAIL_PANE) {
-    return 0
-  }
-  return getCompactTabsBarHeightForIndex(bottomAvoidHeightVp) - bottomAvoidHeightVp
+  // Compact settings drill-down hides the top-level HdsTabs host.
+  // Inner settings pages should not reserve any extra bottom tabs space.
+  return 0
 }
 
 export function getSettingsPageCompactTabsTotalInset(bottomAvoidHeightVp: number,
   settingsDetailPresentationMode: string): number {
-  if (settingsDetailPresentationMode === SettingsPagePresentationMode.DETAIL_PANE) {
-    return 0
-  }
-  return getCompactTabsBarHeightForIndex(bottomAvoidHeightVp)
+  // Compact settings drill-down hides the top-level HdsTabs host.
+  // Inner settings pages should not reserve any extra bottom tabs space.
+  return 0
 }

@@ -5,7 +5,10 @@ import { getImportExportService, ExportOptions } from '../services/ImportExportS
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
-import { getCompactTabsBarHeightForIndex, getSettingsPageContentMaxWidth } from '../utils/SettingsPageLayoutHelper'
+import {
+  getSettingsPageCompactTabsOverlayInset,
+  getSettingsPageContentMaxWidth
+} from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
 
 let exportDataPathStack: NavPathStack | null = null
@@ -65,10 +68,7 @@ struct ExportDataPage {
   }
 
   private getCompactTabsOverlayInset(): number {
-    if (this.isDetailPaneMode()) {
-      return 0
-    }
-    return getCompactTabsBarHeightForIndex(this.getBaseBottomInset()) - this.getBaseBottomInset()
+    return getSettingsPageCompactTabsOverlayInset(this.getBaseBottomInset(), this.settingsDetailPresentationMode)
   }
 
   private getScrollBottomPadding(): number {
@@ -489,4 +489,3 @@ export function ExportDataPageBuilder(name: string, param: Object) {
     return true
   })
 }
-

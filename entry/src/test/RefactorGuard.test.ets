@@ -26,9 +26,14 @@ import {
   ModelSelectorRowType
 } from '../main/ets/config/ModelListProjection'
 import { LayoutSizeClass, resolveLayoutSizeClass } from '../main/ets/config/LayoutProfile'
+import { SettingsPagePresentationMode } from '../main/ets/config/SettingsDetailPresentation'
 import { SessionFilterType, SessionGroupData } from '../main/ets/pages/index/IndexPageTypes'
 import { buildSessionGroupRenderKey, buildSessionRenderKeyForIndex } from '../main/ets/pages/index/IndexSessionGroupHelper'
-import { getCompactTabsBarHeightForIndex } from '../main/ets/utils/SettingsPageLayoutHelper'
+import {
+  getCompactTabsBarHeightForIndex,
+  getSettingsPageCompactTabsOverlayInset,
+  getSettingsPageCompactTabsTotalInset
+} from '../main/ets/utils/SettingsPageLayoutHelper'
 import { ProviderTextIconDisplayMode, resolveProviderTextIconDisplayMode } from '../main/ets/components/ProviderIcon'
 import {
   getProviderDetailPaneBottomInset,
@@ -322,6 +327,13 @@ export default function refactorGuardTest() {
     it('getCompactTabsBarHeightForIndex_should_keep_tabs_stable_for_settings_drill_down', 0, () => {
       expect(getCompactTabsBarHeightForIndex(0)).assertEqual(56)
       expect(getCompactTabsBarHeightForIndex(18)).assertEqual(74)
+    })
+
+    it('settings_drill_down_pages_should_not_reserve_compact_tabs_space', 0, () => {
+      expect(getSettingsPageCompactTabsOverlayInset(18, SettingsPagePresentationMode.PAGE)).assertEqual(0)
+      expect(getSettingsPageCompactTabsOverlayInset(18, SettingsPagePresentationMode.DETAIL_PANE)).assertEqual(0)
+      expect(getSettingsPageCompactTabsTotalInset(18, SettingsPagePresentationMode.PAGE)).assertEqual(0)
+      expect(getSettingsPageCompactTabsTotalInset(18, SettingsPagePresentationMode.DETAIL_PANE)).assertEqual(0)
     })
 
     it('resolveProviderTextIconDisplayMode_should_neutralize_disabled_provider_icons', 0, () => {
