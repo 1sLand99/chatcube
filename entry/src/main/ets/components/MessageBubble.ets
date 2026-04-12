@@ -43,6 +43,7 @@ interface ImageAttachmentEntry {
 export struct MessageBubble {
   @Param message: ChatMessage = new ChatMessage('', MessageRole.USER, '')
   @Param renderSignature: string = ''
+  @Param contentRenderSignature: string = ''
   @Param showHeader: boolean = true  // 是否显示消息头部（模型信息）
   @Param currentModelId: string = ''  // 当前会话的模型 ID（用于图标匹配回退）
   @Param themeRenderKey: string = ''
@@ -83,6 +84,10 @@ export struct MessageBubble {
   private markdownController: MarkdownController = new MarkdownController()
   private reasoningMarkdownController: MarkdownController = new MarkdownController()
   private translationMarkdownController: MarkdownController = new MarkdownController()
+  private multiSelectTouchStartX: number = 0
+  private multiSelectTouchStartY: number = 0
+  private multiSelectTouchActive: boolean = false
+  private static readonly MULTI_SELECT_TAP_THRESHOLD_VP: number = 8
 
   // ========== 流式渲染优化 ==========
   // lv-markdown-in 自带流式渲染，无需手动节流
@@ -168,8 +173,61 @@ export struct MessageBubble {
     return buildIconResourcePath(iconPath)
   }
 
-  private getBubbleHitTestMode(): HitTestMode {
-    return this.isMultiSelectMode ? HitTestMode.Block : HitTestMode.Default
+  private getPrimaryTouchPoint(event: TouchEvent): TouchObject | null {
+    if (event.changedTouches && event.changedTouches.length > 0) {
+      return event.changedTouches[0]
+    }
+    if (event.touches && event.touches.length > 0) {
+      return event.touches[0]
+    }
+    return null
+  }
+
+  private resetMultiSelectTouchState(): void {
+    this.multiSelectTouchActive = false
+    this.multiSelectTouchStartX = 0
+    this.multiSelectTouchStartY = 0
+  }
+
+  private handleMultiSelectTouch(event: TouchEvent): void {
+    if (!this.isMultiSelectMode) {
+      return
+    }
+    const touchPoint = this.getPrimaryTouchPoint(event)
+    switch (event.type) {
+      case TouchType.Down:
+        if (touchPoint === null) {
+          this.resetMultiSelectTouchState()
+          return
+        }
+        this.multiSelectTouchStartX = touchPoint.x
+        this.multiSelectTouchStartY = touchPoint.y
+        this.multiSelectTouchActive = true
+        break
+      case TouchType.Move:
+        if (!this.multiSelectTouchActive || touchPoint === null) {
+          return
+        }
+        if (Math.abs(touchPoint.x - this.multiSelectTouchStartX) > MessageBubble.MULTI_SELECT_TAP_THRESHOLD_VP ||
+          Math.abs(touchPoint.y - this.multiSelectTouchStartY) > MessageBubble.MULTI_SELECT_TAP_THRESHOLD_VP) {
+          this.multiSelectTouchActive = false
+        }
+        break
+      case TouchType.Up:
+        if (this.multiSelectTouchActive && touchPoint !== null &&
+          Math.abs(touchPoint.x - this.multiSelectTouchStartX) <= MessageBubble.MULTI_SELECT_TAP_THRESHOLD_VP &&
+          Math.abs(touchPoint.y - this.multiSelectTouchStartY) <= MessageBubble.MULTI_SELECT_TAP_THRESHOLD_VP) {
+          event.stopPropagation()
+          this.onSelect(this.message.id)
+        }
+        this.resetMultiSelectTouchState()
+        break
+      case TouchType.Cancel:
+        this.resetMultiSelectTouchState()
+        break
+      default:
+        break
+    }
   }
 
   aboutToAppear(): void {
@@ -191,8 +249,8 @@ export struct MessageBubble {
     this.syncDerivedRenderCaches()
   }
 
-  @Monitor('renderSignature')
-  onRenderSignatureChange(): void {
+  @Monitor('contentRenderSignature')
+  onContentRenderSignatureChange(): void {
     this.syncMessageScopedState()
     this.syncDerivedRenderCaches()
   }
@@ -814,8 +872,10 @@ export struct MessageBubble {
           .clip(true)
           .constraintSize({ maxWidth: '75%' })
           .border({
-            width: this.isEditing ? 2 : 0.5,
-            color: this.isEditing ? '#FFFFFF' : 'rgba(255, 255, 255, 0.15)'
+            width: this.isEditing ? 2 : (this.isMultiSelectMode && this.isSelected ? 1.2 : 0.5),
+            color: this.isEditing
+              ? '#FFFFFF'
+              : (this.isMultiSelectMode && this.isSelected ? this.themePrimary + '66' : 'rgba(255, 255, 255, 0.15)')
           })
 
           // 多选选中竖条
@@ -829,12 +889,7 @@ export struct MessageBubble {
               .transition(TransitionEffect.OPACITY.animation({ duration: 200 }))
           }
         }
-        .onClick(() => {
-          if (this.isMultiSelectMode) {
-            this.onSelect(this.message.id)
-          }
-        })
-        .hitTestBehavior(this.getBubbleHitTestMode())
+        .enabled(!this.isMultiSelectMode)
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
@@ -880,6 +935,9 @@ export struct MessageBubble {
     }
     .width('100%')
     .alignItems(HorizontalAlign.End)
+    .onTouch((event: TouchEvent) => {
+      this.handleMultiSelectTouch(event)
+    })
   }
 
   // 编辑模式下的简化附件预览（无手势交互）
@@ -1373,21 +1431,22 @@ export struct MessageBubble {
             ? this.themePrimary + '15'
             : this.themeAiBubble)
           .borderRadius(16)
-          .border({ width: 0.5, color: $r('app.color.bubble_border') })
+          .border({
+            width: this.isMultiSelectMode && this.isSelected ? 1.2 : 0.5,
+            color: this.isMultiSelectMode && this.isSelected ? this.themePrimary + '66' : $r('app.color.bubble_border')
+          })
           .clip(true)
       }
+      .enabled(!this.isMultiSelectMode)
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
-      .onClick(() => {
-        if (this.isMultiSelectMode) {
-          this.onSelect(this.message.id)
-        }
-      })
-      .hitTestBehavior(this.getBubbleHitTestMode())
     }
     .width('100%')
     .constraintSize({ maxWidth: '92%' })
     .alignItems(VerticalAlign.Top)
+    .onTouch((event: TouchEvent) => {
+      this.handleMultiSelectTouch(event)
+    })
   }
 
   // 等待 AI 响应的跳动点动画
@@ -1764,4 +1823,3 @@ export struct MessageBubble {
     }
   }
 }
-

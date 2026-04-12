@@ -1,22 +1,19 @@
 import { ChatMessage, MessageAttachment, MessageRole } from '../../models/ChatModels'
 import { DateDivider } from '../DateDivider'
 import { MessageBubble } from '../MessageBubble'
-import { ChatMessageRowData } from './ChatMessageListDataSource'
 
 export const CHAT_MESSAGE_LIST_ITEM_REUSE_ID: string = 'chat_message_list_item'
 
-@ReusableV2
 @ComponentV2
 export struct ChatMessageListItem {
-  @Param row: ChatMessageRowData = new ChatMessageRowData(
-    new ChatMessage('', MessageRole.USER, ''),
-    false,
-    false,
-    false,
-    false,
-    false,
-    ''
-  )
+  @Param message: ChatMessage = new ChatMessage('', MessageRole.USER, '')
+  @Param showDateDivider: boolean = false
+  @Param showHeader: boolean = false
+  @Param isSelected: boolean = false
+  @Param isEditing: boolean = false
+  @Param isDimmed: boolean = false
+  @Param renderSignature: string = ''
+  @Param contentRenderSignature: string = ''
   @Param currentModelId: string = ''
   @Param chatFontSize: number = 15
   @Param themeRenderKey: string = ''
@@ -47,22 +44,23 @@ export struct ChatMessageListItem {
   build() {
     Row() {
       Column() {
-        if (this.row.showDateDivider) {
-          DateDivider({ timestamp: this.row.message.timestamp })
+        if (this.showDateDivider) {
+          DateDivider({ timestamp: this.message.timestamp })
         }
 
         MessageBubble({
-          message: this.row.message,
-          renderSignature: this.row.renderSignature,
-          showHeader: this.row.showHeader,
+          message: this.message,
+          renderSignature: this.renderSignature,
+          contentRenderSignature: this.contentRenderSignature,
+          showHeader: this.showHeader,
           currentModelId: this.currentModelId,
           chatFontSize: this.chatFontSize,
           themeRenderKey: this.themeRenderKey,
           isMultiSelectMode: this.isMultiSelectMode,
-          isSelected: this.row.isSelected,
-          isEditing: this.row.isEditing,
-          previewContent: this.row.isEditing ? this.previewContent : '',
-          previewAttachments: this.row.isEditing ? this.previewAttachments : [],
+          isSelected: this.isSelected,
+          isEditing: this.isEditing,
+          previewContent: this.isEditing ? this.previewContent : '',
+          previewAttachments: this.isEditing ? this.previewAttachments : [],
           onRegenerate: () => {
             this.onRegenerate()
           },
@@ -108,6 +106,6 @@ export struct ChatMessageListItem {
     .width('100%')
     .justifyContent(FlexAlign.Center)
     .padding({ left: 14, right: 14, top: 5, bottom: 5 })
-    .opacity(this.row.isDimmed ? 0.4 : 1)
+    .opacity(this.isDimmed ? 0.4 : 1)
   }
 }

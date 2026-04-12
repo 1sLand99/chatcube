@@ -25,7 +25,6 @@ import { AttachmentPicker } from '../components/AttachmentPicker'
 import { ImagePreview } from '../components/ImagePreview'
 import { ScrollToBottomButton } from '../components/ScrollToBottomButton'
 import { ScrollToBottomLoadingButton } from '../components/ScrollToBottomLoadingButton'
-import { MultiSelectToolbar } from '../components/MultiSelectToolbar'
 import { SharePreviewSheet } from '../components/SharePreviewSheet'
 import { ChatViewModel, TitleGenerationCallbacks } from '../viewmodels/ChatViewModel'
 import { ProviderViewModel } from '../viewmodels/ProviderViewModel'
@@ -46,6 +45,7 @@ import { dismissActiveSnackBarOnBack, showSnackBar, SnackBarDisplayOptions, Snac
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ChatModelSelectorSheetContent } from '../components/chat/ChatModelSelectorSheetContent'
 import { ChatInputAreaSection } from '../components/chat/ChatInputAreaSection'
+import { ChatMultiSelectToolbar } from '../components/chat/ChatMultiSelectToolbar'
 import { ChatMessageListSection } from '../components/chat/ChatMessageListSection'
 import { ChatToolPickerSheetContent } from '../components/chat/ChatToolPickerSheetContent'
 import { ChatToolExecutionApprovalSheetContent } from '../components/chat/ChatToolExecutionApprovalSheetContent'
@@ -2215,7 +2215,7 @@ export struct ChatPage {
         // 多选工具栏（多选模式时显示）
         if (this.isMultiSelectMode) {
           Column() {
-            MultiSelectToolbar({
+            ChatMultiSelectToolbar({
               selectedCount: this.selectedMessageIds.length,
               totalCount: this.messages.length,
               onSelectAll: () => {
@@ -2231,15 +2231,13 @@ export struct ChatPage {
                 this.handleExitMultiSelectMode()
               }
             })
-
-            // 底部安全区域占位
-            Column()
-              .width('100%')
-              .height(this.px2vp(this.bottomAvoidHeight))
           }
           .width('100%')
+          .alignItems(HorizontalAlign.Center)
+          .padding({ left: 12, right: 12, bottom: this.getMultiSelectToolbarBottomInsetVp() })
           .position({ x: 0, y: '100%' })
           .translate({ y: '-100%', x: 0 })
+          .hitTestBehavior(HitTestMode.Default)
           .onAreaChange((_oldArea: Area, newArea: Area) => {
             this.handleMultiSelectToolbarHeightChange(newArea)
           })
@@ -2617,6 +2615,10 @@ export struct ChatPage {
 
   private getFloatingOverlayBottomAvoidHeightVp(): number {
     return this.px2vp(this.bottomAvoidHeight) + this.attachmentPanelHeightVp
+  }
+
+  private getMultiSelectToolbarBottomInsetVp(): number {
+    return Math.max(this.px2vp(this.bottomAvoidHeight) + 10, 20)
   }
 
   @Builder

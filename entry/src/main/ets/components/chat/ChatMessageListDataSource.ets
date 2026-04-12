@@ -99,9 +99,39 @@ export function buildChatMessageRowRenderSignature(
   message: ChatMessage,
   showDateDivider: boolean,
   showHeader: boolean,
+  isMultiSelectMode: boolean,
   isSelected: boolean,
   isEditing: boolean,
   isDimmed: boolean,
+  currentModelId: string,
+  chatFontSize: number,
+  themeRenderKey: string,
+  previewContent: string = '',
+  previewAttachments: MessageAttachment[] = []
+): string {
+  const contentRenderSignature = buildChatMessageContentRenderSignature(
+    message,
+    isEditing,
+    currentModelId,
+    chatFontSize,
+    themeRenderKey,
+    previewContent,
+    previewAttachments
+  )
+  return [
+    encodeValue(message.id),
+    encodeBoolean(showDateDivider),
+    encodeBoolean(showHeader),
+    encodeBoolean(isMultiSelectMode),
+    encodeBoolean(isSelected),
+    encodeBoolean(isDimmed),
+    contentRenderSignature
+  ].join('')
+}
+
+export function buildChatMessageContentRenderSignature(
+  message: ChatMessage,
+  isEditing: boolean,
   currentModelId: string,
   chatFontSize: number,
   themeRenderKey: string,
@@ -112,11 +142,7 @@ export function buildChatMessageRowRenderSignature(
     encodeValue(message.id),
     encodeValue(message.role),
     encodeNumber(message.timestamp),
-    encodeBoolean(showDateDivider),
-    encodeBoolean(showHeader),
-    encodeBoolean(isSelected),
     encodeBoolean(isEditing),
-    encodeBoolean(isDimmed),
     encodeBoolean(message.isGenerating),
     encodeBoolean(message.isSearching),
     encodeValue(currentModelId),
@@ -139,15 +165,16 @@ export function buildChatMessageRowRenderSignature(
   ].join('')
 }
 
+@ObservedV2
 export class ChatMessageRowData {
-  message: ChatMessage
-  showDateDivider: boolean
-  showHeader: boolean
-  isSelected: boolean
-  isEditing: boolean
-  isDimmed: boolean
-  renderSignature: string
-  private readonly renderKey: string
+  @Trace message: ChatMessage
+  @Trace showDateDivider: boolean
+  @Trace showHeader: boolean
+  @Trace isSelected: boolean
+  @Trace isEditing: boolean
+  @Trace isDimmed: boolean
+  @Trace renderSignature: string
+  @Trace contentRenderSignature: string
 
   constructor(
     message: ChatMessage,
@@ -156,7 +183,8 @@ export class ChatMessageRowData {
     isSelected: boolean,
     isEditing: boolean,
     isDimmed: boolean,
-    renderSignature: string
+    renderSignature: string,
+    contentRenderSignature: string
   ) {
     this.message = message
     this.showDateDivider = showDateDivider
@@ -165,11 +193,11 @@ export class ChatMessageRowData {
     this.isEditing = isEditing
     this.isDimmed = isDimmed
     this.renderSignature = renderSignature
-    this.renderKey = `${message.id}|${renderSignature}`
+    this.contentRenderSignature = contentRenderSignature
   }
 
   get key(): string {
-    return this.renderKey
+    return this.message.id
   }
 
   get stableId(): string {
@@ -224,22 +252,6 @@ export class ChatMessageListDataSource implements IDataSource {
         return
       }
     }
-
-    const changedIndexes: number[] = []
-    for (let i = 0; i < items.length; i++) {
-      if (this.hasRowStateChanged(previousItems[i], items[i])) {
-        changedIndexes.push(i)
-      }
-    }
-
-    if (changedIndexes.length <= 0) {
-      return
-    }
-    this.notifyDataChanged(changedIndexes)
-  }
-
-  private hasRowStateChanged(previousItem: ChatMessageRowData, nextItem: ChatMessageRowData): boolean {
-    return previousItem.renderSignature !== nextItem.renderSignature
   }
 
   private notifyDataReloaded(): void {

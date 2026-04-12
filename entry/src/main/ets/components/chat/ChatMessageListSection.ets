@@ -3,6 +3,7 @@ import { DraftPreviewBubble } from './DraftPreviewBubble'
 import { shouldShowMessageHeader } from '../../utils/MessageListUtils'
 import { CHAT_MESSAGE_LIST_ITEM_REUSE_ID, ChatMessageListItem } from './ChatMessageListItem'
 import {
+  buildChatMessageContentRenderSignature,
   buildChatMessageRowRenderSignature,
   ChatMessageListDataSource,
   ChatMessageRowData
@@ -162,8 +163,33 @@ export struct ChatMessageListSection {
     return CHAT_MESSAGE_LIST_ITEM_REUSE_ID
   }
 
+  private updateMessageRowData(
+    row: ChatMessageRowData,
+    message: ChatMessage,
+    showDateDivider: boolean,
+    showHeader: boolean,
+    isSelected: boolean,
+    isEditing: boolean,
+    isDimmed: boolean,
+    renderSignature: string,
+    contentRenderSignature: string
+  ): void {
+    row.message = message
+    row.showDateDivider = showDateDivider
+    row.showHeader = showHeader
+    row.isSelected = isSelected
+    row.isEditing = isEditing
+    row.isDimmed = isDimmed
+    row.renderSignature = renderSignature
+    row.contentRenderSignature = contentRenderSignature
+  }
+
   private syncMessageRows(forceReload: boolean = false): void {
     const selectedMessageIdSet = new Set<string>(this.selectedMessageIds)
+    const existingRowMap = new Map<string, ChatMessageRowData>()
+    for (let i = 0; i < this.messageRows.length; i++) {
+      existingRowMap.set(this.messageRows[i].stableId, this.messageRows[i])
+    }
     const nextRows: ChatMessageRowData[] = []
     for (let i = 0; i < this.messages.length; i++) {
       const message = this.messages[i]
@@ -172,6 +198,45 @@ export struct ChatMessageListSection {
       const isDimmed = this.isEditingMessage && !isEditing
       const showDateDivider = this.checkShouldShowDateDivider(message, i)
       const showHeader = this.checkShouldShowMessageHeader(message, i)
+      const contentRenderSignature = buildChatMessageContentRenderSignature(
+        message,
+        isEditing,
+        this.currentModelId,
+        this.chatFontSize,
+        this.themeRenderKey,
+        this.inputText,
+        this.pendingAttachments
+      )
+      const renderSignature = buildChatMessageRowRenderSignature(
+        message,
+        showDateDivider,
+        showHeader,
+        this.isMultiSelectMode,
+        isSelected,
+        isEditing,
+        isDimmed,
+        this.currentModelId,
+        this.chatFontSize,
+        this.themeRenderKey,
+        this.inputText,
+        this.pendingAttachments
+      )
+      const existingRow = existingRowMap.get(message.id)
+      if (existingRow !== undefined) {
+        this.updateMessageRowData(
+          existingRow,
+          message,
+          showDateDivider,
+          showHeader,
+          isSelected,
+          isEditing,
+          isDimmed,
+          renderSignature,
+          contentRenderSignature
+        )
+        nextRows.push(existingRow)
+        continue
+      }
       nextRows.push(new ChatMessageRowData(
         message,
         showDateDivider,
@@ -179,19 +244,8 @@ export struct ChatMessageListSection {
         isSelected,
         isEditing,
         isDimmed,
-        buildChatMessageRowRenderSignature(
-          message,
-          showDateDivider,
-          showHeader,
-          isSelected,
-          isEditing,
-          isDimmed,
-          this.currentModelId,
-          this.chatFontSize,
-          this.themeRenderKey,
-          this.inputText,
-          this.pendingAttachments
-        )
+        renderSignature,
+        contentRenderSignature
       ))
     }
     this.messageRows = nextRows
@@ -221,7 +275,14 @@ export struct ChatMessageListSection {
           LazyForEach(this.messageRowDataSource, (item: ChatMessageRowData, _index: number) => {
             ListItem({ style: ListItemStyle.NONE }) {
               ChatMessageListItem({
-                row: item,
+                message: item.message,
+                showDateDivider: item.showDateDivider,
+                showHeader: item.showHeader,
+                isSelected: item.isSelected,
+                isEditing: item.isEditing,
+                isDimmed: item.isDimmed,
+                renderSignature: item.renderSignature,
+                contentRenderSignature: item.contentRenderSignature,
                 currentModelId: this.currentModelId,
                 chatFontSize: this.chatFontSize,
                 themeRenderKey: this.themeRenderKey,
@@ -268,7 +329,6 @@ export struct ChatMessageListSection {
                 }
               })
                 .width('100%')
-                .reuse({ reuseId: (): string => this.getMessageRowReuseId(item) })
             }
           }, (item: ChatMessageRowData): string => item.key)
 
