@@ -366,7 +366,7 @@ export class HttpService {
       method: HttpMethod.POST,
       headers: headers,
       body: body,
-      timeout: 120000
+      timeout: 300000
     }
 
     const options: http.HttpRequestOptions = {
@@ -374,7 +374,7 @@ export class HttpService {
       header: config.headers,
       extraData: config.body,
       connectTimeout: 15000,  // 连接超时 15 秒（断网场景更快响应）
-      readTimeout: config.timeout,  // 读取超时保持 120 秒
+      readTimeout: config.timeout,  // 读取超时保持 300 秒
       expectDataType: http.HttpDataType.ARRAY_BUFFER
     }
 
