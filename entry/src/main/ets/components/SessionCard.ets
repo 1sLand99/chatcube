@@ -14,11 +14,29 @@ export struct SessionCard {
   @Param enableAnimation: boolean = true
   @Param enableContextMenu: boolean = true
   @Local scaleValue: number = 1
+  private get isDarkMode(): boolean {
+    return getAppUiState().isDarkMode
+  }
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
   private get themePrimaryLight(): string {
     return getAppUiState().themePrimaryLight
+  }
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
+  private get themeDivider(): string {
+    return getAppUiState().themeDivider
+  }
+  private get themeTextPrimary(): string {
+    return getAppUiState().themeTextPrimary
+  }
+  private get themeTextSecondary(): string {
+    return getAppUiState().themeTextSecondary
+  }
+  private get themeTextTertiary(): string {
+    return getAppUiState().themeTextTertiary
   }
   @Param uiVisualEnhanced: boolean = false
   @Event onTap: () => void = () => {}
@@ -60,7 +78,7 @@ export struct SessionCard {
 
         Text(this.getPreviewBodyText())
           .fontSize(12)
-          .fontColor($r('app.color.text_secondary'))
+          .fontColor(this.themeTextSecondary)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
@@ -69,7 +87,7 @@ export struct SessionCard {
     } else {
       Text(this.getPreviewText())
         .fontSize(12)
-        .fontColor($r('app.color.text_secondary'))
+        .fontColor(this.themeTextSecondary)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
@@ -117,7 +135,7 @@ export struct SessionCard {
         Text(this.session.title)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.text_primary'))
+          .fontColor(this.themeTextPrimary)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
@@ -130,7 +148,7 @@ export struct SessionCard {
         } else {
           Text($r('app.string.session_no_preview'))
             .fontSize(12)
-            .fontColor($r('app.color.text_secondary'))
+            .fontColor(this.themeTextSecondary)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .margin({ top: 2 })
@@ -142,7 +160,8 @@ export struct SessionCard {
     }
     .width(290)
     .padding(12)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
+    .border({ width: 1, color: this.themeDivider })
     .borderRadius(12)
   }
 
@@ -168,7 +187,7 @@ export struct SessionCard {
         Text(this.session.title)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.text_primary'))
+          .fontColor(this.themeTextPrimary)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
@@ -187,7 +206,7 @@ export struct SessionCard {
         } else {
           Text($r('app.string.session_no_preview'))
             .fontSize(12)
-            .fontColor($r('app.color.text_secondary'))
+            .fontColor(this.themeTextSecondary)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
@@ -196,10 +215,10 @@ export struct SessionCard {
         Row() {
           SymbolGlyph($r('sys.symbol.message'))
             .fontSize(10)
-            .fontColor([$r('app.color.text_tertiary')])
+            .fontColor([this.getMetaTextColor()])
           Text(this.session.messageCount.toString())
             .fontSize(10)
-            .fontColor($r('app.color.text_tertiary'))
+            .fontColor(this.getMetaTextColor())
             .margin({ left: 2 })
 
           if (this.session.isFavorite) {
@@ -222,8 +241,12 @@ export struct SessionCard {
   private SuffixContent() {
     SymbolGlyph($r('sys.symbol.chevron_right'))
       .fontSize(14)
-      .fontColor([$r('app.color.text_tertiary')])
+      .fontColor([this.getMetaTextColor()])
       .margin({ left: 8 })
+  }
+
+  private getMetaTextColor(): string {
+    return this.isDarkMode ? this.themeTextSecondary : this.themeTextTertiary
   }
 
   private buildCardPointLightEffect() {
@@ -248,7 +271,8 @@ export struct SessionCard {
       this.SuffixContent()
     }
     .width('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
+    .border({ width: 1, color: this.themeDivider })
     .borderRadius(12)
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .visualEffect(this.buildCardPointLightEffect())
@@ -266,32 +290,32 @@ export struct SessionCard {
       if (this.isJustNow(this.session.updatedAt)) {
         Text($r('app.string.time_just_now'))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
       } else if (this.isMinutesAgo(this.session.updatedAt)) {
         Text(this.getMinutesAgoValue(this.session.updatedAt))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
         Text($r('app.string.time_minutes_ago_suffix'))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
       } else if (this.isHoursAgo(this.session.updatedAt)) {
         Text(this.getHoursAgoValue(this.session.updatedAt))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
         Text($r('app.string.time_hours_ago_suffix'))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
       } else if (this.isDaysAgo(this.session.updatedAt)) {
         Text(this.getDaysAgoValue(this.session.updatedAt))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
         Text($r('app.string.time_days_ago_suffix'))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
       } else {
         Text(this.formatDateMMDD(this.session.updatedAt))
           .fontSize(11)
-          .fontColor($r('app.color.text_tertiary'))
+          .fontColor(this.getMetaTextColor())
       }
     }
     .margin({ left: 8 })

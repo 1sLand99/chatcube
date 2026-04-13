@@ -74,7 +74,7 @@ export struct ToolsCenterPanel {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#121212' : '#F7F9FC'
+    return this.isDarkMode ? '#0F141B' : '#F7F9FC'
   }
 
   private get dividerHex(): string {
@@ -1921,7 +1921,7 @@ struct SearchServiceCardItem {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#121212' : '#F7F9FC'
+    return this.isDarkMode ? '#0F141B' : '#F7F9FC'
   }
 
   private get dividerHex(): string {
@@ -2083,7 +2083,7 @@ struct McpServerCardItem {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#121212' : '#F7F9FC'
+    return this.isDarkMode ? '#0F141B' : '#F7F9FC'
   }
 
   private get dividerHex(): string {

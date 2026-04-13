@@ -16,7 +16,7 @@ const DOMAIN = 0x0000;
 
 // Surface 颜色常量，需要与 color.json 保持一致（用于沉浸式效果）
 const SURFACE_COLOR_LIGHT = '#FFFFFF';
-const SURFACE_COLOR_DARK = '#1C1C1E';
+const SURFACE_COLOR_DARK = '#0F141B';
 const STATUS_BAR_CONTENT_LIGHT = '#1F2329';
 const STATUS_BAR_CONTENT_DARK = '#F5F7FA';
 

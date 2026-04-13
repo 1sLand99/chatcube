@@ -2,7 +2,7 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#121212"
+      "value": "#0F141B"
     },
     {
       "name": "primary",
@@ -10,31 +10,31 @@
     },
     {
       "name": "primary_light",
-      "value": "#16396B"
+      "value": "#1A2740"
     },
     {
       "name": "background",
-      "value": "#121212"
+      "value": "#0F141B"
     },
     {
       "name": "surface",
-      "value": "#1E1E1E"
+      "value": "#151B23"
     },
     {
       "name": "text_primary",
-      "value": "#FFFFFF"
+      "value": "#E6EDF3"
     },
     {
       "name": "text_secondary",
-      "value": "#999999"
+      "value": "#9AA4AF"
     },
     {
       "name": "text_tertiary",
-      "value": "#666666"
+      "value": "#7B8794"
     },
     {
       "name": "divider",
-      "value": "#2A2A2A"
+      "value": "#232B36"
     },
     {
       "name": "brand_openai",
@@ -66,55 +66,55 @@
     },
     {
       "name": "chat_ai_bubble",
-      "value": "#1E1E1E"
+      "value": "#151B23"
     },
     {
       "name": "code_background",
-      "value": "#0D0D0D"
+      "value": "#0D1117"
     },
     {
       "name": "markdown_title",
-      "value": "#FFFFFF"
+      "value": "#E6EDF3"
     },
     {
       "name": "markdown_text",
-      "value": "#E0E0E0"
+      "value": "#D3DAE3"
     },
     {
       "name": "markdown_quote_bg",
-      "value": "#2A2A2A"
+      "value": "#141A22"
     },
     {
       "name": "markdown_link",
-      "value": "#4DA6FF"
+      "value": "#93C5FD"
     },
     {
       "name": "markdown_link_bg",
-      "value": "#1A16396B"
+      "value": "#1A3B82F6"
     },
     {
       "name": "markdown_code_bg",
-      "value": "#2D2D2D"
+      "value": "#0D1117"
     },
     {
       "name": "markdown_code_text",
-      "value": "#FF79C6"
+      "value": "#C9D1D9"
     },
     {
       "name": "markdown_table_bg",
-      "value": "#1E1E1E"
+      "value": "#151B23"
     },
     {
       "name": "markdown_table_header_bg",
-      "value": "#2A2A2A"
+      "value": "#1B2230"
     },
     {
       "name": "markdown_table_alt_bg",
-      "value": "#252525"
+      "value": "#19202B"
     },
     {
       "name": "markdown_table_border",
-      "value": "#5A5A5C"
+      "value": "#2B3440"
     },
     {
       "name": "toolbar_btn_bg",
