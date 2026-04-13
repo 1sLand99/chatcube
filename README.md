@@ -5,8 +5,8 @@
 <h1 align="center">ChatCube</h1>
 
 <p align="center">
-  一个开源的 HarmonyOS NEXT AI 聊天客户端。<br/>
-  一个应用，13+ 服务商，原生体验。
+  一个面向鸿蒙 6（API 23）的原生 AI 聊天客户端。<br/>
+  一个应用，13+ 服务商，联网搜索、MCP 与 ArkTS 原生体验。
 </p>
 
 <p align="center">
@@ -18,29 +18,43 @@
 ## 为什么选 ChatCube？
 
 - 完全使用 ArkTS 原生开发，不是 WebView 套壳
-- 界面精致，动态模糊、7 种配色主题、流畅交互
+- 围绕鸿蒙 6（API 23）持续打磨，交互和系统行为适配更完整
+- 界面精致，动态模糊、8 种配色主题、高级材质与玻璃质感都安排上了
 - 适配手机、平板和大屏设备，布局更合理
 - 服务商高度自定义，几秒添加任何 OpenAI / Anthropic / Gemini 兼容服务
+- 工具中心支持远端 streamable MCP Server 接入，工具能力可继续扩展
 - 简单易上手，填个 API Key 就能开聊
 - 桌面小组件，快速发起对话
 - 后台任务支持，切到其他应用也不耽误接收回复
 
-## 应用预览
+## 最新界面预览
+
+以下截图基于当前鸿蒙 6（API 23）版本：
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/chat.png" width="200" /><br/><sub>对话</sub></td>
-    <td align="center"><img src="docs/screenshots/tool_calling.png" width="200" /><br/><sub>工具调用</sub></td>
-    <td align="center"><img src="docs/screenshots/markdown_preview.jpg" width="200" /><br/><sub>Markdown 渲染</sub></td>
-    <td align="center"><img src="docs/screenshots/html_preview.jpg" width="200" /><br/><sub>HTML 预览</sub></td>
+    <td align="center"><img src="docs/screenshots/chat_new.png" width="200" /><br/><sub>对话</sub></td>
+    <td align="center"><img src="docs/screenshots/settings_new.png" width="200" /><br/><sub>设置</sub></td>
+    <td align="center"><img src="docs/screenshots/providers_new.jpg" width="200" /><br/><sub>服务商管理</sub></td>
+    <td align="center"><img src="docs/screenshots/tool_calling_new.png" width="200" /><br/><sub>工具调用</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/providers.png" width="200" /><br/><sub>服务商管理</sub></td>
-    <td align="center"><img src="docs/screenshots/color_themes.png" width="200" /><br/><sub>配色主题</sub></td>
-    <td align="center"><img src="docs/screenshots/blur_effect.png" width="200" /><br/><sub>动态模糊</sub></td>
-    <td align="center"><img src="docs/screenshots/settings.png" width="200" /><br/><sub>设置</sub></td>
+    <td align="center"><img src="docs/screenshots/color_themes_new.png" width="200" /><br/><sub>配色主题</sub></td>
+    <td align="center"><img src="docs/screenshots/blur_preview.png" width="200" /><br/><sub>玻璃质感</sub></td>
+    <td align="center"><img src="docs/screenshots/latex_preview_new.png" width="200" /><br/><sub>公式预览</sub></td>
+    <td align="center"><img src="docs/screenshots/html_preview_new.png" width="200" /><br/><sub>HTML 预览</sub></td>
   </tr>
 </table>
+
+## 1.0.12 版本亮点
+
+- 持续围绕鸿蒙 6（API 23）收紧交互与布局表现，高频页面的系统适配更统一
+- 聊天详情页标题栏完成一轮重构，模糊菜单、图标、滚动联动和层级关系都更稳
+- 聊天界面与消息/会话列表的多选能力补齐并修复，批量操作终于不再别扭
+- 设置界面继续减负，下钻页隐藏不必要的 Tabs，底部占位与回退路径更清楚
+- 联网搜索现已支持 Bing(local)、Tavily、Exa，工具中心也支持远端 streamable MCP Server 接入
+- 附件面板、图片预览、输入框显示策略、流式输出中的消息工具栏等细节继续打磨
+- 8 种配色主题、API 23 高级材质、沉浸光感和玻璃质感继续收紧，桌面卡片体验也都跟进优化
 
 ## 功能特性
 
@@ -48,9 +62,9 @@
 
 内置 13+ AI 服务商，填入 API Key 选个模型就能聊。支持自定义添加任何 OpenAI / Anthropic / Gemini 兼容的服务商，几秒搞定。
 
-### 模型能用的工具
+### 工具、联网搜索与 MCP
 
-内置联网搜索（Bing，零配置）。支持 Function Calling 的模型可以自主调用工具，获取实时信息。
+内置联网搜索，支持 Bing(local)、Tavily、Exa。支持 Function Calling 的模型可以自主调用工具获取实时信息，工具中心也支持接入远端 streamable MCP Server，把能力继续往外扩。
 
 ### Markdown 及更多
 
@@ -58,7 +72,7 @@
 
 ### 好看，好用
 
-7 种配色主题，深色 / 浅色 / 跟随系统。实时动态模糊效果。原生 UI 的流畅感，因为它就是原生的。
+8 种配色主题，深色 / 浅色 / 跟随系统。基于 API 23 的高级材质、沉浸光感和玻璃质感持续打磨。原生 UI 的流畅感，因为它就是原生的。
 
 ### 手机、平板都顺手
 
@@ -100,7 +114,7 @@
 
 ### 环境要求
 
-- HarmonyOS NEXT（API 23）
+- 鸿蒙 6（API 23）
 - DevEco Studio 5.0+
 
 ### 构建运行
@@ -119,6 +133,8 @@ cp build-profile.json5.example build-profile.json5
 已开启华为应用市场邀测，欢迎体验最新版本：
 
 - 邀测地址：<https://appgallery.huawei.com/link/invite-test-wap?taskId=950c3ff7c47af3d4ea25b68382a491da&invitationCode=2sM0HJ9vjqa>
+
+当前邀测版本基于鸿蒙 6（API 23）。
 
 ### 配置服务商
 

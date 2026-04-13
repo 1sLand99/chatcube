@@ -5,8 +5,8 @@
 <h1 align="center">ChatCube</h1>
 
 <p align="center">
-  An open-source AI chat client for HarmonyOS NEXT.<br/>
-  One app, 13+ providers, native experience.
+  A native AI chat client for HarmonyOS 6 (API 23).<br/>
+  One app, 13+ providers, web search, MCP, and ArkTS-native UX.
 </p>
 
 <p align="center">
@@ -18,29 +18,43 @@
 ## Why ChatCube?
 
 - Built entirely with ArkTS — a true HarmonyOS native app, not a web wrapper
-- Polished UI with dynamic blur, 7 color themes, and smooth interactions
+- Continuously refined around HarmonyOS 6 (API 23), with better alignment to current system behavior
+- Polished UI with dynamic blur, 8 color themes, advanced materials, and glass-like surfaces
 - Adaptive layouts for phones, tablets, and large screens
 - Highly customizable providers — add any OpenAI / Anthropic / Gemini compatible service in seconds
+- The tools center can connect to remote streamable MCP servers for expandable tool capability
 - Simple and intuitive — configure your API key and start chatting
 - Home screen widget for quick access
 - Background task support — keep receiving replies while multitasking
 
-## Preview
+## Latest Screens
+
+These screenshots reflect the current HarmonyOS 6 (API 23) build:
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/chat.png" width="200" /><br/><sub>Chat</sub></td>
-    <td align="center"><img src="docs/screenshots/tool_calling.png" width="200" /><br/><sub>Tool Calling</sub></td>
-    <td align="center"><img src="docs/screenshots/markdown_preview.jpg" width="200" /><br/><sub>Markdown</sub></td>
-    <td align="center"><img src="docs/screenshots/html_preview.jpg" width="200" /><br/><sub>HTML Preview</sub></td>
+    <td align="center"><img src="docs/screenshots/chat_new.png" width="200" /><br/><sub>Chat</sub></td>
+    <td align="center"><img src="docs/screenshots/settings_new.png" width="200" /><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/providers_new.jpg" width="200" /><br/><sub>Providers</sub></td>
+    <td align="center"><img src="docs/screenshots/tool_calling_new.png" width="200" /><br/><sub>Tool Calling</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/providers.png" width="200" /><br/><sub>Providers</sub></td>
-    <td align="center"><img src="docs/screenshots/color_themes.png" width="200" /><br/><sub>Themes</sub></td>
-    <td align="center"><img src="docs/screenshots/blur_effect.png" width="200" /><br/><sub>Dynamic Blur</sub></td>
-    <td align="center"><img src="docs/screenshots/settings.png" width="200" /><br/><sub>Settings</sub></td>
+    <td align="center"><img src="docs/screenshots/color_themes_new.png" width="200" /><br/><sub>Themes</sub></td>
+    <td align="center"><img src="docs/screenshots/blur_preview.png" width="200" /><br/><sub>Glass Surface</sub></td>
+    <td align="center"><img src="docs/screenshots/latex_preview_new.png" width="200" /><br/><sub>Formula Preview</sub></td>
+    <td align="center"><img src="docs/screenshots/html_preview_new.png" width="200" /><br/><sub>HTML Preview</sub></td>
   </tr>
 </table>
+
+## Highlights in 1.0.12
+
+- Continued polish for HarmonyOS 6 (API 23), with tighter layout and interaction behavior on the highest-traffic screens
+- A full rework of the chat detail title bar, including blur menus, icon sizing, scroll-linked behavior, and layering stability
+- Multi-select flows in chat, message cards, and session lists were completed and stabilized for real batch actions
+- Settings pages were simplified further by hiding unnecessary tabs in detail flows and fixing bottom insets
+- Web search now supports Bing(local), Tavily, and Exa, while the tools center can connect to remote streamable MCP servers
+- Attachment panels, image preview, input visibility rules, and action visibility during streaming were all refined
+- Provider compatibility, import/export ordering, 8 themes, API 23 materials, and widget visuals also received another pass
 
 ## Features
 
@@ -48,9 +62,9 @@
 
 Connect to 13+ AI providers out of the box. Bring your own API key, pick a model, and start chatting. Add any OpenAI / Anthropic / Gemini compatible provider in seconds.
 
-### Tools that models can use
+### Tools, web search, and MCP
 
-Built-in web search (Bing, zero config). When a model supports function calling, it can reach out to the real world on its own.
+Built-in web search supports Bing(local), Tavily, and Exa. When a model supports function calling, it can use tools directly, and the tools center can also connect to remote streamable MCP servers.
 
 ### Markdown & beyond
 
@@ -58,7 +72,7 @@ Full markdown rendering — code blocks with syntax highlighting, tables, LaTeX 
 
 ### Looks good, feels good
 
-7 color themes. Dark / Light / System mode. Real-time dynamic blur effects. A UI that feels native because it is native.
+8 color themes. Dark / Light / System mode. API 23 materials, immersive glass-like effects, and real-time blur are all part of the current visual system. A UI that feels native because it is native.
 
 ### Phone & tablet ready
 
@@ -100,7 +114,7 @@ Switch to another app while waiting for a long response. ChatCube keeps working 
 
 ### Requirements
 
-- HarmonyOS NEXT (API 21+)
+- HarmonyOS 6 (API 23)
 - DevEco Studio 5.0+
 
 ### Build & Run
