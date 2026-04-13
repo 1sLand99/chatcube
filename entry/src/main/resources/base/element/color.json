@@ -2,19 +2,19 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#F1F3F5"
+      "value": "#F7F9FC"
     },
     {
       "name": "primary",
-      "value": "#007DFF"
+      "value": "#0A59F7"
     },
     {
       "name": "primary_light",
-      "value": "#E6F2FF"
+      "value": "#EDF4FF"
     },
     {
       "name": "background",
-      "value": "#F1F3F5"
+      "value": "#F7F9FC"
     },
     {
       "name": "surface",
@@ -26,19 +26,19 @@
     },
     {
       "name": "text_secondary",
-      "value": "#666666"
+      "value": "#6B7280"
     },
     {
       "name": "text_tertiary",
-      "value": "#888888"
+      "value": "#8691A3"
     },
     {
       "name": "divider",
-      "value": "#E5E5E5"
+      "value": "#E7EBF0"
     },
     {
       "name": "brand_openai",
-      "value": "#10A37F"
+      "value": "#202123"
     },
     {
       "name": "brand_anthropic",
@@ -70,7 +70,7 @@
     },
     {
       "name": "chat_user_bubble",
-      "value": "#007DFF"
+      "value": "#0B57D0"
     },
     {
       "name": "chat_ai_bubble",
@@ -78,7 +78,7 @@
     },
     {
       "name": "code_background",
-      "value": "#F6F8FA"
+      "value": "#F5F7FA"
     },
     {
       "name": "markdown_title",
@@ -90,19 +90,19 @@
     },
     {
       "name": "markdown_quote_bg",
-      "value": "#F5F5F5"
+      "value": "#F5F7FA"
     },
     {
       "name": "markdown_link",
-      "value": "#007DFF"
+      "value": "#0A59F7"
     },
     {
       "name": "markdown_link_bg",
-      "value": "#14007DFF"
+      "value": "#140A59F7"
     },
     {
       "name": "markdown_code_bg",
-      "value": "#EBEBEB"
+      "value": "#F0F4F8"
     },
     {
       "name": "markdown_code_text",
@@ -114,15 +114,15 @@
     },
     {
       "name": "markdown_table_header_bg",
-      "value": "#F5F5F5"
+      "value": "#F5F7FA"
     },
     {
       "name": "markdown_table_alt_bg",
-      "value": "#FAFAFA"
+      "value": "#FBFCFE"
     },
     {
       "name": "markdown_table_border",
-      "value": "#E5E5E5"
+      "value": "#E7EBF0"
     },
     {
       "name": "toolbar_btn_bg",

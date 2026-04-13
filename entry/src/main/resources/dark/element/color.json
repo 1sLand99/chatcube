@@ -10,7 +10,7 @@
     },
     {
       "name": "primary_light",
-      "value": "#1A2A4A"
+      "value": "#16396B"
     },
     {
       "name": "background",
@@ -38,7 +38,7 @@
     },
     {
       "name": "brand_openai",
-      "value": "#10A37F"
+      "value": "#ECECF1"
     },
     {
       "name": "brand_anthropic",
@@ -62,7 +62,7 @@
     },
     {
       "name": "chat_user_bubble",
-      "value": "#0A59F7"
+      "value": "#0B57D0"
     },
     {
       "name": "chat_ai_bubble",
@@ -90,7 +90,7 @@
     },
     {
       "name": "markdown_link_bg",
-      "value": "#1A4DA6FF"
+      "value": "#1A16396B"
     },
     {
       "name": "markdown_code_bg",

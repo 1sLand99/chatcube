@@ -31,9 +31,9 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
     baseUrl: 'https://api.openai.com/v1',
     iconPath: '',
-    brandColorHex: '#10A37F',
+    brandColorHex: '#202123',
     textIcon: 'AI',
-    textIconBgColor: '#10A37F'
+    textIconBgColor: '#202123'
   },
   {
     id: 'anthropic',
@@ -236,7 +236,7 @@ export function getPresetProviderBrandColor(providerId: string): string {
   if (preset !== null) {
     return preset.brandColorHex
   }
-  return '#007DFF' // 默认主题色
+  return '#0A59F7' // 默认主题色
 }
 
 /**
