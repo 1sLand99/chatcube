@@ -3,6 +3,7 @@ import { Markdown, MarkdownController } from '@luvi/lv-markdown-in'
 import { pasteboard } from '@kit.BasicServicesKit'
 import { showToast } from '../utils/ToastUtil'
 import { getModelIconPath, buildIconResourcePath } from '../utils/ProviderIconUtils'
+import { shouldShowAssistantMessageToolbar } from '../utils/MessageBubbleDisplayUtils'
 import { SearchReferenceCard } from './SearchReferenceCard'
 import { ToolCallCard } from './ToolCallCard'
 import { HtmlPreviewCard } from './HtmlPreviewCard'
@@ -762,8 +763,7 @@ export struct MessageBubble {
   }
 
   private shouldShowAssistantToolbar(): boolean {
-    return !this.message.isSearching && !this.isMultiSelectMode &&
-      (this.hasToolbarPayload() || !this.message.isGenerating)
+    return shouldShowAssistantMessageToolbar(this.message, this.isMultiSelectMode)
   }
 
   private canCopyMessageContent(): boolean {

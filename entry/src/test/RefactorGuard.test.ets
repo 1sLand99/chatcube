@@ -71,6 +71,7 @@ import {
   parseCustomHeadersMap,
   validateCustomHeaderEntries
 } from '../main/ets/utils/CustomHeaderUtils'
+import { shouldShowAssistantMessageToolbar } from '../main/ets/utils/MessageBubbleDisplayUtils'
 
 class TestDataChangeListener implements DataChangeListener {
   reloadCount: number = 0
@@ -896,6 +897,22 @@ export default function refactorGuardTest() {
       expect(isSensitiveCustomHeaderName('Authorization')).assertEqual(true)
       expect(isSensitiveCustomHeaderName('x-api-key')).assertEqual(true)
       expect(isSensitiveCustomHeaderName('HTTP-Referer')).assertEqual(false)
+    })
+
+    it('messageBubbleDisplayUtils_should_hide_assistant_toolbar_while_generating', 0, () => {
+      const assistantMessage = createTestMessage('assistant', 'partial response')
+      assistantMessage.isGenerating = true
+
+      expect(shouldShowAssistantMessageToolbar(assistantMessage, false)).assertFalse()
+
+      assistantMessage.isGenerating = false
+      expect(shouldShowAssistantMessageToolbar(assistantMessage, false)).assertTrue()
+
+      assistantMessage.isSearching = true
+      expect(shouldShowAssistantMessageToolbar(assistantMessage, false)).assertFalse()
+
+      assistantMessage.isSearching = false
+      expect(shouldShowAssistantMessageToolbar(assistantMessage, true)).assertFalse()
     })
   })
 }
