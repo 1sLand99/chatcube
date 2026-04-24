@@ -1,4 +1,6 @@
 import { ChatMessage, MessageAttachment, MessageRole } from '../../models/ChatModels'
+import { AppStorageKeys } from '../../config/AppStorageKeys'
+import { getAppUiState, setAppUiStateValue } from '../../state/AppUiState'
 import { DraftPreviewBubble } from './DraftPreviewBubble'
 import { shouldShowMessageHeader } from '../../utils/MessageListUtils'
 import { CHAT_MESSAGE_LIST_ITEM_REUSE_ID, ChatMessageListItem } from './ChatMessageListItem'
@@ -53,6 +55,9 @@ export struct ChatMessageListSection {
   @Event onScrollIndex: (firstIndex: number, lastIndex: number) => void = (_firstIndex: number,
     _lastIndex: number): void => {}
   private messageRows: ChatMessageRowData[] = []
+  private get selectableTextMessageId(): string {
+    return getAppUiState().selectableTextMessageId
+  }
   private messageRowDataSource: ChatMessageListDataSource = new ChatMessageListDataSource()
 
   aboutToAppear(): void {
@@ -143,6 +148,12 @@ export struct ChatMessageListSection {
 
   private getEffectiveContentMaxWidth(): number {
     return this.contentMaxWidth > 0 ? this.contentMaxWidth : 99999
+  }
+
+  private clearSelectableTextMode(): void {
+    if (this.selectableTextMessageId !== '') {
+      setAppUiStateValue(AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID, '')
+    }
   }
 
   private getListCachedCount(): number {
@@ -367,6 +378,9 @@ export struct ChatMessageListSection {
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
         .cachedCount(this.getListCachedCount())
+        .onClick(() => {
+          this.clearSelectableTextMode()
+        })
         .backdropBlur(this.isEditingMessage ? 8 : 0)
         .onAppear(() => {
           this.onListAppear()

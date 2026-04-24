@@ -19,6 +19,7 @@ export class AppUiState {
   @Trace topAvoidHeight: number = 0
   @Trace bottomAvoidHeight: number = 0
   @Trace speakingMessageId: string = ''
+  @Trace selectableTextMessageId: string = ''
   @Trace windowWidthVp: number = 0
   @Trace windowHeightVp: number = 0
   @Trace layoutSizeClass: string = LayoutSizeClass.COMPACT
@@ -95,6 +96,9 @@ function applyAppUiStateValue<T extends string | number | boolean>(state: AppUiS
       return
     case AppStorageKeys.SPEAKING_MESSAGE_ID:
       state.speakingMessageId = value as string
+      return
+    case AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID:
+      state.selectableTextMessageId = value as string
       return
     case AppStorageKeys.WINDOW_WIDTH_VP:
       state.windowWidthVp = value as number
@@ -217,6 +221,8 @@ function createAppUiStateFromStorage(): AppUiState {
     readStorageValue<number>(AppStorageKeys.BOTTOM_AVOID_HEIGHT, 0))
   applyAppUiStateValue(state, AppStorageKeys.SPEAKING_MESSAGE_ID,
     readStorageValue<string>(AppStorageKeys.SPEAKING_MESSAGE_ID, ''))
+  applyAppUiStateValue(state, AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID,
+    readStorageValue<string>(AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID, ''))
   applyAppUiStateValue(state, AppStorageKeys.WINDOW_WIDTH_VP, readStorageValue<number>(AppStorageKeys.WINDOW_WIDTH_VP, 0))
   applyAppUiStateValue(state, AppStorageKeys.WINDOW_HEIGHT_VP,
     readStorageValue<number>(AppStorageKeys.WINDOW_HEIGHT_VP, 0))
@@ -304,6 +310,7 @@ export function syncAppUiStateFromStorage(): void {
   state.topAvoidHeight = freshState.topAvoidHeight
   state.bottomAvoidHeight = freshState.bottomAvoidHeight
   state.speakingMessageId = freshState.speakingMessageId
+  state.selectableTextMessageId = freshState.selectableTextMessageId
   state.windowWidthVp = freshState.windowWidthVp
   state.windowHeightVp = freshState.windowHeightVp
   state.layoutSizeClass = freshState.layoutSizeClass
@@ -388,6 +395,8 @@ function resolveAppUiStatePath(path: string): string {
       return 'bottomAvoidHeight'
     case AppStorageKeys.SPEAKING_MESSAGE_ID:
       return 'speakingMessageId'
+    case AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID:
+      return 'selectableTextMessageId'
     case AppStorageKeys.WINDOW_WIDTH_VP:
       return 'windowWidthVp'
     case AppStorageKeys.WINDOW_HEIGHT_VP:

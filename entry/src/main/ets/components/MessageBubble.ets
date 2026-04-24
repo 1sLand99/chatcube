@@ -11,7 +11,8 @@ import { TypingDots } from './TypingDots'
 import { SelectableMarkdownContent, getSelectableMarkdownPlainText } from './SelectableMarkdownContent'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { SymbolGlyphModifier } from '@kit.ArkUI'
-import { getAppUiState } from '../state/AppUiState'
+import { getAppUiState, setAppUiStateValue } from '../state/AppUiState'
+import { AppStorageKeys } from '../config/AppStorageKeys'
 import {
   getMarkdownBlockSpacing,
   getMarkdownQuotePadding,
@@ -60,7 +61,6 @@ export struct MessageBubble {
   @Local showTranslation: boolean = false  // 是否显示翻译结果
   @Local isTranslationExpanded: boolean = true  // 翻译结果是否展开
   @Local currentTranslateLang: string = ''  // 当前翻译的目标语言
-  @Local isSelectableTextMode: boolean = false
   // 深色模式状态（用于主题适配）
   private get isDarkMode(): boolean {
     return getAppUiState().isDarkMode
@@ -98,6 +98,12 @@ export struct MessageBubble {
   private translationRequestToken: number = 0
   private get speakingMessageId(): string {
     return getAppUiState().speakingMessageId
+  }
+  private get selectableTextMessageId(): string {
+    return getAppUiState().selectableTextMessageId
+  }
+  private get isSelectableTextMode(): boolean {
+    return this.selectableTextMessageId === this.message.id
   }
   // 聊天图片紧凑展示参数
   private compactImageMaxHeight: number = 100
@@ -276,7 +282,7 @@ export struct MessageBubble {
   @Monitor('isMultiSelectMode')
   onIsMultiSelectModeChange(): void {
     if (this.isMultiSelectMode) {
-      this.isSelectableTextMode = false
+      this.exitSelectableTextMode()
     }
   }
 
@@ -306,7 +312,6 @@ export struct MessageBubble {
     this.showTranslation = false
     this.isTranslationExpanded = true
     this.currentTranslateLang = ''
-    this.isSelectableTextMode = false
   }
 
   private buildAttachmentSignature(attachments: MessageAttachment[]): string {
@@ -1194,44 +1199,18 @@ export struct MessageBubble {
     if (!this.canCopyMessageContent() || this.isMultiSelectMode) {
       return
     }
-    this.isSelectableTextMode = true
+    setAppUiStateValue(AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID, this.message.id)
   }
 
   private exitSelectableTextMode(): void {
-    this.isSelectableTextMode = false
+    if (this.selectableTextMessageId === this.message.id) {
+      setAppUiStateValue(AppStorageKeys.SELECTABLE_TEXT_MESSAGE_ID, '')
+    }
   }
 
   @Builder
   InlineSelectableTextContent() {
     Column() {
-      Row() {
-        Text($r('app.string.menu_select_text'))
-          .fontSize(12)
-          .fontColor($r('app.color.text_tertiary'))
-
-        Blank()
-
-        Button($r('app.string.copy'))
-          .fontSize(12)
-          .type(ButtonType.Capsule)
-          .height(28)
-          .onClick(() => {
-            this.handleCopy()
-          })
-
-        Button($r('app.string.action_close'))
-          .fontSize(12)
-          .type(ButtonType.Capsule)
-          .height(28)
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.exitSelectableTextMode()
-          })
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-      .margin({ bottom: 8 })
-
       SelectableMarkdownContent({
         content: this.message.content,
         fontSize: this.chatFontSize - 1,
@@ -1241,23 +1220,6 @@ export struct MessageBubble {
     }
     .width('100%')
     .transition(TransitionEffect.OPACITY.animation({ duration: 150 }))
-  }
-
-  @Builder
-  SelectableBubbleLeadingBar() {
-    Column()
-      .width(3)
-      .height('100%')
-      .backgroundColor(this.themePrimary)
-      .borderRadius({ topLeft: 16, bottomLeft: 16 })
-      .opacity(0.9)
-  }
-
-  @Builder
-  EmptyOverlay() {
-    Column()
-      .width(0)
-      .height(0)
   }
 
   // 翻译子菜单
@@ -1330,29 +1292,6 @@ export struct MessageBubble {
       }
 
       Column() {
-        if (this.isSelectableTextMode) {
-          Row() {
-            SymbolGlyph($r('sys.symbol.textformat'))
-              .fontSize(12)
-              .fontColor([this.themePrimary])
-
-            Text($r('app.string.menu_select_text'))
-              .fontSize(12)
-              .fontColor(this.themePrimary)
-              .fontWeight(FontWeight.Medium)
-              .margin({ left: 4 })
-
-            Blank()
-          }
-          .width('100%')
-          .height(26)
-          .padding({ left: 10, right: 10 })
-          .backgroundColor(this.themePrimary + '12')
-          .borderRadius(10)
-          .margin({ bottom: 8 })
-          .transition(TransitionEffect.OPACITY.animation({ duration: 150 }))
-        }
-
         // 消息头部：图标 + 模型名 + 时间（水平排列）
         // 只在 showHeader 为 true 时显示
         if (this.showHeader) {
@@ -1553,33 +1492,14 @@ export struct MessageBubble {
         }
         .width('100%')
         .margin({ top: this.showHeader ? 8 : 0 })
-        .padding({ left: this.isSelectableTextMode ? 16 : 14, right: 14, top: 12, bottom: 10 })
+        .padding({ left: 14, right: 14, top: 12, bottom: 10 })
           .backgroundColor(this.isMultiSelectMode && this.isSelected
             ? this.themePrimary + '15'
-            : (this.isSelectableTextMode ? this.themePrimary + '08' : this.themeAiBubble))
+            : this.themeAiBubble)
           .borderRadius(16)
           .border({
             width: this.isSelectableTextMode ? 1.5 : (this.isMultiSelectMode && this.isSelected ? 1.2 : 0.5),
-            color: this.isSelectableTextMode ? this.themePrimary + '88' : (this.isMultiSelectMode && this.isSelected ? this.themePrimary + '66' : $r('app.color.bubble_border'))
-          })
-          .linearGradient(this.isSelectableTextMode ? {
-            angle: 135,
-            colors: [[this.themePrimary + '10', 0.0], [this.themeAiBubble, 0.38], [this.themeAiBubble, 1.0]]
-          } : {
-            angle: 0,
-            colors: [[Color.Transparent, 0.0], [Color.Transparent, 1.0]]
-          })
-          .overlay(this.isSelectableTextMode ? this.SelectableBubbleLeadingBar() : this.EmptyOverlay(), { align: Alignment.Start })
-          .shadow(this.isSelectableTextMode ? {
-            radius: 18,
-            color: this.themePrimary + '22',
-            offsetX: 0,
-            offsetY: 4
-          } : {
-            radius: 0,
-            color: Color.Transparent,
-            offsetX: 0,
-            offsetY: 0
+            color: this.isSelectableTextMode ? this.themeUserBubble : (this.isMultiSelectMode && this.isSelected ? this.themePrimary + '66' : $r('app.color.bubble_border'))
           })
           .clip(true)
       }
