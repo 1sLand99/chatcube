@@ -46,15 +46,13 @@ These screenshots reflect the current HarmonyOS 6 (API 23) build:
   </tr>
 </table>
 
-## Highlights in 1.0.12
+## Highlights in 1.0.13
 
-- Continued polish for HarmonyOS 6 (API 23), with tighter layout and interaction behavior on the highest-traffic screens
-- A full rework of the chat detail title bar, including blur menus, icon sizing, scroll-linked behavior, and layering stability
-- Multi-select flows in chat, message cards, and session lists were completed and stabilized for real batch actions
-- Settings pages were simplified further by hiding unnecessary tabs in detail flows and fixing bottom insets
-- Web search now supports Bing(local), Tavily, and Exa, while the tools center can connect to remote streamable MCP servers
-- Attachment panels, image preview, input visibility rules, and action visibility during streaming were all refined
-- Provider compatibility, import/export ordering, 8 themes, API 23 materials, and widget visuals also received another pass
+- Chat input now has a dedicated setting for choosing between keyboard newline and keyboard send behavior
+- Assistant messages support inline text selection from long press or the message menu, with cleaner plain-text copying from Markdown
+- MCP tool readiness no longer blocks sending immediately; availability refresh now continues in the background
+- The home-screen New Chat floating button has refined sizing, press motion, shadows, and bottom spacing for better one-handed use
+- Theme color alpha handling is now centralized, making input bars, message bubbles, the tools center, and scroll buttons more stable
 
 ## Features
 
