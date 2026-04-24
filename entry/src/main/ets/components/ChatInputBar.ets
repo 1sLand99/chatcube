@@ -52,6 +52,9 @@ export struct ChatInputBar {
   private get themeAiBubble(): string {
     return getAppUiState().themeAiBubble
   }
+  private get chatInputEnterKeySend(): boolean {
+    return getAppUiState().chatInputEnterKeySend
+  }
   // ========== 最近截图相关 ==========
   private recentPhotoOptions: RecentPhotoOptions = new RecentPhotoOptions()
   @Local hasRecentPhoto: boolean = false // 当前是否存在符合时间条件的截图
@@ -208,7 +211,7 @@ export struct ChatInputBar {
           .id('chatInputTextArea')
           .placeholderColor($r('app.color.text_tertiary'))
           .placeholderFont({ size: 16 })
-          .enterKeyType(EnterKeyType.Send)
+          .enterKeyType(this.chatInputEnterKeySend ? EnterKeyType.Send : EnterKeyType.NEW_LINE)
           .fontSize(16)
           .fontColor($r('app.color.text_primary'))
           .backgroundColor(Color.Transparent)
@@ -224,6 +227,9 @@ export struct ChatInputBar {
             this.onInputTextChange(value)
           })
           .onSubmit(() => {
+            if (!this.chatInputEnterKeySend) {
+              return
+            }
             if (!this.isSending && this.computeHasContent()) {
               this.onSend()
             }

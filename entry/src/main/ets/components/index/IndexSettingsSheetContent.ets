@@ -17,6 +17,7 @@ export struct IndexSettingsSheetContent {
   @Param notifyEnabled: boolean = true
   @Param notifyOnComplete: boolean = true
   @Param notifyOnFailed: boolean = true
+  @Param chatInputEnterKeySend: boolean = false
   @Param handAdaptiveEnabled: boolean = false
   @Param handAdaptiveNewChat: boolean = false
   @Param handAdaptiveUnsupported: boolean = false
@@ -153,6 +154,17 @@ export struct IndexSettingsSheetContent {
   }
 
   @Builder
+  private ChatInputSheetContent() {
+    Column() {
+      this.NotificationToggleItem($r('app.string.chat_input_independent_send_button_title'),
+        $r('app.string.chat_input_independent_send_button_desc'), this.chatInputEnterKeySend, (value: boolean) => {
+          this.callbacks.onToggleChatInputEnterKeySend(value)
+        })
+    }
+    .width('100%')
+  }
+
+  @Builder
   private OpenSystemNotificationSettingsEntry() {
     Column() {
       Text($r('app.string.notification_system_settings_tip'))
@@ -216,6 +228,8 @@ export struct IndexSettingsSheetContent {
 
         Divider().color($r('app.color.divider')).margin({ top: 6 })
         this.OpenSystemNotificationSettingsEntry()
+      } else if (this.settingsSheetType === SettingsSheetType.CHAT_INPUT) {
+        this.ChatInputSheetContent()
       } else {
         Column()
           .width('100%')

@@ -1425,6 +1425,22 @@
       "value": "自定义 AI 行为指令"
     },
     {
+      "name": "settings_chat_input",
+      "value": "聊天输入"
+    },
+    {
+      "name": "settings_chat_input_desc",
+      "value": "设置键盘回车键行为"
+    },
+    {
+      "name": "chat_input_independent_send_button_title",
+      "value": "使用键盘发送按钮"
+    },
+    {
+      "name": "chat_input_independent_send_button_desc",
+      "value": "开启后，键盘上的换行按钮会被替换成发送"
+    },
+    {
       "name": "system_prompt_edit_title",
       "value": "系统提示词"
     },

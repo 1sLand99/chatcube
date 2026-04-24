@@ -5,7 +5,8 @@ export enum SettingsSheetType {
   THEME = 1,
   LANGUAGE = 2,
   NOTIFICATION = 3,
-  HAND_ADAPTIVE = 4
+  HAND_ADAPTIVE = 4,
+  CHAT_INPUT = 5
 }
 
 export enum SessionFilterType {

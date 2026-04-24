@@ -10,6 +10,7 @@
     "pages/HandAdaptiveSettingsPage",
     "pages/FontSizeSettingsPage",
     "pages/SystemPromptSettingsPage",
+    "pages/ChatInputSettingsPage",
     "pages/ProviderDetailPage",
     "pages/ExportDataPage",
     "pages/ImportDataPage",

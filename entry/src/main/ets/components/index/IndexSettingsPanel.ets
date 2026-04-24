@@ -33,6 +33,7 @@ export struct IndexSettingsPanel {
   @Event onOpenDefaultModel: () => void = () => {}
   @Event onOpenToolsCenter: () => void = () => {}
   @Event onOpenSystemPrompt: () => void = () => {}
+  @Event onOpenChatInput: () => void = () => {}
   @Event onOpenHandAdaptive: () => void = () => {}
   @Event onOpenTheme: () => void = () => {}
   @Event onOpenLanguage: () => void = () => {}
@@ -106,6 +107,13 @@ export struct IndexSettingsPanel {
             title: $r('app.string.settings_system_prompt'),
             subtitle: $r('app.string.settings_system_prompt_desc'),
             action: (): void => { this.onOpenSystemPrompt() }
+          } as SettingsListItemModel,
+          {
+            key: SettingsRouteName.CHAT_INPUT,
+            icon: $r('sys.symbol.textformat'),
+            title: $r('app.string.settings_chat_input'),
+            subtitle: $r('app.string.settings_chat_input_desc'),
+            action: (): void => { this.onOpenChatInput() }
           } as SettingsListItemModel,
           {
             key: SettingsRouteName.HAND_ADAPTIVE,

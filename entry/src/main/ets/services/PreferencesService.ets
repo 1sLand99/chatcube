@@ -74,6 +74,9 @@ export class PreferenceKeys {
   // 聊天字体大小
   static readonly CHAT_FONT_SIZE: string = 'chat_font_size'
 
+  // 聊天输入设置
+  static readonly CHAT_INPUT_ENTER_KEY_SEND: string = 'chat_input_enter_key_send'
+
   // 材质效果
   static readonly MATERIAL_TYPE: string = 'material_type'
   static readonly MATERIAL_LEVEL: string = 'material_level'
@@ -416,6 +419,16 @@ export class PreferencesService {
   // 设置聊天字体大小
   async setChatFontSize(size: number): Promise<void> {
     await this.setNumber(PreferenceKeys.CHAT_FONT_SIZE, size)
+  }
+
+  // 获取聊天输入框回车键是否发送
+  async getChatInputEnterKeySend(): Promise<boolean> {
+    return await this.getBoolean(PreferenceKeys.CHAT_INPUT_ENTER_KEY_SEND, false)
+  }
+
+  // 设置聊天输入框回车键是否发送
+  async setChatInputEnterKeySend(enabled: boolean): Promise<void> {
+    await this.setBoolean(PreferenceKeys.CHAT_INPUT_ENTER_KEY_SEND, enabled)
   }
 
   // 获取材质类型

@@ -3,6 +3,7 @@ export enum SettingsRouteName {
   DEFAULT_MODEL = 'DefaultModelPage',
   TOOLS_CENTER = 'ToolsCenterPage',
   SYSTEM_PROMPT = 'SystemPromptSettingsPage',
+  CHAT_INPUT = 'ChatInputSettingsPage',
   HAND_ADAPTIVE = 'HandAdaptiveSettingsPage',
   THEME_MODE = 'ThemeModeSettingsPage',
   COLOR_THEME = 'ColorThemeSettingsPage',

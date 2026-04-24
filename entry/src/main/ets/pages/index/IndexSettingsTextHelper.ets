@@ -14,6 +14,9 @@ export function getSettingsSheetTitleText(sheetType: SettingsSheetType): Resourc
   if (sheetType === SettingsSheetType.NOTIFICATION) {
     return $r('app.string.settings_notifications')
   }
+  if (sheetType === SettingsSheetType.CHAT_INPUT) {
+    return $r('app.string.settings_chat_input')
+  }
   return $r('app.string.tab_settings')
 }
 

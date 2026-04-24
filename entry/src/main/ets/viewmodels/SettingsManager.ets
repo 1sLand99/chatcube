@@ -12,6 +12,7 @@ export interface SettingsChangeCallback {
   onColorThemeChanged?: (theme: ColorTheme, colors: ThemeColorConfig) => void
   onNotificationSettingsChanged?: (enabled: boolean, notifyOnComplete: boolean, notifyOnFailed: boolean) => void
   onChatFontSizeChanged?: (size: number) => void
+  onChatInputSettingsChanged?: (enterKeySend: boolean) => void
   onMaterialSettingsChanged?: (materialType: number, materialLevel: number, lightColorMode: string) => void
 }
 
@@ -24,6 +25,7 @@ export class SettingsManager {
   private notifyOnComplete: boolean = true
   private notifyOnFailed: boolean = true
   private chatFontSize: number = 15
+  private chatInputEnterKeySend: boolean = false
   private materialType: number = 100    // ADAPTIVE
   private materialLevel: number = 10    // ADAPTIVE
   private lightColorMode: string = 'default'
@@ -63,9 +65,11 @@ export class SettingsManager {
     this.notifyOnComplete = await preferencesService.getNotifyOnComplete()
     this.notifyOnFailed = await preferencesService.getNotifyOnFailed()
     this.chatFontSize = await preferencesService.getChatFontSize()
+    this.chatInputEnterKeySend = await preferencesService.getChatInputEnterKeySend()
     this.materialType = await preferencesService.getMaterialType()
     this.materialLevel = await preferencesService.getMaterialLevel()
     this.lightColorMode = await preferencesService.getLightColorMode()
+    setAppUiStateValue(AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND, this.chatInputEnterKeySend)
     this.isInitialized = true
   }
 
@@ -78,9 +82,11 @@ export class SettingsManager {
     this.notifyOnComplete = await preferencesService.getNotifyOnComplete()
     this.notifyOnFailed = await preferencesService.getNotifyOnFailed()
     this.chatFontSize = await preferencesService.getChatFontSize()
+    this.chatInputEnterKeySend = await preferencesService.getChatInputEnterKeySend()
     this.materialType = await preferencesService.getMaterialType()
     this.materialLevel = await preferencesService.getMaterialLevel()
     this.lightColorMode = await preferencesService.getLightColorMode()
+    setAppUiStateValue(AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND, this.chatInputEnterKeySend)
   }
 
   // 等待初始化完成
@@ -269,6 +275,29 @@ export class SettingsManager {
       const callback = this.callbacks[i]
       if (callback.onChatFontSizeChanged !== undefined) {
         callback.onChatFontSizeChanged(size)
+      }
+    }
+  }
+
+  // ========== 聊天输入设置相关方法 ==========
+
+  getChatInputEnterKeySend(): boolean {
+    return this.chatInputEnterKeySend
+  }
+
+  async setChatInputEnterKeySend(enabled: boolean): Promise<void> {
+    if (this.chatInputEnterKeySend === enabled) {
+      return
+    }
+
+    this.chatInputEnterKeySend = enabled
+    await getPreferencesService().setChatInputEnterKeySend(enabled)
+    setAppUiStateValue(AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND, enabled)
+
+    for (let i = 0; i < this.callbacks.length; i++) {
+      const callback = this.callbacks[i]
+      if (callback.onChatInputSettingsChanged !== undefined) {
+        callback.onChatInputSettingsChanged(enabled)
       }
     }
   }

@@ -49,6 +49,7 @@ export class AppUiState {
   @Trace themeMarkdownTableAltBg: string = '#FBFCFE'
   @Trace themeMarkdownTableBorder: string = '#E7EBF0'
   @Trace chatFontSize: number = 15
+  @Trace chatInputEnterKeySend: boolean = false
   @Trace materialType: number = 100   // ADAPTIVE
   @Trace materialLevel: number = 10   // ADAPTIVE
   @Trace lightColorMode: string = 'default'
@@ -187,6 +188,9 @@ function applyAppUiStateValue<T extends string | number | boolean>(state: AppUiS
     case AppStorageKeys.CHAT_FONT_SIZE:
       state.chatFontSize = value as number
       return
+    case AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND:
+      state.chatInputEnterKeySend = value as boolean
+      return
     case AppStorageKeys.MATERIAL_TYPE:
       state.materialType = value as number
       return
@@ -278,6 +282,8 @@ function createAppUiStateFromStorage(): AppUiState {
   applyAppUiStateValue(state, AppStorageKeys.THEME_MARKDOWN_TABLE_BORDER,
     readStorageValue<string>(AppStorageKeys.THEME_MARKDOWN_TABLE_BORDER, state.themeMarkdownTableBorder))
   applyAppUiStateValue(state, AppStorageKeys.CHAT_FONT_SIZE, readStorageValue<number>(AppStorageKeys.CHAT_FONT_SIZE, 15))
+  applyAppUiStateValue(state, AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND,
+    readStorageValue<boolean>(AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND, false))
   applyAppUiStateValue(state, AppStorageKeys.MATERIAL_TYPE,
     readStorageValue<number>(AppStorageKeys.MATERIAL_TYPE, 100))
   applyAppUiStateValue(state, AppStorageKeys.MATERIAL_LEVEL,
@@ -340,6 +346,7 @@ export function syncAppUiStateFromStorage(): void {
   state.themeMarkdownTableAltBg = freshState.themeMarkdownTableAltBg
   state.themeMarkdownTableBorder = freshState.themeMarkdownTableBorder
   state.chatFontSize = freshState.chatFontSize
+  state.chatInputEnterKeySend = freshState.chatInputEnterKeySend
   state.materialType = freshState.materialType
   state.materialLevel = freshState.materialLevel
   state.lightColorMode = freshState.lightColorMode
@@ -455,6 +462,8 @@ function resolveAppUiStatePath(path: string): string {
       return 'themeMarkdownTableBorder'
     case AppStorageKeys.CHAT_FONT_SIZE:
       return 'chatFontSize'
+    case AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND:
+      return 'chatInputEnterKeySend'
     case AppStorageKeys.MATERIAL_TYPE:
       return 'materialType'
     case AppStorageKeys.MATERIAL_LEVEL:

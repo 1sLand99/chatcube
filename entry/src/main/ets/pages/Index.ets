@@ -129,6 +129,7 @@ struct Index {
     return `${this.currentColorTheme}_${uiState.isDarkMode ? '1' : '0'}`
   }
   @Local chatFontSize: number = 15
+  @Local chatInputEnterKeySend: boolean = false
   @Local materialType: number = 100
   @Local materialLevel: number = 10
   @Local lightColorMode: string = 'default'
@@ -616,6 +617,10 @@ struct Index {
         this.chatFontSize = size
         this.syncSettingsSummaryToStorage()
       },
+      onChatInputSettingsChanged: (enterKeySend: boolean): void => {
+        this.chatInputEnterKeySend = enterKeySend
+        this.syncSettingsSummaryToStorage()
+      },
       onMaterialSettingsChanged: (materialType: number, materialLevel: number, lightColorMode: string): void => {
         this.materialType = materialType
         this.materialLevel = materialLevel
@@ -636,6 +641,7 @@ struct Index {
     this.notifyOnComplete = this.settingsManager.getNotifyOnCompleteEnabled()
     this.notifyOnFailed = this.settingsManager.getNotifyOnFailedEnabled()
     this.chatFontSize = this.settingsManager.getChatFontSize()
+    this.chatInputEnterKeySend = this.settingsManager.getChatInputEnterKeySend()
     this.materialType = this.settingsManager.getMaterialType()
     this.materialLevel = this.settingsManager.getMaterialLevel()
     this.lightColorMode = this.settingsManager.getLightColorMode()
@@ -651,6 +657,7 @@ struct Index {
     this.notifyOnComplete = this.settingsManager.getNotifyOnCompleteEnabled()
     this.notifyOnFailed = this.settingsManager.getNotifyOnFailedEnabled()
     this.chatFontSize = this.settingsManager.getChatFontSize()
+    this.chatInputEnterKeySend = this.settingsManager.getChatInputEnterKeySend()
     this.materialType = this.settingsManager.getMaterialType()
     this.materialLevel = this.settingsManager.getMaterialLevel()
     this.lightColorMode = this.settingsManager.getLightColorMode()
@@ -668,6 +675,7 @@ struct Index {
     AppStorage.setOrCreate(AppStorageKeys.SETTING_HAND_ADAPTIVE_NEW_CHAT, this.handAdaptiveNewChat)
     AppStorage.setOrCreate(AppStorageKeys.SETTING_HAND_ADAPTIVE_UNSUPPORTED, this.handAdaptiveUnsupported)
     setAppUiStateValue(AppStorageKeys.CHAT_FONT_SIZE, this.chatFontSize)
+    setAppUiStateValue(AppStorageKeys.CHAT_INPUT_ENTER_KEY_SEND, this.chatInputEnterKeySend)
     setAppUiStateValue(AppStorageKeys.MATERIAL_TYPE, this.materialType)
     setAppUiStateValue(AppStorageKeys.MATERIAL_LEVEL, this.materialLevel)
     setAppUiStateValue(AppStorageKeys.LIGHT_COLOR_MODE, this.lightColorMode)
@@ -1934,6 +1942,9 @@ struct Index {
       onOpenSystemPrompt: (): void => {
         this.openSettingsDestination(SettingsRouteName.SYSTEM_PROMPT)
       },
+      onOpenChatInput: (): void => {
+        this.openSettingsPanelEntry(SettingsRouteName.CHAT_INPUT, SettingsSheetType.CHAT_INPUT)
+      },
       onOpenHandAdaptive: (): void => {
         this.openSettingsPanelEntry(SettingsRouteName.HAND_ADAPTIVE, SettingsSheetType.HAND_ADAPTIVE)
       },
@@ -2118,6 +2129,7 @@ struct Index {
           notifyEnabled: this.notifyEnabled,
           notifyOnComplete: this.notifyOnComplete,
           notifyOnFailed: this.notifyOnFailed,
+          chatInputEnterKeySend: this.chatInputEnterKeySend,
           handAdaptiveEnabled: this.handAdaptiveEnabled,
           handAdaptiveNewChat: this.handAdaptiveNewChat,
           handAdaptiveUnsupported: this.handAdaptiveUnsupported,
@@ -2143,6 +2155,7 @@ struct Index {
       notifyEnabled: this.notifyEnabled,
       notifyOnComplete: this.notifyOnComplete,
       notifyOnFailed: this.notifyOnFailed,
+      chatInputEnterKeySend: this.chatInputEnterKeySend,
       handAdaptiveEnabled: this.handAdaptiveEnabled,
       handAdaptiveNewChat: this.handAdaptiveNewChat,
       handAdaptiveUnsupported: this.handAdaptiveUnsupported,
@@ -2159,6 +2172,7 @@ struct Index {
       notifyEnabled: this.notifyEnabled,
       notifyOnComplete: this.notifyOnComplete,
       notifyOnFailed: this.notifyOnFailed,
+      chatInputEnterKeySend: this.chatInputEnterKeySend,
       handAdaptiveEnabled: this.handAdaptiveEnabled,
       handAdaptiveNewChat: this.handAdaptiveNewChat,
       handAdaptiveUnsupported: this.handAdaptiveUnsupported,
@@ -2175,6 +2189,7 @@ struct Index {
       notifyEnabled: this.notifyEnabled,
       notifyOnComplete: this.notifyOnComplete,
       notifyOnFailed: this.notifyOnFailed,
+      chatInputEnterKeySend: this.chatInputEnterKeySend,
       handAdaptiveEnabled: this.handAdaptiveEnabled,
       handAdaptiveNewChat: this.handAdaptiveNewChat,
       handAdaptiveUnsupported: this.handAdaptiveUnsupported,
@@ -2226,6 +2241,11 @@ struct Index {
       this.notifyOnFailed = value
       this.syncSettingsSummaryToStorage()
       await this.settingsManager.setNotifyOnFailedEnabled(value)
+    }
+    callbacks.onToggleChatInputEnterKeySend = async (value: boolean): Promise<void> => {
+      this.chatInputEnterKeySend = value
+      this.syncSettingsSummaryToStorage()
+      await this.settingsManager.setChatInputEnterKeySend(value)
     }
     callbacks.onOpenSystemNotificationSettings = (): void => {
       this.openSystemNotificationSettings()

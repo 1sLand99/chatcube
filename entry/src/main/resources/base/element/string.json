@@ -1425,6 +1425,22 @@
       "value": "Custom instructions for AI"
     },
     {
+      "name": "settings_chat_input",
+      "value": "Chat Input"
+    },
+    {
+      "name": "settings_chat_input_desc",
+      "value": "Keyboard return key behavior"
+    },
+    {
+      "name": "chat_input_independent_send_button_title",
+      "value": "Use keyboard send button"
+    },
+    {
+      "name": "chat_input_independent_send_button_desc",
+      "value": "When enabled, the New Line key on the keyboard is replaced with Send"
+    },
+    {
       "name": "system_prompt_edit_title",
       "value": "System Prompt"
     },

@@ -51,6 +51,11 @@
       "buildFunction": "SystemPromptSettingsPageBuilder"
     },
     {
+      "name": "ChatInputSettingsPage",
+      "pageSourceFile": "src/main/ets/pages/ChatInputSettingsPage.ets",
+      "buildFunction": "ChatInputSettingsPageBuilder"
+    },
+    {
       "name": "ProviderDetailPage",
       "pageSourceFile": "src/main/ets/pages/ProviderDetailPage.ets",
       "buildFunction": "ProviderDetailPageBuilder"
