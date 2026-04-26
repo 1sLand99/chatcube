@@ -1,5 +1,4 @@
 import { ChatSession } from '../models/ChatModels'
-import { hdsEffect } from '@kit.UIDesignKit'
 import {
   getSessionDisplayPreviewText,
   getSessionPreviewBodyText,
@@ -7,6 +6,7 @@ import {
   SESSION_DRAFT_TAG_TEXT
 } from '../utils/ChatSessionDisplayHelper'
 import { getAppUiState } from '../state/AppUiState'
+import { buildPointLightBorderEffect } from '../utils/HdsVisualEffectUtil'
 
 @ComponentV2
 export struct SessionCard {
@@ -249,15 +249,6 @@ export struct SessionCard {
     return this.isDarkMode ? this.themeTextSecondary : this.themeTextTertiary
   }
 
-  private buildCardPointLightEffect() {
-    return new hdsEffect.HdsEffectBuilder()
-      .pointLight({
-        sourceType: this.uiVisualEnhanced ? hdsEffect.PointLightSourceType.BRIGHT : hdsEffect.PointLightSourceType.NONE,
-        illuminatedType: hdsEffect.PointLightIlluminatedType.BORDER
-      })
-      .buildEffect()
-  }
-
   build() {
     Row() {
       this.PrefixContent()
@@ -275,7 +266,7 @@ export struct SessionCard {
     .border({ width: 1, color: this.themeDivider })
     .borderRadius(12)
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .visualEffect(this.buildCardPointLightEffect())
+    .visualEffect(buildPointLightBorderEffect(this.uiVisualEnhanced))
     .onClick(() => {
       this.onTap()
     })

@@ -1,6 +1,7 @@
 import { bundleManager } from '@kit.AbilityKit'
 import { SettingsRouteName } from '../../config/SettingsRouteName'
 import { getAppUiState } from '../../state/AppUiState'
+import { buildPointLightBorderEffect } from '../../utils/HdsVisualEffectUtil'
 
 class SettingsListItemModel {
   key: string = ''
@@ -303,6 +304,7 @@ export struct IndexSettingsPanel {
       width: 1,
       color: $r('app.color.divider')
     })
+    .visualEffect(buildPointLightBorderEffect())
   }
 
   build() {
