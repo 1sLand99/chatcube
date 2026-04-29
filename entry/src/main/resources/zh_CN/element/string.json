@@ -1697,6 +1697,14 @@
       "value": "切换助手"
     },
     {
+      "name": "assistant_current_section",
+      "value": "当前助手"
+    },
+    {
+      "name": "assistant_others_section",
+      "value": "其他助手"
+    },
+    {
       "name": "assistant_total_label",
       "value": "助手"
     },
@@ -1735,6 +1743,10 @@
     {
       "name": "assistant_sessions_label",
       "value": "对话"
+    },
+    {
+      "name": "assistant_view_chats",
+      "value": "查看对话"
     },
     {
       "name": "assistant_default_badge",

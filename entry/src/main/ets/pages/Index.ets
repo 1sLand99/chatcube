@@ -89,8 +89,8 @@ import { tryHandleModelManageInternalBack } from './ModelManagePage'
 struct Index {
   private static readonly COMPACT_TABS_BAR_HEIGHT: number = 56
   private static readonly COMPACT_TABS_FLOATING_SIDE_MARGIN: number = 16
-  private static readonly TAB_CHAT: number = 0
-  private static readonly TAB_ASSISTANTS: number = 1
+  private static readonly TAB_ASSISTANTS: number = 0
+  private static readonly TAB_CHAT: number = 1
   private static readonly TAB_SETTINGS: number = 2
   @Local currentTabIndex: number = Index.TAB_CHAT
   @Local sessions: ChatSession[] = []
@@ -1469,14 +1469,14 @@ struct Index {
       } else {
         HdsTabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
           TabContent() {
-            this.ChatTab()
-          }
-          .tabBar(this.TabBarChat())
-
-          TabContent() {
             this.AssistantsTab()
           }
           .tabBar(this.TabBarAssistants())
+
+          TabContent() {
+            this.ChatTab()
+          }
+          .tabBar(this.TabBarChat())
 
           TabContent() {
             this.SettingsTab()
@@ -1568,9 +1568,9 @@ struct Index {
         .width('100%')
         .height(this.px2vp(this.topAvoidHeight))
 
-      this.RailTabButton(Index.TAB_CHAT, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
       this.RailTabButton(Index.TAB_ASSISTANTS, $r('sys.symbol.person'), $r('sys.symbol.person'),
         $r('app.string.tab_assistants'))
+      this.RailTabButton(Index.TAB_CHAT, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
       this.RailTabButton(Index.TAB_SETTINGS, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'), $r('app.string.tab_settings'))
 
       Blank()
@@ -1669,6 +1669,35 @@ struct Index {
       return assistant
     }
     return this.assistants.length > 0 ? this.assistants[0] : null
+  }
+
+  private getWorkspaceCurrentAssistant(): Assistant {
+    const current = this.getCurrentAssistant()
+    if (current !== null) {
+      return current
+    }
+    return this.assistants[0]
+  }
+
+  private hasOtherAssistantsForWorkspace(): boolean {
+    const currentId = this.getWorkspaceCurrentAssistant().id
+    for (let i = 0; i < this.assistants.length; i++) {
+      if (this.assistants[i].id !== currentId) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private getOtherAssistantsForWorkspace(): Assistant[] {
+    const result: Assistant[] = []
+    const currentId = this.getWorkspaceCurrentAssistant().id
+    for (let i = 0; i < this.assistants.length; i++) {
+      if (this.assistants[i].id !== currentId) {
+        result.push(this.assistants[i])
+      }
+    }
+    return result
   }
 
   private getCurrentAssistantName(): string {
@@ -1953,7 +1982,7 @@ struct Index {
   }
 
   private getCompactChatTitleBarMaskExtraHeight(): number {
-    return 24
+    return this.windowWidthVp > this.windowHeightVp ? 28 : 36
   }
 
   private getCompactChatTitleBarScrollEffectType(): ScrollEffectType {
@@ -2423,9 +2452,33 @@ struct Index {
       .layoutWeight(1)
     } else {
       List({ space: 8, scroller: this.assistantListScroller }) {
-        ForEach(this.assistants, (assistant: Assistant) => {
+        ListItem() {
+          this.AssistantSectionHeader($r('app.string.assistant_current_section'))
+        }
+        .focusable(false)
+        .selectable(false)
+
+        ListItem({ style: ListItemStyle.NONE }) {
+          this.AssistantJumpCard(this.getWorkspaceCurrentAssistant(), true)
+        }
+        .swipeAction({
+          start: this.AssistantStartSwipePanel(this.getWorkspaceCurrentAssistant()),
+          end: this.AssistantEndSwipePanel(this.getWorkspaceCurrentAssistant())
+        })
+        .borderRadius(12)
+        .clip(true)
+
+        if (this.hasOtherAssistantsForWorkspace()) {
+          ListItem() {
+            this.AssistantSectionHeader($r('app.string.assistant_others_section'))
+          }
+          .focusable(false)
+          .selectable(false)
+        }
+
+        ForEach(this.getOtherAssistantsForWorkspace(), (assistant: Assistant) => {
           ListItem({ style: ListItemStyle.NONE }) {
-            this.AssistantJumpCard(assistant)
+            this.AssistantJumpCard(assistant, false)
           }
           .swipeAction({
             start: this.AssistantStartSwipePanel(assistant),
@@ -2450,6 +2503,16 @@ struct Index {
       .edgeEffect(EdgeEffect.Spring)
       .cachedCount(4)
     }
+  }
+
+  @Builder
+  private AssistantSectionHeader(title: ResourceStr) {
+    Text(title)
+      .fontSize(12)
+      .fontWeight(FontWeight.Medium)
+      .fontColor($r('app.color.text_tertiary'))
+      .width('100%')
+      .padding({ left: 4, right: 4, top: 8, bottom: 2 })
   }
 
   @Builder
@@ -2556,12 +2619,12 @@ struct Index {
   }
 
   @Builder
-  private AssistantJumpCard(assistant: Assistant) {
+  private AssistantJumpCard(assistant: Assistant, featured: boolean = false) {
     Column() {
-      this.AssistantJumpCardContent(assistant)
+      this.AssistantJumpCardContent(assistant, featured)
     }
     .width('100%')
-    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+    .padding({ left: 14, right: 14, top: featured ? 14 : 12, bottom: featured ? 14 : 12 })
     .backgroundColor($r('app.color.surface'))
     .borderRadius(16)
     .border({
@@ -2581,10 +2644,11 @@ struct Index {
   }
 
   @Builder
-  private AssistantJumpCardContent(assistant: Assistant) {
-    Column({ space: 10 }) {
+  private AssistantJumpCardContent(assistant: Assistant, featured: boolean) {
+    Column({ space: featured ? 12 : 10 }) {
       Row({ space: 12 }) {
-        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAccentColor(assistant), 44, 15, 23)
+        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAccentColor(assistant), featured ? 48 : 44,
+          featured ? 16 : 15, featured ? 25 : 23)
 
         Column({ space: 5 }) {
           Row({ space: 6 }) {
@@ -2644,8 +2708,99 @@ struct Index {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .width('100%')
+
+      this.AssistantCardActions(assistant)
     }
     .width('100%')
+  }
+
+  @Builder
+  private AssistantCardActions(assistant: Assistant) {
+    Row({ space: 8 }) {
+      this.AssistantCardActionButton($r('sys.symbol.plus'), $r('app.string.new_chat'), true, (): void => {
+        this.openAssistantNewChat(assistant)
+      })
+
+      this.AssistantCardActionButton($r('sys.symbol.message'), $r('app.string.assistant_view_chats'), false, (): void => {
+        this.openAssistantSessions(assistant)
+      })
+
+      Button() {
+        SymbolGlyph($r('sys.symbol.dot_grid_2x2'))
+          .fontSize(18)
+          .fontColor([$r('app.color.text_secondary')])
+      }
+      .width(40)
+      .height(34)
+      .borderRadius(17)
+      .padding(0)
+      .backgroundColor($r('app.color.background'))
+      .stateEffect(true)
+      .bindMenu(this.AssistantCardMoreMenu(assistant), {
+        placement: Placement.BottomRight,
+        offset: { x: 0, y: 8 },
+        backgroundColor: $r('app.color.surface'),
+        backgroundBlurStyle: BlurStyle.Regular
+      })
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
+  private AssistantCardActionButton(symbol: Resource, label: ResourceStr, primary: boolean, onTap: () => void) {
+    Button() {
+      Row({ space: 5 }) {
+        SymbolGlyph(symbol)
+          .fontSize(15)
+          .fontColor([primary ? Color.White : this.themePrimary])
+
+        Text(label)
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(primary ? Color.White : this.themePrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .justifyContent(FlexAlign.Center)
+      .alignItems(VerticalAlign.Center)
+      .width('100%')
+    }
+    .layoutWeight(1)
+    .height(34)
+    .borderRadius(17)
+    .padding({ left: 10, right: 10 })
+    .backgroundColor(primary ? this.themePrimary : this.themePrimaryLight)
+    .stateEffect(true)
+    .onClick(() => {
+      onTap()
+    })
+  }
+
+  @Builder
+  private AssistantCardMoreMenu(assistant: Assistant) {
+    Menu() {
+      MenuItem({
+        startIcon: $r('sys.symbol.square_and_pencil'),
+        content: $r('app.string.edit_assistant_short')
+      })
+        .contentFont({ size: 14 })
+        .onClick(() => {
+          this.openAssistantEditor(assistant)
+        })
+
+      if (assistant.id !== DEFAULT_ASSISTANT_ID && !assistant.isDefault) {
+        MenuItem({
+          startIcon: $r('sys.symbol.trash'),
+          content: $r('app.string.delete')
+        })
+          .contentFont({ size: 14 })
+          .contentFontColor($r('app.color.status_error'))
+          .onClick(() => {
+            this.deleteAssistantFromTab(assistant)
+          })
+      }
+    }
   }
 
   @Builder

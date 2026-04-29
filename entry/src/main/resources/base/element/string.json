@@ -1697,6 +1697,14 @@
       "value": "Switch assistant"
     },
     {
+      "name": "assistant_current_section",
+      "value": "Current assistant"
+    },
+    {
+      "name": "assistant_others_section",
+      "value": "Other assistants"
+    },
+    {
       "name": "assistant_total_label",
       "value": "Assistants"
     },
@@ -1735,6 +1743,10 @@
     {
       "name": "assistant_sessions_label",
       "value": "Chats"
+    },
+    {
+      "name": "assistant_view_chats",
+      "value": "View chats"
     },
     {
       "name": "assistant_default_badge",
