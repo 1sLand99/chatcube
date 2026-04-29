@@ -661,6 +661,14 @@
       "value": "Favorites"
     },
     {
+      "name": "favorite_filter_active",
+      "value": "Favorites only"
+    },
+    {
+      "name": "filter_clear",
+      "value": "Clear"
+    },
+    {
       "name": "group_today",
       "value": "Today"
     },

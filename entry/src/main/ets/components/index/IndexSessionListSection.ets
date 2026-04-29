@@ -6,9 +6,13 @@ import { getAppUiState } from '../../state/AppUiState'
 @ComponentV2
 export struct IndexSessionListSection {
   @Param sessionGroups: SessionListGroupViewModel[] = []
+  @Param sessionListScroller: ListScroller = new ListScroller()
   @Param isMultiSelectMode: boolean = false
   @Param topSpacerHeight: number = 0
   @Param bottomSpacerHeight: number = 100
+  @Param showFavoriteFilterSummary: boolean = false
+  @Param favoriteFilterCountText: string = '0'
+  @Event onClearFavoriteFilter: () => void = (): void => {}
   @Event onGetGroupTitle: (groupKey: string) => Resource = (_groupKey: string): Resource => $r('app.string.group_older')
   @Event onToggleSelection: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onOpenSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
@@ -16,7 +20,6 @@ export struct IndexSessionListSection {
   @Event onEnterMultiSelect: (sessionId: string) => void = (_sessionId: string): void => {}
   @Event onShareSession: (session: ChatSession) => void = (_session: ChatSession): void => {}
   @Event onToggleFavorite: (session: ChatSession) => void = (_session: ChatSession): void => {}
-  private sessionListScroller: ListScroller = new ListScroller()
 
   @Builder
   private SessionGroupHeader(groupKey: string, count: number) {
@@ -65,6 +68,42 @@ export struct IndexSessionListSection {
       this.sessionListScroller.closeAllSwipeActions()
       this.onToggleFavorite(session)
     })
+  }
+
+  @Builder
+  private FavoriteFilterSummaryRow() {
+    Row() {
+      Row() {
+        SymbolGlyph($r('sys.symbol.heart_fill'))
+          .fontSize(14)
+          .fontColor([getAppUiState().themePrimary])
+
+        Text($r('app.string.favorite_filter_active'))
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.text_secondary'))
+          .margin({ left: 6 })
+
+        Text(` · ${this.favoriteFilterCountText}`)
+          .fontSize(12)
+          .fontColor($r('app.color.text_tertiary'))
+      }
+      .alignItems(VerticalAlign.Center)
+
+      Blank()
+
+      Text($r('app.string.filter_clear'))
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(getAppUiState().themePrimary)
+        .onClick(() => {
+          this.onClearFavoriteFilter()
+        })
+    }
+    .width('100%')
+    .height(32)
+    .padding({ left: 16, right: 16 })
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
@@ -132,6 +171,14 @@ export struct IndexSessionListSection {
         ListItem() {
           Column()
             .height(this.topSpacerHeight)
+        }
+        .focusable(false)
+        .selectable(false)
+      }
+
+      if (this.showFavoriteFilterSummary && !this.isMultiSelectMode) {
+        ListItem() {
+          this.FavoriteFilterSummaryRow()
         }
         .focusable(false)
         .selectable(false)

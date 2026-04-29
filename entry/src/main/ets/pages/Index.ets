@@ -43,7 +43,6 @@ import {
   parseOpenSessionPayload
 } from '../utils/TaskAlertUtils'
 import { IndexBottomTabItem } from '../components/index/IndexBottomTabItem'
-import { IndexFilterBar } from '../components/index/IndexFilterBar'
 import { IndexEmptyStateCard } from '../components/index/IndexEmptyStateCard'
 import { IndexSettingsPanel } from '../components/index/IndexSettingsPanel'
 import { IndexSettingsSheetContent } from '../components/index/IndexSettingsSheetContent'
@@ -261,6 +260,7 @@ struct Index {
   private assistantService = ServiceRegistry.assistant()
   private providerViewModel = ServiceRegistry.provider()
   private assistantListScroller: ListScroller = new ListScroller()
+  private sessionListScroller: ListScroller = new ListScroller()
   private settingsCallback: SettingsChangeCallback | null = null
   private holdingHandSubscribed: boolean = false
   private handAdaptiveLoadSeq: number = 0
@@ -411,10 +411,16 @@ struct Index {
   private openChatRoute(params: ChatPageRouteParams): void {
     this.switchToTab(Index.TAB_CHAT)
     if (this.isSearchExpanded) {
-      this.searchText = ''
-      this.isSearchExpanded = false
-      this.refreshSessionListProjection()
+      this.collapseSearchBeforeRouteChange((): void => {
+        this.openChatRouteAfterSearchReset(params)
+      })
+      return
     }
+    this.resetSearchBeforeRouteChange()
+    this.openChatRouteAfterSearchReset(params)
+  }
+
+  private openChatRouteAfterSearchReset(params: ChatPageRouteParams): void {
     if (this.isExpandedLayout()) {
       this.openTabletChatDetail(params)
       return
@@ -1016,7 +1022,7 @@ struct Index {
   }
 
   private getCompactChatHeaderDefaultHeight(): number {
-    return this.px2vp(this.topAvoidHeight) + (this.isMultiSelectMode ? 56 : 92)
+    return this.px2vp(this.topAvoidHeight) + 56
   }
 
   private getCompactChatHeaderOverlayHeight(): number {
@@ -1706,7 +1712,7 @@ struct Index {
   }
 
   private getAssistantSwitchNameMaxWidth(): number {
-    return Math.max(72, this.getAssistantSwitchMaxWidth() - 74)
+    return Math.max(72, this.getAssistantSwitchMaxWidth() - 82)
   }
 
   private isTabActive(index: number): boolean {
@@ -1797,6 +1803,75 @@ struct Index {
     })
   }
 
+  private resetSearchBeforeRouteChange(): void {
+    if (!this.isSearchExpanded && this.searchText === '') {
+      return
+    }
+    this.searchText = ''
+    this.isSearchExpanded = false
+    this.refreshSessionListProjection()
+    try {
+      this.getUIContext().getFocusController().clearFocus()
+    } catch (error) {
+    }
+  }
+
+  private collapseSearchBeforeRouteChange(onFinish: () => void): void {
+    try {
+      this.getUIContext().getFocusController().clearFocus()
+    } catch (error) {
+    }
+    this.getUIContext().animateTo({
+      duration: 180,
+      curve: Curve.EaseOut
+    }, () => {
+      this.searchText = ''
+      this.isSearchExpanded = false
+      this.refreshSessionListProjection()
+    })
+    setTimeout(() => {
+      onFinish()
+    }, 190)
+  }
+
+  private isFavoriteFilterActive(): boolean {
+    return this.currentSessionFilter === SessionFilterType.FAVORITE
+  }
+
+  private setSessionFilter(filterType: SessionFilterType): void {
+    if (this.currentSessionFilter === filterType) {
+      return
+    }
+    this.currentSessionFilter = filterType
+    this.refreshSessionListProjection()
+  }
+
+  private toggleFavoriteFilter(): void {
+    this.setSessionFilter(this.isFavoriteFilterActive() ? SessionFilterType.ALL : SessionFilterType.FAVORITE)
+  }
+
+  @Builder
+  FavoriteFilterActionButton() {
+    Row() {
+      SymbolGlyph(this.isFavoriteFilterActive() ? $r('sys.symbol.heart_fill') : $r('sys.symbol.heart'))
+        .fontSize(21)
+        .fontColor([this.isFavoriteFilterActive() ? this.themePrimary : $r('app.color.text_primary')])
+    }
+    .width(40)
+    .height(40)
+    .borderRadius(20)
+    .backgroundColor(this.isFavoriteFilterActive() ? this.themePrimaryLight : $r('app.color.surface'))
+    .border({
+      width: this.isFavoriteFilterActive() ? 1 : 0,
+      color: this.isFavoriteFilterActive() ? this.themePrimary : Color.Transparent
+    })
+    .justifyContent(FlexAlign.Center)
+    .transition(TransitionEffect.OPACITY)
+    .onClick(() => {
+      this.toggleFavoriteFilter()
+    })
+  }
+
   @Builder
   CollapsedSearchActionButton() {
     Row() {
@@ -1825,6 +1900,7 @@ struct Index {
     .height('100%')
     .backgroundColor($r('app.color.background'))
     .titleBar(this.getCompactChatTitleBarOptions())
+    .bindToScrollable([this.sessionListScroller])
     .titleMode(HdsNavigationTitleMode.MINI)
     .hideBackButton(true)
     .hideToolBar(true)
@@ -1842,27 +1918,27 @@ struct Index {
         title: {
           mainTitle: ' '
         },
-        stackBuilder: (): void => this.CompactChatTitleStackBuilder(),
-        bottomBuilder: this.isMultiSelectMode ? undefined : {
-          builder: (): void => this.CompactChatTitleBottomBuilder(),
-          height: 36
-        }
+        stackBuilder: (): void => this.CompactChatTitleStackBuilder()
       },
       style: {
         scrollEffectOpts: {
-          enableScrollEffect: false,
-          scrollEffectType: ScrollEffectType.GRADIENT_BLUR
+          enableScrollEffect: true,
+          scrollEffectType: this.getCompactChatTitleBarScrollEffectType(),
+          blurEffectiveStartOffset: LengthMetrics.vp(0),
+          blurEffectiveEndOffset: LengthMetrics.vp(this.getCompactChatTitleBarBlurEndOffset())
         },
         originalStyle: {
           backgroundStyle: {
-            maskExtraHeight: 16,
-            blurRadius: 12
+            backgroundColor: $r('app.color.top_navigation_blur_origin'),
+            maskExtraHeight: this.getCompactChatTitleBarMaskExtraHeight(),
+            blurRadius: this.getCompactChatTitleBarInitialBlurRadius()
           }
         },
         scrollEffectStyle: {
           backgroundStyle: {
-            maskExtraHeight: 16,
-            blurRadius: 12
+            backgroundColor: $r('app.color.top_navigation_blur_scrolled'),
+            maskExtraHeight: this.getCompactChatTitleBarMaskExtraHeight(),
+            blurRadius: this.getCompactChatTitleBarBlurRadius()
           }
         },
         blurStrategy: BlurStrategy.ENABLE,
@@ -1876,6 +1952,42 @@ struct Index {
     }
   }
 
+  private getCompactChatTitleBarMaskExtraHeight(): number {
+    return 24
+  }
+
+  private getCompactChatTitleBarScrollEffectType(): ScrollEffectType {
+    if (this.materialType === 0) {
+      return ScrollEffectType.GRADIENT_BLUR
+    }
+    return ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+  }
+
+  private getCompactChatTitleBarBlurEndOffset(): number {
+    return this.windowWidthVp > this.windowHeightVp ? 20 : 28
+  }
+
+  private getCompactChatTitleBarInitialBlurRadius(): number {
+    return this.materialType === 0 ? 0 : 8
+  }
+
+  private getCompactChatTitleBarBlurRadius(): number {
+    if (this.materialType === 0) {
+      return 0
+    }
+    const isLandscape = this.windowWidthVp > this.windowHeightVp
+    if (this.materialLevel === 0) {
+      return isLandscape ? 20 : 26
+    }
+    if (this.materialLevel === 1) {
+      return isLandscape ? 18 : 22
+    }
+    if (this.materialLevel === 2) {
+      return isLandscape ? 14 : 18
+    }
+    return isLandscape ? 16 : 22
+  }
+
   @Builder
   private CompactChatTitleStackBuilder() {
     Column() {
@@ -1883,15 +1995,8 @@ struct Index {
     }
     .width('100%')
     .height(56)
-  }
-
-  @Builder
-  private CompactChatTitleBottomBuilder() {
-    Column() {
-      this.ChatListHeaderFilterBar()
-    }
-    .width('100%')
-    .height(36)
+    .translate({ y: -2 })
+    .renderGroup(false)
   }
 
   private getAssistantSessionCount(assistantId: string): number {
@@ -2914,7 +3019,7 @@ struct Index {
     Stack() {
       ForEach([this.getCurrentAssistantSwitchRenderKey()], (_renderKey: string) => {
         Row({ space: 8 }) {
-          this.AssistantAvatarBadge(this.getCurrentAssistantSymbol(), this.getCurrentAssistantColor(), 28, 14, 15)
+          this.AssistantAvatarBadge(this.getCurrentAssistantSymbol(), this.getCurrentAssistantColor(), 36, 12, 20)
 
           Text(this.getCurrentAssistantName())
             .fontSize(18)
@@ -3067,7 +3172,6 @@ struct Index {
       }
 
       this.ChatListHeaderMainRow()
-      this.ChatListHeaderFilterBar()
     }
     .width('100%')
   }
@@ -3129,7 +3233,10 @@ struct Index {
             ))
         } else {
           Blank()
-          this.CollapsedSearchActionButton()
+          Row({ space: 8 }) {
+            this.FavoriteFilterActionButton()
+            this.CollapsedSearchActionButton()
+          }
         }
       }
       .width('100%')
@@ -3156,20 +3263,6 @@ struct Index {
       .height(56)
       .padding({ left: 8, right: 8 })
       .alignItems(VerticalAlign.Center)
-    }
-  }
-
-  @Builder
-  private ChatListHeaderFilterBar() {
-    if (!this.isMultiSelectMode) {
-      IndexFilterBar({
-        currentFilter: this.currentSessionFilter,
-        countText: this.getFilterCountText(),
-        onFilterChange: (filterType: SessionFilterType): void => {
-          this.currentSessionFilter = filterType
-          this.refreshSessionListProjection()
-        }
-      })
     }
   }
 
@@ -3245,9 +3338,15 @@ struct Index {
         Column() {
           IndexSessionListSection({
             sessionGroups: this.sessionListGroups,
+            sessionListScroller: this.sessionListScroller,
             isMultiSelectMode: this.isMultiSelectMode,
             topSpacerHeight: topSpacerHeight,
             bottomSpacerHeight: this.getSessionListBottomSpacerHeight(),
+            showFavoriteFilterSummary: this.isFavoriteFilterActive(),
+            favoriteFilterCountText: this.getFilterCountText(),
+            onClearFavoriteFilter: (): void => {
+              this.setSessionFilter(SessionFilterType.ALL)
+            },
             onGetGroupTitle: (groupKey: string): Resource => {
               return this.getSessionGroupTitle(groupKey)
             },

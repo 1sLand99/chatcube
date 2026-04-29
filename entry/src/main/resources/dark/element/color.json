@@ -125,6 +125,14 @@
       "value": "#1AFFFFFF"
     },
     {
+      "name": "top_navigation_blur_origin",
+      "value": "#000F141B"
+    },
+    {
+      "name": "top_navigation_blur_scrolled",
+      "value": "#E60F141B"
+    },
+    {
       "name": "model_icon_bg",
       "value": "#F0F0F0"
     }

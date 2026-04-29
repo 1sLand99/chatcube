@@ -661,6 +661,14 @@
       "value": "收藏"
     },
     {
+      "name": "favorite_filter_active",
+      "value": "仅收藏"
+    },
+    {
+      "name": "filter_clear",
+      "value": "清除"
+    },
+    {
       "name": "group_today",
       "value": "今天"
     },
