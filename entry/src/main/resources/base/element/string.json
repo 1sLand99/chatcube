@@ -381,12 +381,8 @@
       "value": "Include Provider Configs"
     },
     {
-      "name": "export_include_api_keys",
-      "value": "Include API Keys"
-    },
-    {
-      "name": "export_include_api_keys_warning",
-      "value": "⚠️ Sensitive Data"
+      "name": "export_security_note",
+      "value": "The export includes API keys, search service and MCP connection settings so it can be used immediately after import. Store it only in trusted locations."
     },
     {
       "name": "export_include_preferences",

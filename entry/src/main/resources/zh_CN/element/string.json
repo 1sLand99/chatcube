@@ -381,12 +381,8 @@
       "value": "包含服务商配置"
     },
     {
-      "name": "export_include_api_keys",
-      "value": "包含 API Key"
-    },
-    {
-      "name": "export_include_api_keys_warning",
-      "value": "⚠️ 敏感信息"
+      "name": "export_security_note",
+      "value": "导出包会包含 API Key、搜索服务和 MCP 等连接配置，导入后可直接使用。请只保存到可信位置。"
     },
     {
       "name": "export_include_preferences",

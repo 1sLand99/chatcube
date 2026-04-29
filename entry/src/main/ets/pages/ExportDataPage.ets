@@ -44,7 +44,6 @@ struct ExportDataPage {
   @Local selectAll: boolean = true
   @Local includeAttachments: boolean = true
   @Local includeProviders: boolean = true
-  @Local includeApiKeys: boolean = false
   @Local includePreferences: boolean = true
   @Local isExporting: boolean = false
   @Local exportProgress: number = 0
@@ -145,7 +144,7 @@ struct ExportDataPage {
         sessionIds: this.selectAll ? undefined : this.selectedSessionIds,
         includeAttachments: this.includeAttachments,
         includeProviders: this.includeProviders,
-        includeApiKeys: this.includeApiKeys,
+        includeApiKeys: true,
         includePreferences: this.includePreferences
       }
 
@@ -292,16 +291,14 @@ struct ExportDataPage {
                 this.OptionRow($r('app.string.export_include_providers'), '', this.includeProviders,
                   (value: boolean) => { this.includeProviders = value })
                 Divider().color($r('app.color.divider'))
-                this.OptionRow($r('app.string.export_include_api_keys'),
-                  $r('app.string.export_include_api_keys_warning'), this.includeApiKeys,
-                  (value: boolean) => { this.includeApiKeys = value })
-                Divider().color($r('app.color.divider'))
                 this.OptionRow($r('app.string.export_include_preferences'), '', this.includePreferences,
                   (value: boolean) => { this.includePreferences = value })
               }
               .width('100%')
               .backgroundColor($r('app.color.surface'))
               .borderRadius(16)
+
+              this.ExportSecurityNotice()
             }
             .width('100%')
             .constraintSize({ maxWidth: this.getContentMaxWidth() })
@@ -439,6 +436,15 @@ struct ExportDataPage {
       .fontColor($r('app.color.text_secondary'))
       .fontWeight(FontWeight.Medium)
       .margin({ top: 24, bottom: 12, left: 4 })
+  }
+
+  @Builder
+  ExportSecurityNotice() {
+    Text($r('app.string.export_security_note'))
+      .fontSize(13)
+      .fontColor($r('app.color.text_secondary'))
+      .lineHeight(19)
+      .margin({ top: 10, left: 4, right: 4 })
   }
 
   @Builder

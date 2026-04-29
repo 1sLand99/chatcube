@@ -44,7 +44,7 @@ export interface ExportOptions {
   sessionIds?: string[]
   includeAttachments: boolean
   includeProviders: boolean
-  includeApiKeys: boolean
+  includeApiKeys?: boolean
   includePreferences: boolean
 }
 
@@ -175,7 +175,10 @@ export interface PreferenceEntry {
 
 // 敏感偏好键（不含 API 密钥时需跳过）
 const SENSITIVE_PREFERENCE_KEYS: string[] = [
-  PreferenceKeys.SEARCH_EXA_API_KEY
+  PreferenceKeys.SEARCH_BRAVE_API_KEY,
+  PreferenceKeys.SEARCH_TAVILY_API_KEY,
+  PreferenceKeys.SEARCH_EXA_API_KEY,
+  PreferenceKeys.MCP_SERVER_CONFIGS_JSON
 ]
 
 // 会话数据
@@ -410,6 +413,7 @@ export class ImportExportService {
   private async collectProviders(options: ExportOptions): Promise<ProviderExportData[]> {
     const allProviders = await this.dbService.getAllProviders()
     const providers: ProviderExportData[] = []
+    const includeSecrets = this.shouldIncludeSecrets(options)
     for (const p of allProviders) {
       const providerData: ProviderExportData = {
         id: p.id,
@@ -417,7 +421,7 @@ export class ImportExportService {
         type: p.type,
         apiStyle: p.apiStyle,
         openaiTransport: p.openaiTransport,
-        apiKey: options.includeApiKeys ? p.apiKey : '',
+        apiKey: includeSecrets ? p.apiKey : '',
         requiresApiKey: p.requiresApiKey,
         baseUrl: p.baseUrl,
         isEnabled: p.isEnabled,
@@ -427,7 +431,7 @@ export class ImportExportService {
         isPreset: p.isPreset,
         iconPath: p.iconPath,
         apiPath: p.apiPath,
-        customHeadersJson: p.customHeadersJson,
+        customHeadersJson: includeSecrets ? p.customHeadersJson : '',
         iconType: p.iconType,
         textIcon: p.textIcon,
         textIconBgColor: p.textIconBgColor,
@@ -467,9 +471,10 @@ export class ImportExportService {
     try {
       const allData = await getPreferencesService().getAll()
       const keys = Array.from(allData.keys())
+      const includeSecrets = this.shouldIncludeSecrets(options)
       for (const key of keys) {
         // 若不含 API 密钥，跳过敏感键
-        if (!options.includeApiKeys && SENSITIVE_PREFERENCE_KEYS.includes(key)) {
+        if (!includeSecrets && SENSITIVE_PREFERENCE_KEYS.includes(key)) {
           continue
         }
         const value = allData.get(key)
@@ -493,6 +498,10 @@ export class ImportExportService {
       console.error('ImportExportService', `Failed to collect preferences: ${JSON.stringify(error)}`)
     }
     return entries
+  }
+
+  private shouldIncludeSecrets(options: ExportOptions): boolean {
+    return options.includeApiKeys !== false
   }
 
   private generateManifest(
