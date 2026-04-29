@@ -182,6 +182,18 @@ const PRESET_PROVIDERS: PresetProviderConfig[] = [
     textIconBgColor: '#6C5CE7'
   },
   {
+    id: 'mimo',
+    name: 'MiMo',
+    type: ProviderType.CUSTOM,
+    apiStyle: ApiStyle.OPENAI,
+    openaiTransport: OpenAITransport.CHAT_COMPLETIONS,
+    baseUrl: 'https://api.xiaomimimo.com/v1',
+    iconPath: '',
+    brandColorHex: '#FF6900',
+    textIcon: 'Mi',
+    textIconBgColor: '#FF6900'
+  },
+  {
     id: 'ollama',
     name: 'Ollama',
     type: ProviderType.OLLAMA,

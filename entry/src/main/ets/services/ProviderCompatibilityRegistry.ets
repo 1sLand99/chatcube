@@ -145,6 +145,13 @@ function isSiliconFlowProvider(info: CompatibilityProviderInfo): boolean {
   return info.providerId === 'siliconflow' || normalizedBaseUrl.includes('api.siliconflow.cn')
 }
 
+function isMiMoProvider(info: CompatibilityProviderInfo): boolean {
+  const normalizedBaseUrl = normalizeCompatibilityBaseUrl(info.baseUrl)
+  return info.providerId === 'mimo' ||
+    normalizedBaseUrl.includes('api.xiaomimimo.com') ||
+    normalizedBaseUrl.includes('token-plan-cn.xiaomimimo.com')
+}
+
 export function isMiniMaxModelId(modelId: string): boolean {
   const modelLower = modelId.trim().toLowerCase()
   return modelLower.startsWith('abab') || modelLower.startsWith('minimax')
@@ -359,6 +366,20 @@ export function resolveProviderCompatibilityProfile(info: CompatibilityProviderI
       preserveAssistantReasoningDetails: false,
       reasoningControlMode: ReasoningControlMode.EFFORT,
       defaultReasoningRequestStrategy: ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET
+    }
+  }
+
+  if (info.apiStyle === ApiStyle.OPENAI && isMiMoProvider(info)) {
+    return {
+      modelDiscoveryStrategy: ModelDiscoveryStrategy.REMOTE_ENDPOINT,
+      staticModels: [],
+      defaultTestModel: '',
+      anthropicAuthStrategy: AnthropicAuthStrategy.API_KEY,
+      anthropicBearerRetryOnAuthFailure: false,
+      openAIStreamContentMode: OpenAIStreamContentMode.INCREMENTAL,
+      preserveAssistantReasoningDetails: false,
+      reasoningControlMode: ReasoningControlMode.TOGGLE,
+      defaultReasoningRequestStrategy: ReasoningRequestStrategy.DEEPSEEK_THINKING
     }
   }
 
