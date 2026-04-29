@@ -21,6 +21,10 @@ export function shouldShowScrollToTopButtonForChat(
   return !isAtTop
 }
 
+export function shouldShowToolSelectionChipForChat(availableToolCount: number, selectedToolCount: number): boolean {
+  return availableToolCount > 0 || selectedToolCount > 0
+}
+
 export function getListBottomPaddingForChat(pendingAttachmentCount: number, isEditingMessage: boolean,
   bottomAvoidHeightVp: number): number {
   let base = 90

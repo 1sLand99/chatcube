@@ -63,7 +63,8 @@ import {
 import {
   getListBottomPaddingForChat,
   getPreviewTimeTextForChat,
-  shouldShowScrollToTopButtonForChat
+  shouldShowScrollToTopButtonForChat,
+  shouldShowToolSelectionChipForChat
 } from './chat/ChatPageUiHelper'
 import { parseToolIdsFromRouteRaw } from './chat/ChatToolIdHelper'
 import { ChatManualSearchFlow, ChatManualSearchFlowDependencies } from './chat/ChatManualSearchFlow'
@@ -81,6 +82,7 @@ import {
   toListScrollIndexForMessage
 } from './chat/ChatMessageActionHelper'
 import { ChatPageRouteParams } from './chat/ChatPageRouteTypes'
+import { resolveModelSwitchReasoningLevel } from './chat/ChatReasoningStateHelper'
 import { getChatContentMaxWidth, LayoutSizeClass } from '../config/LayoutProfile'
 import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/AppUiState'
 import { applyModelDraft } from '../utils/ModelDraftUtils'
@@ -90,12 +92,6 @@ import { normalizeAssistantAvatarValue } from '../components/AssistantAvatar'
 
 const DOMAIN = 0x0003
 const TAG = 'ChatPage'
-const REASONING_BUDGET_AUTO: number = -1
-const REASONING_BUDGET_OFF: number = 0
-const REASONING_BUDGET_LOW: number = 1024
-const REASONING_BUDGET_MEDIUM: number = 16000
-const REASONING_BUDGET_HIGH: number = 32000
-const REASONING_BUDGET_XHIGH: number = 64000
 
 class ProviderModelSelection {
   provider: ModelProvider
@@ -209,8 +205,7 @@ export struct ChatPage {
   @Local toolExecutionApprovalArgumentsTruncated: boolean = false
   @Local showRawToolExecutionApprovalArguments: boolean = false
   // 推理级别状态
-  @Local reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO
-  @Local reasoningBudget: number = REASONING_BUDGET_AUTO
+  @Local reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   // 最近截图检测状态（由 ChatInputBar 回调设置，ScreenshotBanner 独立渲染）
   @Local hasRecentScreenshot: boolean = false
   // 是否为新建对话（用于加载和自动发送策略）
@@ -281,7 +276,6 @@ export struct ChatPage {
   @Local editingWebSearchEnabled: boolean = false
   @Local editingSelectedToolIds: string[] = []
   @Local editingReasoningLevel: ReasoningLevel = ReasoningLevel.OFF
-  @Local editingReasoningBudget: number = REASONING_BUDGET_AUTO
   @Local messageListSyncVersion: number = 0
   private scroller: Scroller = new Scroller()
   private maxScrollOffset: number = 0
@@ -568,6 +562,7 @@ export struct ChatPage {
     this.sessionId = loadResult.sessionId
     this.sessionTitle = loadResult.sessionTitle
     this.webSearchConversationEnabled = loadResult.webSearchEnabled && loadResult.webSearchConversationEnabled
+    this.reasoningLevel = loadResult.reasoningLevel
     this.inputText = loadResult.draftText
     this.pendingAttachments = [...loadResult.draftAttachments]
     this.isNewChatTransition = loadResult.isNewChatTransition
@@ -900,11 +895,15 @@ export struct ChatPage {
     if (this.currentProvider === null || model === null) {
       return ReasoningControlMode.NONE
     }
+    return this.getReasoningControlModeForModel(this.currentProvider, model)
+  }
+
+  private getReasoningControlModeForModel(provider: ModelProvider, model: ModelInfo): ReasoningControlMode {
     return resolveReasoningControlMode(
       {
-        providerId: this.currentProvider.id,
-        baseUrl: this.currentProvider.baseUrl,
-        apiStyle: this.currentProvider.apiStyle
+        providerId: provider.id,
+        baseUrl: provider.baseUrl,
+        apiStyle: provider.apiStyle
       },
       model.id,
       model.capabilities.supportsReasoning,
@@ -922,38 +921,64 @@ export struct ChatPage {
   private syncReasoningAvailabilityWithCurrentModel(): void {
     const controlMode = this.getReasoningControlModeForCurrentModel()
     if (controlMode === ReasoningControlMode.NONE) {
+      this.reasoningLevel = ReasoningLevel.OFF
       return
-    } else {
-      this.reasoningLevel = this.normalizeReasoningLevelForCurrentModel(this.reasoningLevel)
-      this.reasoningBudget = this.normalizeReasoningBudgetForLevel(this.reasoningLevel, this.reasoningBudget)
     }
+    this.reasoningLevel = this.normalizeReasoningLevelForCurrentModel(this.reasoningLevel)
+  }
+
+  private resetReasoningForSelectedModel(provider: ModelProvider, model: ModelInfo): void {
+    const controlMode = this.getReasoningControlModeForModel(provider, model)
+    const resetLevel = resolveModelSwitchReasoningLevel(controlMode)
+    if (resetLevel === ReasoningLevel.OFF) {
+      this.reasoningLevel = ReasoningLevel.OFF
+    } else {
+      this.reasoningLevel = this.normalizeReasoningLevelForControlMode(
+        ReasoningLevel.AUTO,
+        controlMode,
+        provider,
+        model
+      )
+    }
+    if (this.isEditingMessage) {
+      this.editingReasoningLevel = this.reasoningLevel
+    }
+    this.persistReasoningPreference(this.reasoningLevel)
   }
 
   private normalizeReasoningLevelForCurrentModel(value: ReasoningLevel): ReasoningLevel {
-    const normalized = normalizeReasoningLevelForControl(value, this.getReasoningControlModeForCurrentModel())
-    if (normalized === ReasoningLevel.XHIGH && !this.supportsReasoningXhighForCurrentModel()) {
+    const model = this.getCurrentModelInfo()
+    if (this.currentProvider === null || model === null) {
+      return ReasoningLevel.OFF
+    }
+    return this.normalizeReasoningLevelForControlMode(
+      value,
+      this.getReasoningControlModeForModel(this.currentProvider, model),
+      this.currentProvider,
+      model
+    )
+  }
+
+  private normalizeReasoningLevelForControlMode(
+    value: ReasoningLevel,
+    controlMode: ReasoningControlMode,
+    provider: ModelProvider,
+    model: ModelInfo
+  ): ReasoningLevel {
+    const normalized = normalizeReasoningLevelForControl(value, controlMode)
+    if (normalized === ReasoningLevel.XHIGH && !supportsReasoningXhighControl(
+      {
+        providerId: provider.id,
+        baseUrl: provider.baseUrl,
+        apiStyle: provider.apiStyle
+      },
+      model.id,
+      model.capabilities.supportsReasoning,
+      this.getCurrentReasoningStrategyOverride(model)
+    )) {
       return ReasoningLevel.HIGH
     }
     return normalized
-  }
-
-  private normalizeReasoningBudgetForLevel(level: ReasoningLevel, budget: number): number {
-    switch (level) {
-      case ReasoningLevel.OFF:
-        return REASONING_BUDGET_OFF
-      case ReasoningLevel.AUTO:
-        return REASONING_BUDGET_AUTO
-      case ReasoningLevel.LOW:
-        return REASONING_BUDGET_LOW
-      case ReasoningLevel.MEDIUM:
-        return REASONING_BUDGET_MEDIUM
-      case ReasoningLevel.HIGH:
-        return REASONING_BUDGET_HIGH
-      case ReasoningLevel.XHIGH:
-        return REASONING_BUDGET_XHIGH
-      default:
-        return REASONING_BUDGET_AUTO
-    }
   }
 
   private applySelectedToolIdsInMemory(toolIds: string[], enabledMcpServerIds?: Set<string>): void {
@@ -1231,10 +1256,6 @@ export struct ChatPage {
     return this.isEditingMessage ? this.editingReasoningLevel : this.reasoningLevel
   }
 
-  private getActiveComposerReasoningBudget(): number {
-    return this.isEditingMessage ? this.editingReasoningBudget : this.reasoningBudget
-  }
-
   private updateActiveComposerSelectedToolIds(toolIds: string[]): Promise<void> {
     const normalizedToolIds = this.normalizeSelectedToolIdsForPicker(toolIds)
     if (this.isEditingMessage) {
@@ -1245,23 +1266,23 @@ export struct ChatPage {
   }
 
   private updateActiveComposerReasoningLevel(value: ReasoningLevel): void {
-    this.updateActiveComposerReasoningBudget(value, this.getActiveComposerReasoningBudget())
-  }
-
-  private updateActiveComposerReasoningBudget(value: ReasoningLevel, budget: number): void {
     const normalizedLevel = this.normalizeReasoningLevelForCurrentModel(value)
-    const normalizedBudget = this.normalizeReasoningBudgetForLevel(normalizedLevel, budget)
     if (this.isEditingMessage) {
       this.editingReasoningLevel = normalizedLevel
-      this.editingReasoningBudget = normalizedBudget
       return
     }
     this.reasoningLevel = normalizedLevel
-    this.reasoningBudget = normalizedBudget
+    this.persistReasoningPreference(normalizedLevel)
   }
 
-  private handleReasoningBudgetSelected(value: ReasoningLevel, budget: number): void {
-    this.updateActiveComposerReasoningBudget(value, budget)
+  private persistReasoningPreference(level: ReasoningLevel): void {
+    this.persistReasoningPreferenceAsync(level).catch((error: Object) => {
+      console.error('ChatPage', `[persistReasoningPreference] Failed: ${JSON.stringify(error)}`)
+    })
+  }
+
+  private async persistReasoningPreferenceAsync(level: ReasoningLevel): Promise<void> {
+    await this.preferencesService.setString(PreferenceKeys.CHAT_REASONING_LEVEL, level)
   }
 
   private handleComposerWebSearchToggle(): void {
@@ -1370,7 +1391,6 @@ export struct ChatPage {
       getCurrentModelName: (): string => this.currentModel,
       getMessages: (): ChatMessage[] => this.messages,
       getReasoningLevel: (): ReasoningLevel => this.reasoningLevel,
-      getReasoningBudget: (): number => this.reasoningBudget,
       executeManualSearch: async (messageContent: string, attachmentsToSend: MessageAttachment[]): Promise<void> => {
         console.info('ChatPage', '[联网查询] 显式联网模式，使用手动搜索执行链路')
         await this.getManualSearchFlow().startManualSearchFallback(messageContent, attachmentsToSend)
@@ -1487,7 +1507,6 @@ export struct ChatPage {
       getCurrentModelName: (): string => this.currentModel,
       getMessages: (): ChatMessage[] => this.messages,
       getReasoningLevel: (): ReasoningLevel => this.reasoningLevel,
-      getReasoningBudget: (): number => this.reasoningBudget,
       isSearchCancelled: (): boolean => this.isSearchCancelled,
       onSyncMessages: (): void => {
         this.markMessageListChanged()
@@ -1547,8 +1566,7 @@ export struct ChatPage {
         attachments: MessageAttachment[],
         _webSearchEnabled: boolean,
         _selectedToolIds: string[],
-        _reasoningLevel: ReasoningLevel,
-        _reasoningBudget: number
+        _reasoningLevel: ReasoningLevel
       ): boolean => {
         const prepareResult = this.getSendFlow().prepareSendRequest(
           content,
@@ -1571,37 +1589,32 @@ export struct ChatPage {
         this.editingWebSearchEnabled = false
         this.editingSelectedToolIds = []
         this.editingReasoningLevel = ReasoningLevel.OFF
-        this.editingReasoningBudget = REASONING_BUDGET_AUTO
       },
       onApplySavedDraft: (
         content: string,
         attachments: MessageAttachment[],
         webSearchEnabled: boolean,
         selectedToolIds: string[],
-        reasoningLevel: ReasoningLevel,
-        reasoningBudget: number
+        reasoningLevel: ReasoningLevel
       ): void => {
         this.inputText = content
         this.pendingAttachments = [...attachments]
         this.webSearchConversationEnabled = this.webSearchAvailable && webSearchEnabled
         this.applySelectedToolIdsInMemory(selectedToolIds)
         this.reasoningLevel = this.normalizeReasoningLevelForCurrentModel(reasoningLevel)
-        this.reasoningBudget = this.normalizeReasoningBudgetForLevel(this.reasoningLevel, reasoningBudget)
       },
       onTriggerSend: async (
         content: string,
         attachments: MessageAttachment[],
         webSearchEnabled: boolean,
         selectedToolIds: string[],
-        reasoningLevel: ReasoningLevel,
-        reasoningBudget: number
+        reasoningLevel: ReasoningLevel
       ): Promise<void> => {
         this.inputText = content
         this.pendingAttachments = [...attachments]
         this.webSearchConversationEnabled = this.webSearchAvailable && webSearchEnabled
         this.applySelectedToolIdsInMemory(selectedToolIds)
         this.reasoningLevel = this.normalizeReasoningLevelForCurrentModel(reasoningLevel)
-        this.reasoningBudget = this.normalizeReasoningBudgetForLevel(this.reasoningLevel, reasoningBudget)
         await this.sendMessage()
       },
       onShowToast: (message: string | Resource): void => {
@@ -1803,13 +1816,18 @@ export struct ChatPage {
     provider: ModelProvider,
     model: ModelInfo,
     preferredName: string = '',
-    syncGlobalModel: boolean = true
+    syncGlobalModel: boolean = true,
+    resetReasoning: boolean = false
   ): Promise<void> {
     const modelName = model.name !== '' ? model.name : (preferredName !== '' ? preferredName : model.id)
     this.currentProvider = provider
     this.currentModelId = model.id
     this.currentModel = modelName
-    this.syncReasoningAvailabilityWithCurrentModel()
+    if (resetReasoning) {
+      this.resetReasoningForSelectedModel(provider, model)
+    } else {
+      this.syncReasoningAvailabilityWithCurrentModel()
+    }
     if (syncGlobalModel) {
       await this.appStateManager.setCurrentModel(model.id, modelName, provider.id)
     }
@@ -1939,7 +1957,39 @@ export struct ChatPage {
   }
 
   private getTitleBarMaskExtraHeight(): number {
-    return 16
+    return 24
+  }
+
+  private getTitleBarScrollEffectType(): ScrollEffectType {
+    if (this.materialType === 0) {
+      return ScrollEffectType.GRADIENT_BLUR
+    }
+    return ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
+  }
+
+  private getTitleBarBlurEffectiveEndOffset(): number {
+    return this.windowWidthVp > this.windowHeightVp ? 20 : 28
+  }
+
+  private getTitleBarInitialBlurRadius(): number {
+    return this.materialType === 0 ? 0 : 8
+  }
+
+  private getTitleBarBlurRadius(): number {
+    if (this.materialType === 0) {
+      return 0
+    }
+    const isLandscape = this.windowWidthVp > this.windowHeightVp
+    if (this.materialLevel === 0) {
+      return isLandscape ? 20 : 26
+    }
+    if (this.materialLevel === 1) {
+      return isLandscape ? 18 : 22
+    }
+    if (this.materialLevel === 2) {
+      return isLandscape ? 14 : 18
+    }
+    return isLandscape ? 16 : 22
   }
 
   private isExistingSessionSeeded(): boolean {
@@ -1971,21 +2021,23 @@ export struct ChatPage {
       },
       style: {
         scrollEffectOpts: {
-          enableScrollEffect: false,
-          scrollEffectType: ScrollEffectType.IMMERSIVE_GRADIENT_BLUR,
+          enableScrollEffect: true,
+          scrollEffectType: this.getTitleBarScrollEffectType(),
           blurEffectiveStartOffset: LengthMetrics.vp(0),
-          blurEffectiveEndOffset: LengthMetrics.vp(8)
+          blurEffectiveEndOffset: LengthMetrics.vp(this.getTitleBarBlurEffectiveEndOffset())
         },
         originalStyle: {
           backgroundStyle: {
+            backgroundColor: $r('app.color.top_navigation_blur_origin'),
             maskExtraHeight: this.getTitleBarMaskExtraHeight(),
-            blurRadius: 20
+            blurRadius: this.getTitleBarInitialBlurRadius()
           }
         },
         scrollEffectStyle: {
           backgroundStyle: {
+            backgroundColor: $r('app.color.top_navigation_blur_scrolled'),
             maskExtraHeight: this.getTitleBarMaskExtraHeight(),
-            blurRadius: 20
+            blurRadius: this.getTitleBarBlurRadius()
           }
         },
         blurStrategy: BlurStrategy.ENABLE,
@@ -2216,8 +2268,10 @@ export struct ChatPage {
               onToggleWebSearch: (): void => {
                 this.handleComposerWebSearchToggle()
               },
-              toolSelectionAvailable: this.availableChatTools.length > 0 || this.hasSelectedTools() ||
-                this.isRefreshingMcpToolAvailability,
+              toolSelectionAvailable: shouldShowToolSelectionChipForChat(
+                this.availableChatTools.length,
+                this.getActiveComposerSelectedToolIds().length
+              ),
               hasSelectedTools: this.hasSelectedTools(),
               reasoningAvailable: this.supportsReasoningForCurrentModel(),
               reasoningControlMode: this.getReasoningControlModeForCurrentModel(),
@@ -2226,8 +2280,8 @@ export struct ChatPage {
                 this.showToolPickerSheet = true
               },
               reasoningLevel: this.getActiveComposerReasoningLevel(),
-              onReasoningBudgetChange: (value: ReasoningLevel, budget: number): void => {
-                this.handleReasoningBudgetSelected(value, budget)
+              onReasoningLevelChange: (value: ReasoningLevel): void => {
+                this.updateActiveComposerReasoningLevel(value)
               },
               hasRecentScreenshot: this.hasRecentScreenshot,
               bottomAvoidHeight: this.getComposerBottomAvoidHeightVp(),
@@ -3080,7 +3134,7 @@ export struct ChatPage {
       console.warn('ChatPage', `[handleModelSelect] Model not found: ${providerId}/${modelId}`)
       return
     }
-    this.applyModelSelection(selection.provider, selection.model, modelName).catch((error: Object) => {
+    this.applyModelSelection(selection.provider, selection.model, modelName, true, true).catch((error: Object) => {
       console.error('ChatPage', `[handleModelSelect] Failed to persist model selection: ${JSON.stringify(error)}`)
     })
 
@@ -3385,7 +3439,6 @@ export struct ChatPage {
     this.editingWebSearchEnabled = toolContext.webSearchEnabled
     this.editingSelectedToolIds = [...toolContext.selectedToolIds]
     this.editingReasoningLevel = this.reasoningLevel
-    this.editingReasoningBudget = this.reasoningBudget
     this.isEditingMessage = true
     this.getScrollUiFlow().setInputBarVisible(true)
     this.autoFocusInput = true
@@ -3419,7 +3472,6 @@ export struct ChatPage {
     this.editingWebSearchEnabled = false
     this.editingSelectedToolIds = []
     this.editingReasoningLevel = ReasoningLevel.OFF
-    this.editingReasoningBudget = REASONING_BUDGET_AUTO
   }
 
   // 内联编辑模式：保存并发送
@@ -3430,8 +3482,7 @@ export struct ChatPage {
       this.pendingAttachments,
       this.editingWebSearchEnabled,
       this.editingSelectedToolIds,
-      this.editingReasoningLevel,
-      this.editingReasoningBudget
+      this.editingReasoningLevel
     )
   }
 

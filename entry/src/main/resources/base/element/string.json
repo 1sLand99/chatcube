@@ -533,30 +533,6 @@
       "value": "Extreme"
     },
     {
-      "name": "reasoning_budget_off_desc",
-      "value": "Do not send reasoning parameters"
-    },
-    {
-      "name": "reasoning_budget_auto_desc",
-      "value": "Let the model choose the reasoning budget"
-    },
-    {
-      "name": "reasoning_budget_low_desc",
-      "value": "Light reasoning for simple tasks"
-    },
-    {
-      "name": "reasoning_budget_medium_desc",
-      "value": "Balanced reasoning for daily work"
-    },
-    {
-      "name": "reasoning_budget_high_desc",
-      "value": "More budget for complex analysis"
-    },
-    {
-      "name": "reasoning_budget_xhigh_desc",
-      "value": "Maximum reasoning, slower and costlier"
-    },
-    {
       "name": "search_service_config",
       "value": "Search Service"
     },

@@ -50,7 +50,6 @@ export interface ChatSendFlowDependencies {
   getCurrentModelName: () => string
   getMessages: () => ChatMessage[]
   getReasoningLevel: () => ReasoningLevel
-  getReasoningBudget: () => number
   executeManualSearch: (messageContent: string, attachmentsToSend: MessageAttachment[]) => Promise<void>
   onClearComposer: () => void
   onBeforeSend: () => void
@@ -392,7 +391,6 @@ export class ChatSendFlow {
         attachmentsToSend,
         0,
         this.deps.getReasoningLevel(),
-        this.deps.getReasoningBudget(),
         currentProvider.apiPath || undefined,
         currentProvider.customHeadersJson || undefined
       )
@@ -464,7 +462,6 @@ export class ChatSendFlow {
         attachmentsToSend,
         0,
         this.deps.getReasoningLevel(),
-        this.deps.getReasoningBudget(),
         tools,
         toolCallbacks,
         currentProvider.apiPath || undefined,

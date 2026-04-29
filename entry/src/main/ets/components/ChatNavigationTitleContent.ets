@@ -470,5 +470,6 @@ export struct ChatNavigationTitleContent {
     .padding({ left: 12, right: 12 })
     .translate({ y: CHAT_NAVIGATION_CONTENT_VERTICAL_OFFSET })
     .backgroundColor(Color.Transparent)
+    .renderGroup(false)
   }
 }

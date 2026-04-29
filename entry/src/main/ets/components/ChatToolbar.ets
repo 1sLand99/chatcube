@@ -7,13 +7,6 @@ import { ReasoningLevel } from '../models/ChatModels'
 import { ReasoningControlMode } from '../services/ProviderCompatibilityRegistry'
 import { getAppUiState } from '../state/AppUiState'
 
-const REASONING_BUDGET_OFF: number = 0
-const REASONING_BUDGET_AUTO: number = -1
-const REASONING_BUDGET_LOW: number = 1024
-const REASONING_BUDGET_MEDIUM: number = 16000
-const REASONING_BUDGET_HIGH: number = 32000
-const REASONING_BUDGET_XHIGH: number = 64000
-
 @ComponentV2
 export struct ChatToolbar {
   @Param webSearchAvailable: boolean = false
@@ -28,8 +21,8 @@ export struct ChatToolbar {
   @Param reasoningXhighAvailable: boolean = false
   // 推理级别状态
   @Param reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
-  @Event onReasoningBudgetChange: (value: ReasoningLevel, budget: number) => void =
-    (_value: ReasoningLevel, _budget: number): void => {}
+  @Event onReasoningLevelChange: (value: ReasoningLevel) => void =
+    (_value: ReasoningLevel): void => {}
 
   // 主题颜色
   private get themePrimary(): string {
@@ -157,7 +150,7 @@ export struct ChatToolbar {
               .fontWeight(this.isReasoningEnabled() ? FontWeight.Medium : FontWeight.Regular)
               .margin({ left: 6 })
 
-            SymbolGlyph($r('sys.symbol.chevron_down'))
+            SymbolGlyph($r('sys.symbol.chevron_up'))
               .fontSize(12)
               .fontColor([this.isReasoningEnabled() ? this.themePrimary : $r('app.color.text_secondary')])
               .margin({ left: 2 })
@@ -200,25 +193,6 @@ export struct ChatToolbar {
 
   private supportsHighMaxLevels(): boolean {
     return this.reasoningControlMode === ReasoningControlMode.HIGH_MAX
-  }
-
-  private getBudgetForLevel(level: ReasoningLevel): number {
-    switch (level) {
-      case ReasoningLevel.OFF:
-        return REASONING_BUDGET_OFF
-      case ReasoningLevel.AUTO:
-        return REASONING_BUDGET_AUTO
-      case ReasoningLevel.LOW:
-        return REASONING_BUDGET_LOW
-      case ReasoningLevel.MEDIUM:
-        return REASONING_BUDGET_MEDIUM
-      case ReasoningLevel.HIGH:
-        return REASONING_BUDGET_HIGH
-      case ReasoningLevel.XHIGH:
-        return REASONING_BUDGET_XHIGH
-      default:
-        return REASONING_BUDGET_AUTO
-    }
   }
 
   private getReasoningLevelText(level: ReasoningLevel): ResourceStr {
@@ -268,7 +242,7 @@ export struct ChatToolbar {
       })
         .contentFont({ size: 14 })
         .onClick(() => {
-          this.onReasoningBudgetChange(level, this.getBudgetForLevel(level))
+          this.onReasoningLevelChange(level)
         })
     } else {
       MenuItem({
@@ -276,7 +250,7 @@ export struct ChatToolbar {
       })
         .contentFont({ size: 14 })
         .onClick(() => {
-          this.onReasoningBudgetChange(level, this.getBudgetForLevel(level))
+          this.onReasoningLevelChange(level)
         })
     }
   }

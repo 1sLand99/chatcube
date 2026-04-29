@@ -57,7 +57,10 @@ import {
   reorderProvidersWithinTab
 } from '../main/ets/config/ProviderOrderUtils'
 import { ServiceRegistry } from '../main/ets/services/ServiceRegistry'
-import { shouldShowScrollToTopButtonForChat } from '../main/ets/pages/chat/ChatPageUiHelper'
+import {
+  shouldShowScrollToTopButtonForChat,
+  shouldShowToolSelectionChipForChat
+} from '../main/ets/pages/chat/ChatPageUiHelper'
 import { ChatScrollUiFlow, ChatScrollUiFlowDependencies } from '../main/ets/pages/chat/ChatScrollUiFlow'
 import {
   buildChatMessageRowRenderSignature,
@@ -81,6 +84,10 @@ import {
   resolveReasoningRequestStrategyWithOverride,
   supportsReasoningXhighControl
 } from '../main/ets/services/ProviderCompatibilityRegistry'
+import {
+  normalizeStoredChatReasoningLevel,
+  resolveModelSwitchReasoningLevel
+} from '../main/ets/pages/chat/ChatReasoningStateHelper'
 
 class TestDataChangeListener implements DataChangeListener {
   reloadCount: number = 0
@@ -708,6 +715,12 @@ export default function refactorGuardTest() {
       expect(shouldShowScrollToTopButtonForChat(false, 10, false, 480, 600)).assertEqual(true)
     })
 
+    it('shouldShowToolSelectionChipForChat_should_ignore_background_refresh_only_state', 0, () => {
+      expect(shouldShowToolSelectionChipForChat(0, 0)).assertEqual(false)
+      expect(shouldShowToolSelectionChipForChat(1, 0)).assertEqual(true)
+      expect(shouldShowToolSelectionChipForChat(0, 1)).assertEqual(true)
+    })
+
     it('chatScrollUiFlow_should_use_absolute_scroll_offset_from_list_events', 0, () => {
       const state: TestScrollFlowState = {
         isScrollerAtEnd: false,
@@ -924,6 +937,11 @@ export default function refactorGuardTest() {
         baseUrl: 'https://api.deepseek.com/v1',
         apiStyle: ApiStyle.OPENAI
       }, 'deepseek-v4', true)
+      const mimoMode = resolveReasoningControlMode({
+        providerId: 'mimo',
+        baseUrl: 'https://api.xiaomimimo.com/v1',
+        apiStyle: ApiStyle.OPENAI
+      }, 'mimo-v2.5-pro', true)
       const unknownMode = resolveReasoningControlMode({
         providerId: 'custom',
         baseUrl: 'https://example.com/v1',
@@ -943,6 +961,7 @@ export default function refactorGuardTest() {
       expect(openaiMode).assertEqual(ReasoningControlMode.EFFORT)
       expect(minimaxMode).assertEqual(ReasoningControlMode.TOGGLE)
       expect(deepSeekMode).assertEqual(ReasoningControlMode.HIGH_MAX)
+      expect(mimoMode).assertEqual(ReasoningControlMode.TOGGLE)
       expect(unknownMode).assertEqual(ReasoningControlMode.EFFORT)
       expect(overrideMode).assertEqual(ReasoningControlMode.EFFORT)
       expect(openAICompatOverrideMode).assertEqual(ReasoningControlMode.EFFORT)
@@ -994,16 +1013,22 @@ export default function refactorGuardTest() {
         baseUrl: 'https://api.deepseek.com/v1',
         apiStyle: ApiStyle.OPENAI
       }, 'deepseek-v4')
+      const officialMiMo = resolveReasoningRequestStrategyWithOverride({
+        providerId: 'mimo',
+        baseUrl: 'https://api.xiaomimimo.com/v1',
+        apiStyle: ApiStyle.OPENAI
+      }, 'mimo-v2.5-pro')
 
       expect(namedLikeNewApi).assertEqual(ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT)
       expect(idLikeSub2api).assertEqual(ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT)
       expect(urlLikeCliProxy).assertEqual(ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT)
       expect(explicitOpenAICompat).assertEqual(ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT)
-      expect(dashScopeQwen).assertEqual(ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET)
-      expect(relayQwen).assertEqual(ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET)
+      expect(dashScopeQwen).assertEqual(ReasoningRequestStrategy.DASHSCOPE_THINKING)
+      expect(relayQwen).assertEqual(ReasoningRequestStrategy.DASHSCOPE_THINKING)
       expect(relayMiniMax).assertEqual(ReasoningRequestStrategy.OPENAI_REASONING_SPLIT)
       expect(relayKimi).assertEqual(ReasoningRequestStrategy.KIMI_THINKING)
       expect(officialDeepSeek).assertEqual(ReasoningRequestStrategy.DEEPSEEK_THINKING)
+      expect(officialMiMo).assertEqual(ReasoningRequestStrategy.MIMO_THINKING)
     })
 
     it('reasoningControl_should_expose_xhigh_only_for_matching_effort_protocols', 0, () => {
@@ -1057,6 +1082,19 @@ export default function refactorGuardTest() {
         .assertEqual(ReasoningLevel.AUTO)
       expect(normalizeReasoningLevelForControl(ReasoningLevel.AUTO, ReasoningControlMode.NONE))
         .assertEqual(ReasoningLevel.OFF)
+    })
+
+    it('chatPageLoadFlow_should_preserve_stored_reasoning_off', 0, () => {
+      expect(normalizeStoredChatReasoningLevel(ReasoningLevel.OFF)).assertEqual(ReasoningLevel.OFF)
+      expect(normalizeStoredChatReasoningLevel(ReasoningLevel.HIGH)).assertEqual(ReasoningLevel.HIGH)
+      expect(normalizeStoredChatReasoningLevel('')).assertEqual(ReasoningLevel.OFF)
+    })
+
+    it('chatReasoningState_should_reset_model_switch_to_off', 0, () => {
+      expect(resolveModelSwitchReasoningLevel(ReasoningControlMode.NONE)).assertEqual(ReasoningLevel.OFF)
+      expect(resolveModelSwitchReasoningLevel(ReasoningControlMode.TOGGLE)).assertEqual(ReasoningLevel.OFF)
+      expect(resolveModelSwitchReasoningLevel(ReasoningControlMode.EFFORT)).assertEqual(ReasoningLevel.OFF)
+      expect(resolveModelSwitchReasoningLevel(ReasoningControlMode.HIGH_MAX)).assertEqual(ReasoningLevel.OFF)
     })
 
     it('messageBubbleDisplayUtils_should_hide_assistant_toolbar_while_generating', 0, () => {

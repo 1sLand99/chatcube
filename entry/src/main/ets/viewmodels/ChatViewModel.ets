@@ -562,7 +562,6 @@ export class ChatViewModel {
     attachments: MessageAttachment[] = [],
     contextStartIndex: number = 0,
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF,
-    reasoningBudget: number = -1,
     apiPath?: string,  // 可选的自定义 API 路径
     customHeadersJson?: string
   ): Promise<void> {
@@ -672,7 +671,6 @@ export class ChatViewModel {
     }
     apiConfig.modelReasoningStrategyOverride = this.getCurrentModelReasoningStrategyOverride(providerId, modelId)
     apiConfig.modelSupportsReasoning = this.getCurrentModelSupportsReasoning(providerId, modelId)
-    apiConfig.reasoningBudget = reasoningBudget
 
     if (this.isCancelled(cancelSnapshot)) {
       return
@@ -1156,7 +1154,6 @@ ${webContext.content}
     onComplete: () => void,
     onError: (error: string) => void,
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF,
-    reasoningBudget: number = -1,
     apiPath?: string,
     customHeadersJson?: string
   ): Promise<void> {
@@ -1279,7 +1276,6 @@ ${limitedSearchContext}
     }
     apiConfig.modelReasoningStrategyOverride = this.getCurrentModelReasoningStrategyOverride(providerId, modelId)
     apiConfig.modelSupportsReasoning = this.getCurrentModelSupportsReasoning(providerId, modelId)
-    apiConfig.reasoningBudget = reasoningBudget
 
     if (this.isCancelled(cancelSnapshot)) {
       return
@@ -1472,7 +1468,6 @@ ${limitedSearchContext}
     attachments: MessageAttachment[] = [],
     contextStartIndex: number = 0,
     reasoningLevel: ReasoningLevel = ReasoningLevel.OFF,
-    reasoningBudget: number = -1,
     tools: ToolDefinition[] = [],
     toolCallbacks?: ToolCallCallbacks,
     apiPath?: string,
@@ -1612,7 +1607,6 @@ ${limitedSearchContext}
     }
     apiConfig.modelReasoningStrategyOverride = this.getCurrentModelReasoningStrategyOverride(providerId, modelId)
     apiConfig.modelSupportsReasoning = this.getCurrentModelSupportsReasoning(providerId, modelId)
-    apiConfig.reasoningBudget = reasoningBudget
 
     if (this.isCancelled(cancelSnapshot)) {
       return

@@ -1,4 +1,4 @@
-import { ChatMessage, MessageAttachment, ModelProvider } from '../../models/ChatModels'
+import { ChatMessage, MessageAttachment, ModelProvider, ReasoningLevel } from '../../models/ChatModels'
 import { AppStateManager } from '../../viewmodels/AppStateManager'
 import { ProviderViewModel } from '../../viewmodels/ProviderViewModel'
 import { ChatViewModel } from '../../viewmodels/ChatViewModel'
@@ -6,10 +6,12 @@ import { PreferenceKeys, PreferencesService } from '../../services/PreferencesSe
 import { AssistantService } from '../../services/AssistantService'
 import { ChatPageRouteParams } from './ChatPageRouteTypes'
 import { Assistant, DEFAULT_ASSISTANT_ID } from '../../models/AssistantModels'
+import { normalizeStoredChatReasoningLevel } from './ChatReasoningStateHelper'
 
 export class ChatPageLoadResult {
   webSearchEnabled: boolean = false
   webSearchConversationEnabled: boolean = false
+  reasoningLevel: ReasoningLevel = ReasoningLevel.OFF
   providers: ModelProvider[] = []
   pendingInitialPrompt: string = ''
   pendingInitialToolIds: string[] = []
@@ -55,6 +57,10 @@ export class ChatPageLoadFlow {
       PreferenceKeys.SEARCH_CONVERSATION_ENABLED,
       result.webSearchEnabled
     )
+    result.reasoningLevel = normalizeStoredChatReasoningLevel(await this.deps.preferencesService.getString(
+      PreferenceKeys.CHAT_REASONING_LEVEL,
+      ReasoningLevel.OFF
+    ))
     result.providers = await this.deps.providerViewModel.loadProviders()
 
     result.pendingInitialPrompt =

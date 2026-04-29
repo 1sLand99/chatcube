@@ -221,7 +221,7 @@ interface OpenAIRequestBody {
   reasoning_split?: boolean  // MiniMax 推理内容分离（reasoning_details 字段）
   thinking?: ThinkingConfig  // Kimi / DeepSeek / 小米 MiMo / 智谱 GLM 思考模式配置
   enable_thinking?: boolean  // DashScope / SiliconFlow chat/completions 思考开关
-  thinking_budget?: number   // DashScope / SiliconFlow chat/completions 思考预算
+  thinking_budget?: number   // DashScope / SiliconFlow chat/completions 推理 token 上限
   tools?: OpenAITool[]       // Function Calling 工具定义
   tool_choice?: string       // 工具选择策略: "auto" | "none" | "required"
   top_p?: number             // Top P 采样参数
@@ -375,7 +375,6 @@ export interface AIApiConfig {
   customHeadersJson?: string  // 可选的服务商级自定义请求头
   modelReasoningStrategyOverride?: string
   modelSupportsReasoning?: boolean
-  reasoningBudget?: number
   // 模型参数（可选）
   topP?: number
   presencePenalty?: number
@@ -688,7 +687,11 @@ export class AIApiService {
       config.modelSupportsReasoning !== true) {
       return ReasoningRequestStrategy.NONE
     }
-    if (!hasOverride && strategy === ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET &&
+    if (!hasOverride && strategy === ReasoningRequestStrategy.MIMO_THINKING &&
+      config.modelSupportsReasoning !== true) {
+      return ReasoningRequestStrategy.NONE
+    }
+    if (!hasOverride && strategy === ReasoningRequestStrategy.DASHSCOPE_THINKING &&
       config.modelSupportsReasoning !== true) {
       return ReasoningRequestStrategy.NONE
     }
@@ -1225,7 +1228,7 @@ export class AIApiService {
   ): OpenAIRequestBody | OpenAIResponsesRequestBody | AnthropicRequestBody | GoogleRequestBody {
     const reasoningRequestStrategy = this.getReasoningRequestStrategy(config, model)
     const normalizedReasoningLevel = normalizeReasoningLevelForControl(reasoningLevel)
-    const normalizedReasoningBudget = this.getReasoningBudget(normalizedReasoningLevel)
+    const reasoningTokenLimit = this.getReasoningTokenLimit(normalizedReasoningLevel)
 
     if (config.apiStyle === ApiStyle.GOOGLE) {
       // Google Gemini 格式
@@ -1284,8 +1287,7 @@ export class AIApiService {
       const googleThinkingConfig = this.getGoogleThinkingConfig(
         model,
         reasoningRequestStrategy,
-        normalizedReasoningLevel,
-        normalizedReasoningBudget
+        normalizedReasoningLevel
       )
       if (googleThinkingConfig !== undefined) {
         googleBody.generationConfig.thinkingConfig = googleThinkingConfig
@@ -1372,7 +1374,7 @@ export class AIApiService {
           model,
           reasoningRequestStrategy,
           normalizedReasoningLevel,
-          normalizedReasoningBudget
+          reasoningTokenLimit
         )
         return bodyWithSystem
       }
@@ -1388,7 +1390,7 @@ export class AIApiService {
         model,
         reasoningRequestStrategy,
         normalizedReasoningLevel,
-        normalizedReasoningBudget
+        reasoningTokenLimit
       )
       return body
     }
@@ -1470,8 +1472,8 @@ export class AIApiService {
         } else if (normalizedReasoningLevel === ReasoningLevel.AUTO) {
           responsesBody.reasoning = { summary: 'auto' }
         }
-      } else if (reasoningRequestStrategy === ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET) {
-        this.applyDashScopeReasoningConfig(responsesBody, normalizedReasoningLevel, normalizedReasoningBudget)
+      } else if (reasoningRequestStrategy === ReasoningRequestStrategy.DASHSCOPE_THINKING) {
+        this.applyDashScopeReasoningConfig(responsesBody, normalizedReasoningLevel, reasoningTokenLimit)
       }
       return responsesBody
     }
@@ -1616,7 +1618,7 @@ export class AIApiService {
       normalizedReasoningLevel !== ReasoningLevel.OFF) {
       requestBody.reasoning_split = true
     } else if (reasoningRequestStrategy === ReasoningRequestStrategy.OPENROUTER_REASONING) {
-      const openRouterReasoning = this.getOpenRouterReasoningConfig(normalizedReasoningLevel, normalizedReasoningBudget)
+      const openRouterReasoning = this.getOpenRouterReasoningConfig(normalizedReasoningLevel, reasoningTokenLimit)
       if (openRouterReasoning !== undefined) {
         requestBody.reasoning = openRouterReasoning
       }
@@ -1630,21 +1632,25 @@ export class AIApiService {
       } else {
         requestBody.thinking = { type: 'disabled' }
       }
+    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.MIMO_THINKING) {
+      requestBody.thinking = {
+        type: normalizedReasoningLevel === ReasoningLevel.OFF ? 'disabled' : 'enabled'
+      }
     } else if (reasoningRequestStrategy === ReasoningRequestStrategy.ZHIPU_THINKING) {
       if (normalizedReasoningLevel !== ReasoningLevel.OFF) {
         requestBody.thinking = { type: 'enabled', clear_thinking: false }
       } else {
         requestBody.thinking = { type: 'disabled' }
       }
-    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET) {
-      this.applyDashScopeReasoningConfig(requestBody, normalizedReasoningLevel, normalizedReasoningBudget)
+    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.DASHSCOPE_THINKING) {
+      this.applyDashScopeReasoningConfig(requestBody, normalizedReasoningLevel, reasoningTokenLimit)
     } else if (reasoningRequestStrategy === ReasoningRequestStrategy.KIMI_THINKING) {
       this.applyKimiReasoningConfig(requestBody, normalizedReasoningLevel)
-    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET) {
+    } else if (reasoningRequestStrategy === ReasoningRequestStrategy.SILICONFLOW_THINKING) {
       if (normalizedReasoningLevel === ReasoningLevel.OFF) {
         requestBody.enable_thinking = false
       } else if (normalizedReasoningLevel !== ReasoningLevel.AUTO) {
-        requestBody.thinking_budget = this.getSiliconFlowThinkingBudget(normalizedReasoningBudget)
+        requestBody.thinking_budget = this.getSiliconFlowThinkingTokenLimit(reasoningTokenLimit)
       }
     }
     // 添加 Function Calling 工具定义
@@ -1882,7 +1888,7 @@ export class AIApiService {
     return result
   }
 
-  private getReasoningBudget(level: ReasoningLevel): number {
+  private getReasoningTokenLimit(level: ReasoningLevel): number {
     switch (level) {
       case ReasoningLevel.OFF:
         return 0
@@ -1901,10 +1907,9 @@ export class AIApiService {
     }
   }
 
-  // 获取 Anthropic 思考预算（token 数量）
-  private getAnthropicThinkingBudget(budget: number): number {
-    if (budget > 0) {
-      return budget
+  private getAnthropicThinkingTokenLimit(tokenLimit: number): number {
+    if (tokenLimit > 0) {
+      return tokenLimit
     }
     return 16000
   }
@@ -1924,13 +1929,14 @@ export class AIApiService {
   private shouldPreserveReasoningContentForToolMessages(strategy: ReasoningRequestStrategy): boolean {
     return strategy === ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT ||
       strategy === ReasoningRequestStrategy.DEEPSEEK_THINKING ||
+      strategy === ReasoningRequestStrategy.MIMO_THINKING ||
       strategy === ReasoningRequestStrategy.KIMI_THINKING
   }
 
   private applyDashScopeReasoningConfig(
     body: OpenAIRequestBody | OpenAIResponsesRequestBody,
     level: ReasoningLevel,
-    budget: number
+    tokenLimit: number
   ): void {
     if (level === ReasoningLevel.OFF) {
       body.enable_thinking = false
@@ -1938,7 +1944,7 @@ export class AIApiService {
       return
     }
     body.enable_thinking = true
-    body.thinking_budget = budget > 0 ? budget : undefined
+    body.thinking_budget = tokenLimit > 0 ? tokenLimit : undefined
   }
 
   private applyKimiReasoningConfig(body: OpenAIRequestBody, level: ReasoningLevel): void {
@@ -1985,7 +1991,7 @@ export class AIApiService {
     model: string,
     strategy: ReasoningRequestStrategy,
     level: ReasoningLevel,
-    budget: number
+    tokenLimit: number
   ): void {
     if (strategy !== ReasoningRequestStrategy.ANTHROPIC_THINKING) {
       return
@@ -2011,7 +2017,7 @@ export class AIApiService {
 
     body.thinking = {
       type: 'enabled',
-      budget_tokens: this.getAnthropicThinkingBudget(budget)
+      budget_tokens: this.getAnthropicThinkingTokenLimit(tokenLimit)
     }
   }
 
@@ -2093,7 +2099,7 @@ export class AIApiService {
     }
   }
 
-  private getOpenRouterReasoningConfig(level: ReasoningLevel, budget: number): OpenRouterReasoningConfig | undefined {
+  private getOpenRouterReasoningConfig(level: ReasoningLevel, tokenLimit: number): OpenRouterReasoningConfig | undefined {
     switch (level) {
       case ReasoningLevel.OFF:
         return { enabled: false }
@@ -2103,14 +2109,14 @@ export class AIApiService {
       case ReasoningLevel.MEDIUM:
       case ReasoningLevel.HIGH:
       case ReasoningLevel.XHIGH:
-        return { enabled: true, max_tokens: budget }
+        return { enabled: true, max_tokens: tokenLimit }
       default:
         return undefined
     }
   }
 
-  private getSiliconFlowThinkingBudget(budget: number): number {
-    return budget > 0 ? budget : 16000
+  private getSiliconFlowThinkingTokenLimit(tokenLimit: number): number {
+    return tokenLimit > 0 ? tokenLimit : 16000
   }
 
   private collectGoogleSystemPrompt(messages: RequestMessage[]): string {
@@ -2169,7 +2175,7 @@ export class AIApiService {
     }
   }
 
-  private getGoogleThinkingBudget(model: string, level: ReasoningLevel, budget: number): number | undefined {
+  private getGoogleThinkingTokenLimit(model: string, level: ReasoningLevel): number | undefined {
     switch (level) {
       case ReasoningLevel.OFF:
         return this.isGeminiTwoFiveProModel(model) ? 128 : 0
@@ -2191,8 +2197,7 @@ export class AIApiService {
   private getGoogleThinkingConfig(
     model: string,
     reasoningRequestStrategy: ReasoningRequestStrategy,
-    reasoningLevel: ReasoningLevel,
-    reasoningBudget: number
+    reasoningLevel: ReasoningLevel
   ): GoogleThinkingConfig | undefined {
     if (reasoningRequestStrategy !== ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG) {
       return undefined
@@ -2210,12 +2215,12 @@ export class AIApiService {
     }
 
     if (this.isGeminiTwoFiveThinkingModel(model)) {
-      const thinkingBudget = this.getGoogleThinkingBudget(model, reasoningLevel, reasoningBudget)
+      const thinkingTokenLimit = this.getGoogleThinkingTokenLimit(model, reasoningLevel)
       const config: GoogleThinkingConfig = {
         includeThoughts: reasoningLevel !== ReasoningLevel.OFF
       }
-      if (thinkingBudget !== undefined) {
-        config.thinkingBudget = thinkingBudget
+      if (thinkingTokenLimit !== undefined) {
+        config.thinkingBudget = thinkingTokenLimit
       }
       return config
     }

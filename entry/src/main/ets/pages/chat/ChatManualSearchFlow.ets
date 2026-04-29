@@ -50,7 +50,6 @@ export interface ChatManualSearchFlowDependencies {
   getCurrentModelName: () => string
   getMessages: () => ChatMessage[]
   getReasoningLevel: () => ReasoningLevel
-  getReasoningBudget: () => number
   isSearchCancelled: () => boolean
   onSyncMessages: () => void
   onScrollBottom: () => void
@@ -484,7 +483,6 @@ export class ChatManualSearchFlow {
         this.deps.onShowError(error)
       },
       this.deps.getReasoningLevel(),
-      this.deps.getReasoningBudget(),
       currentProvider.apiPath || undefined,
       currentProvider.customHeadersJson || undefined
     )

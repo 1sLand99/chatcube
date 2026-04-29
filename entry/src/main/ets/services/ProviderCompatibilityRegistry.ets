@@ -36,11 +36,12 @@ export enum ReasoningRequestStrategy {
   OPENROUTER_REASONING = 'openrouter_reasoning',
   ANTHROPIC_THINKING = 'anthropic_thinking',
   DEEPSEEK_THINKING = 'deepseek_thinking',
+  MIMO_THINKING = 'mimo_thinking',
   ZHIPU_THINKING = 'zhipu_thinking',
-  DASHSCOPE_THINKING_BUDGET = 'dashscope_thinking_budget',
+  DASHSCOPE_THINKING = 'dashscope_thinking',
   KIMI_THINKING = 'kimi_thinking',
   GOOGLE_THINKING_CONFIG = 'google_thinking_config',
-  SILICONFLOW_THINKING_BUDGET = 'siliconflow_thinking_budget'
+  SILICONFLOW_THINKING = 'siliconflow_thinking'
 }
 
 export interface ProviderCompatibilityProfile {
@@ -323,7 +324,7 @@ export function resolveProviderCompatibilityProfile(info: CompatibilityProviderI
       openAIStreamContentMode: OpenAIStreamContentMode.INCREMENTAL,
       preserveAssistantReasoningDetails: false,
       reasoningControlMode: ReasoningControlMode.EFFORT,
-      defaultReasoningRequestStrategy: ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET
+      defaultReasoningRequestStrategy: ReasoningRequestStrategy.DASHSCOPE_THINKING
     }
   }
 
@@ -365,7 +366,7 @@ export function resolveProviderCompatibilityProfile(info: CompatibilityProviderI
       openAIStreamContentMode: OpenAIStreamContentMode.INCREMENTAL,
       preserveAssistantReasoningDetails: false,
       reasoningControlMode: ReasoningControlMode.EFFORT,
-      defaultReasoningRequestStrategy: ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET
+      defaultReasoningRequestStrategy: ReasoningRequestStrategy.SILICONFLOW_THINKING
     }
   }
 
@@ -379,7 +380,7 @@ export function resolveProviderCompatibilityProfile(info: CompatibilityProviderI
       openAIStreamContentMode: OpenAIStreamContentMode.INCREMENTAL,
       preserveAssistantReasoningDetails: false,
       reasoningControlMode: ReasoningControlMode.TOGGLE,
-      defaultReasoningRequestStrategy: ReasoningRequestStrategy.DEEPSEEK_THINKING
+      defaultReasoningRequestStrategy: ReasoningRequestStrategy.MIMO_THINKING
     }
   }
 
@@ -429,7 +430,7 @@ export function resolveReasoningRequestStrategy(
         return ReasoningRequestStrategy.OPENAI_REASONING_SPLIT
       }
       if (isDashScopeThinkingModelId(modelId)) {
-        return ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET
+        return ReasoningRequestStrategy.DASHSCOPE_THINKING
       }
       if (isKimiThinkingModelId(modelId)) {
         return ReasoningRequestStrategy.KIMI_THINKING
@@ -443,12 +444,14 @@ export function resolveReasoningRequestStrategy(
       return ReasoningRequestStrategy.OPENROUTER_REASONING
     case ReasoningRequestStrategy.DEEPSEEK_THINKING:
       return ReasoningRequestStrategy.DEEPSEEK_THINKING
+    case ReasoningRequestStrategy.MIMO_THINKING:
+      return ReasoningRequestStrategy.MIMO_THINKING
     case ReasoningRequestStrategy.ZHIPU_THINKING:
       return supportsZhipuThinkingModel(modelId)
         ? ReasoningRequestStrategy.ZHIPU_THINKING
         : ReasoningRequestStrategy.NONE
-    case ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET:
-      return ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET
+    case ReasoningRequestStrategy.DASHSCOPE_THINKING:
+      return ReasoningRequestStrategy.DASHSCOPE_THINKING
     case ReasoningRequestStrategy.KIMI_THINKING:
       return isKimiThinkingModelId(modelId)
         ? ReasoningRequestStrategy.KIMI_THINKING
@@ -457,9 +460,9 @@ export function resolveReasoningRequestStrategy(
       return supportsGoogleThinkingModel(modelId)
         ? ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG
         : ReasoningRequestStrategy.NONE
-    case ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET:
+    case ReasoningRequestStrategy.SILICONFLOW_THINKING:
       return supportsSiliconFlowThinkingModel(modelId)
-        ? ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET
+        ? ReasoningRequestStrategy.SILICONFLOW_THINKING
         : ReasoningRequestStrategy.NONE
     default:
       return profile.defaultReasoningRequestStrategy
@@ -482,16 +485,20 @@ function parseReasoningStrategyOverride(rawOverride?: string): ReasoningRequestS
       return ReasoningRequestStrategy.ANTHROPIC_THINKING
     case ReasoningRequestStrategy.DEEPSEEK_THINKING:
       return ReasoningRequestStrategy.DEEPSEEK_THINKING
+    case ReasoningRequestStrategy.MIMO_THINKING:
+      return ReasoningRequestStrategy.MIMO_THINKING
     case ReasoningRequestStrategy.ZHIPU_THINKING:
       return ReasoningRequestStrategy.ZHIPU_THINKING
-    case ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET:
-      return ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET
+    case ReasoningRequestStrategy.DASHSCOPE_THINKING:
+    case 'dashscope_thinking_budget':
+      return ReasoningRequestStrategy.DASHSCOPE_THINKING
     case ReasoningRequestStrategy.KIMI_THINKING:
       return ReasoningRequestStrategy.KIMI_THINKING
     case ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG:
       return ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG
-    case ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET:
-      return ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET
+    case ReasoningRequestStrategy.SILICONFLOW_THINKING:
+    case 'siliconflow_thinking_budget':
+      return ReasoningRequestStrategy.SILICONFLOW_THINKING
     default:
       return null
   }
@@ -503,13 +510,14 @@ function getReasoningControlModeForStrategy(strategy: ReasoningRequestStrategy):
     case ReasoningRequestStrategy.OPENAI_COMPAT_REASONING_EFFORT:
     case ReasoningRequestStrategy.OPENROUTER_REASONING:
     case ReasoningRequestStrategy.ANTHROPIC_THINKING:
-    case ReasoningRequestStrategy.DASHSCOPE_THINKING_BUDGET:
+    case ReasoningRequestStrategy.DASHSCOPE_THINKING:
     case ReasoningRequestStrategy.GOOGLE_THINKING_CONFIG:
-    case ReasoningRequestStrategy.SILICONFLOW_THINKING_BUDGET:
+    case ReasoningRequestStrategy.SILICONFLOW_THINKING:
       return ReasoningControlMode.EFFORT
     case ReasoningRequestStrategy.DEEPSEEK_THINKING:
       return ReasoningControlMode.HIGH_MAX
     case ReasoningRequestStrategy.OPENAI_REASONING_SPLIT:
+    case ReasoningRequestStrategy.MIMO_THINKING:
     case ReasoningRequestStrategy.ZHIPU_THINKING:
     case ReasoningRequestStrategy.KIMI_THINKING:
       return ReasoningControlMode.TOGGLE
