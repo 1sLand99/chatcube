@@ -192,44 +192,23 @@ export struct AssistantAvatarView {
   @Param radius: number = 15
   @Param fontSize: number = 23
   @Param cacheKey: number = 0
-  @Local renderImageSource: string = ''
 
-  aboutToAppear(): void {
-    this.syncRenderImageSource()
-  }
-
-  @Monitor('value')
-  onValueChange(): void {
-    this.syncRenderImageSource()
-  }
-
-  @Monitor('cacheKey')
-  onCacheKeyChange(): void {
-    this.syncRenderImageSource()
-  }
-
-  private syncRenderImageSource(): void {
+  @Computed
+  get renderImageSource(): string {
     const source = resolveAssistantAvatarImageSource(this.value)
     if (source.toLowerCase().startsWith('file://')) {
-      this.renderImageSource = resolveLocalAvatarDataSource(source)
-      return
-    }
-    this.renderImageSource = resolveAssistantAvatarRenderSource(this.value, this.cacheKey)
-  }
-
-  private getRenderImageSource(): string {
-    if (this.renderImageSource !== '') {
-      return this.renderImageSource
+      return resolveLocalAvatarDataSource(source)
     }
     return resolveAssistantAvatarRenderSource(this.value, this.cacheKey)
   }
 
   @Builder
   private AvatarImage() {
-    Image(this.getRenderImageSource())
+    Image(this.renderImageSource)
       .width(this.avatarSize)
       .height(this.avatarSize)
       .objectFit(ImageFit.Cover)
+      .syncLoad(true)
       .sourceSize({
         width: this.avatarSize,
         height: this.avatarSize

@@ -191,6 +191,16 @@ export struct AssistantAvatarEditorSheet {
     this.galleryValue = ''
   }
 
+  private confirmAvatarValue(): void {
+    const nextValue = normalizeAssistantAvatarValue(this.getPreviewValue())
+    const applyAvatarValue = this.$avatarValue
+    applyAvatarValue(nextValue)
+    this.onClose()
+    setTimeout(() => {
+      applyAvatarValue(nextValue)
+    }, 30)
+  }
+
   build() {
     Column({ space: 18 }) {
       Row() {
@@ -224,8 +234,7 @@ export struct AssistantAvatarEditorSheet {
         .height(34)
         .backgroundColor(this.themePrimary)
         .onClick(() => {
-          this.$avatarValue(normalizeAssistantAvatarValue(this.getPreviewValue()))
-          this.onClose()
+          this.confirmAvatarValue()
         })
       }
       .width('100%')

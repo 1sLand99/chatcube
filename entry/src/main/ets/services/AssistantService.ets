@@ -53,6 +53,13 @@ export class AssistantService {
     setAppUiStateValue(AppStorageKeys.ASSISTANT_AVATAR_REFRESH_AT, now > current ? now : current + 1)
   }
 
+  private hasAvatarPresentationChanged(previous: Assistant | null, next: Assistant): boolean {
+    if (previous === null) {
+      return true
+    }
+    return previous.avatarSymbol !== next.avatarSymbol || previous.color !== next.color
+  }
+
   async getAllAssistants(): Promise<Assistant[]> {
     return await this.databaseService.getAllAssistants()
   }
@@ -139,9 +146,13 @@ export class AssistantService {
 
   async saveAssistant(assistant: Assistant): Promise<void> {
     this.normalizeAssistant(assistant)
+    const previous = await this.databaseService.getAssistant(assistant.id)
+    const avatarChanged = this.hasAvatarPresentationChanged(previous, assistant)
     await this.databaseService.saveAssistant(assistant)
     setAppUiStateValue(AppStorageKeys.SESSION_LIST_REFRESH_AT, Date.now())
-    this.notifyAssistantAvatarChanged()
+    if (avatarChanged) {
+      this.notifyAssistantAvatarChanged()
+    }
   }
 
   async reorderAssistants(assistants: Assistant[]): Promise<void> {

@@ -1316,8 +1316,6 @@ export struct MessageBubble {
             .width(30)
             .height(30)
             .borderRadius(8)
-            .backgroundColor($r('app.color.model_icon_bg'))
-            .border({ width: 0.5, color: $r('app.color.bubble_border') })
             .justifyContent(FlexAlign.Center)
             .alignItems(HorizontalAlign.Center)
 

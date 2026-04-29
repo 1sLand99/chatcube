@@ -265,6 +265,8 @@ struct Index {
   private holdingHandSubscribed: boolean = false
   private handAdaptiveLoadSeq: number = 0
   private sessionLoadSeq: number = 0
+  private assistantLoadSeq: number = 0
+  private assistantAvatarStateKey: string = ''
   private appUiStateDisposers: Array<() => void> = []
   private handledAssistantAvatarRefreshAt: number = 0
   private searchInputFocusId: string = 'index_session_search_input'
@@ -745,6 +747,7 @@ struct Index {
   private patchAssistantInMemory(assistant: Assistant): void {
     const nextAssistants: Assistant[] = []
     let replaced = false
+    const previousAvatarStateKey = this.assistantAvatarStateKey
     for (let i = 0; i < this.assistants.length; i++) {
       if (this.assistants[i].id === assistant.id) {
         nextAssistants.push(assistant)
@@ -753,13 +756,19 @@ struct Index {
         nextAssistants.push(this.assistants[i])
       }
     }
-    if (replaced) {
-      this.assistants = nextAssistants
-      if (assistant.id === this.currentAssistantId) {
-        this.applyCurrentAssistantSnapshot(assistant)
-      }
+    if (!replaced) {
+      nextAssistants.push(assistant)
+    }
+    this.assistants = nextAssistants
+    if (assistant.id === this.currentAssistantId || this.currentAssistantId === '') {
+      this.currentAssistantId = assistant.id !== '' ? assistant.id : DEFAULT_ASSISTANT_ID
+      this.applyCurrentAssistantSnapshot(assistant)
+    }
+    this.assistantAvatarStateKey = this.buildAssistantAvatarStateKey(nextAssistants)
+    if (this.assistantAvatarStateKey !== previousAvatarStateKey) {
       this.bumpAssistantAvatarRenderTick()
     }
+    this.refreshSessionListProjection()
   }
 
   private mergeLoadedAssistants(loadedAssistants: Assistant[]): Assistant[] {
@@ -786,21 +795,49 @@ struct Index {
     return parts.join('|')
   }
 
+  private buildAssistantListStateKey(assistants: Assistant[]): string {
+    const parts: string[] = []
+    for (let i = 0; i < assistants.length; i++) {
+      const assistant = assistants[i]
+      parts.push(`${assistant.id}:${assistant.name}:${assistant.avatarSymbol}:${assistant.color}:` +
+        `${assistant.defaultProviderId}:${assistant.defaultModelId}:${assistant.defaultModelName}:` +
+        `${assistant.systemPrompt}:${assistant.temperatureEnabled ? '1' : '0'}:${assistant.temperature}:` +
+        `${assistant.isDefault ? '1' : '0'}:${assistant.sortOrder}`)
+    }
+    return parts.join('|')
+  }
+
   private bumpAssistantAvatarRenderTick(): void {
     this.assistantAvatarRenderTick += 1
   }
 
   private async loadAssistants(): Promise<void> {
+    const seq = this.assistantLoadSeq + 1
+    this.assistantLoadSeq = seq
     try {
       const assistants = await this.assistantService.getAllAssistants()
       const current = await this.assistantService.getCurrentAssistant()
-      this.assistants = this.mergeLoadedAssistants(assistants)
-      this.bumpAssistantAvatarRenderTick()
+      if (seq !== this.assistantLoadSeq) {
+        return
+      }
+      const nextAssistants = this.mergeLoadedAssistants(assistants)
+      const nextAvatarStateKey = this.buildAssistantAvatarStateKey(nextAssistants)
+      const avatarStateChanged = nextAvatarStateKey !== this.assistantAvatarStateKey
+      if (this.buildAssistantListStateKey(nextAssistants) !== this.buildAssistantListStateKey(this.assistants)) {
+        this.assistants = nextAssistants
+      }
+      this.assistantAvatarStateKey = nextAvatarStateKey
+      if (avatarStateChanged) {
+        this.bumpAssistantAvatarRenderTick()
+      }
       this.currentAssistantId = current.id !== '' ? current.id : DEFAULT_ASSISTANT_ID
-      const currentAssistant = this.getCurrentAssistant()
+      const currentAssistant = this.findAssistantById(this.currentAssistantId)
       this.applyCurrentAssistantSnapshot(currentAssistant !== null ? currentAssistant : current)
       this.refreshSessionListProjection()
     } catch (error) {
+      if (seq !== this.assistantLoadSeq) {
+        return
+      }
       console.error('Index', `Failed to load assistants: ${JSON.stringify(error)}`)
       this.currentAssistantId = DEFAULT_ASSISTANT_ID
       this.applyCurrentAssistantSnapshot(null)
@@ -823,7 +860,7 @@ struct Index {
     const previousAssistantId = this.currentAssistantId
     const assistant = await this.assistantService.setCurrentAssistantId(assistantId)
     this.currentAssistantId = assistant.id !== '' ? assistant.id : DEFAULT_ASSISTANT_ID
-    this.applyCurrentAssistantSnapshot(assistant)
+    this.patchAssistantInMemory(assistant)
     this.selectedSessionIds = []
     this.isMultiSelectMode = false
     if (this.isSearchExpanded) {
@@ -1611,11 +1648,19 @@ struct Index {
     return scopedSessions
   }
 
-  private getCurrentAssistant(): Assistant | null {
+  private findAssistantById(assistantId: string): Assistant | null {
     for (let i = 0; i < this.assistants.length; i++) {
-      if (this.assistants[i].id === this.currentAssistantId) {
+      if (this.assistants[i].id === assistantId) {
         return this.assistants[i]
       }
+    }
+    return null
+  }
+
+  private getCurrentAssistant(): Assistant | null {
+    const assistant = this.findAssistantById(this.currentAssistantId)
+    if (assistant !== null) {
+      return assistant
     }
     return this.assistants.length > 0 ? this.assistants[0] : null
   }
@@ -1637,7 +1682,20 @@ struct Index {
   }
 
   private getAssistantRenderKey(assistant: Assistant): string {
-    return `${assistant.id}:${assistant.avatarSymbol}:${assistant.color}:${this.assistantAvatarRenderTick}`
+    return `${assistant.id}:${assistant.name}:${assistant.avatarSymbol}:${assistant.color}:` +
+      `${assistant.defaultProviderId}:${assistant.defaultModelId}:${assistant.defaultModelName}:` +
+      `${assistant.systemPrompt}:${assistant.temperatureEnabled ? '1' : '0'}:${assistant.temperature}:` +
+      `${assistant.isDefault ? '1' : '0'}:${assistant.sortOrder}:${this.assistantAvatarRenderTick}`
+  }
+
+  private getAssistantAvatarRenderKey(symbol: string, color: ResourceColor, size: number, radius: number,
+    fontSize: number): string {
+    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${this.assistantAvatarRenderTick}`
+  }
+
+  private getCurrentAssistantSwitchRenderKey(): string {
+    return `${this.currentAssistantId}:${this.currentAssistantName}:${this.currentAssistantAvatarSymbol}:` +
+      `${this.currentAssistantColor}:${this.assistantAvatarRenderTick}`
   }
 
   private getAssistantSwitchMaxWidth(): number {
@@ -2074,6 +2132,7 @@ struct Index {
     } else {
       await this.assistantService.saveAssistant(assistant)
     }
+    this.assistantLoadSeq = this.assistantLoadSeq + 1
     this.patchAssistantInMemory(assistant)
     await this.loadAssistants()
     this.showAssistantEditorSheet = false
@@ -2259,25 +2318,17 @@ struct Index {
       .layoutWeight(1)
     } else {
       List({ space: 8, scroller: this.assistantListScroller }) {
-        Repeat<Assistant>(this.assistants)
-          .each((obj: RepeatItem<Assistant>) => {
-            ListItem({ style: ListItemStyle.NONE }) {
-              this.AssistantJumpCard(obj.item)
-            }
-            .swipeAction({
-              start: this.AssistantStartSwipePanel(obj.item),
-              end: this.AssistantEndSwipePanel(obj.item)
-            })
-            .borderRadius(12)
-            .clip(true)
+        ForEach(this.assistants, (assistant: Assistant) => {
+          ListItem({ style: ListItemStyle.NONE }) {
+            this.AssistantJumpCard(assistant)
+          }
+          .swipeAction({
+            start: this.AssistantStartSwipePanel(assistant),
+            end: this.AssistantEndSwipePanel(assistant)
           })
-          .key((assistant: Assistant) => {
-            return this.getAssistantRenderKey(assistant)
-          })
-          .virtualScroll({ totalCount: this.assistants.length })
-          .onMove((from: number, to: number): void => {
-            this.moveAssistant(from, to)
-          })
+          .borderRadius(12)
+          .clip(true)
+        }, (assistant: Assistant) => this.getAssistantRenderKey(assistant))
 
         ListItem() {
           Column()
@@ -2629,14 +2680,39 @@ struct Index {
 
   @Builder
   private AssistantAvatarBadge(symbol: string, color: ResourceColor, size: number, radius: number, fontSize: number) {
-    AssistantAvatarView({
-      value: symbol,
-      color: color,
-      avatarSize: size,
-      radius: radius,
-      fontSize: fontSize,
-      cacheKey: this.assistantAvatarRenderTick
-    })
+    Stack() {
+      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize)], (_renderKey: string) => {
+        AssistantAvatarView({
+          value: symbol,
+          color: color,
+          avatarSize: size,
+          radius: radius,
+          fontSize: fontSize,
+          cacheKey: this.assistantAvatarRenderTick
+        })
+      }, (renderKey: string) => renderKey)
+    }
+    .width(size)
+    .height(size)
+  }
+
+  @Builder
+  private AssistantFormAvatarBadge(size: number, radius: number, fontSize: number) {
+    Stack() {
+      ForEach([this.getAssistantAvatarRenderKey(this.assistantFormAvatarSymbol, this.assistantFormColor, size, radius,
+        fontSize)], (_renderKey: string) => {
+        AssistantAvatarView({
+          value: this.assistantFormAvatarSymbol,
+          color: this.assistantFormColor,
+          avatarSize: size,
+          radius: radius,
+          fontSize: fontSize,
+          cacheKey: this.assistantAvatarRenderTick
+        })
+      }, (renderKey: string) => renderKey)
+    }
+    .width(size)
+    .height(size)
   }
 
   @Builder
@@ -2663,7 +2739,7 @@ struct Index {
           })
 
         Button() {
-          this.AssistantAvatarBadge(this.assistantFormAvatarSymbol, this.assistantFormColor, 60, 20, 34)
+          this.AssistantFormAvatarBadge(60, 20, 34)
         }
         .width(60)
         .height(60)
@@ -2835,24 +2911,28 @@ struct Index {
 
   @Builder
   private AssistantSwitchPill() {
-    Row({ space: 8 }) {
-      this.AssistantAvatarBadge(this.getCurrentAssistantSymbol(), this.getCurrentAssistantColor(), 28, 14, 15)
+    Stack() {
+      ForEach([this.getCurrentAssistantSwitchRenderKey()], (_renderKey: string) => {
+        Row({ space: 8 }) {
+          this.AssistantAvatarBadge(this.getCurrentAssistantSymbol(), this.getCurrentAssistantColor(), 28, 14, 15)
 
-      Text(this.getCurrentAssistantName())
-        .fontSize(18)
-        .fontWeight(FontWeight.Bold)
-        .fontColor($r('app.color.text_primary'))
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .constraintSize({ maxWidth: this.getAssistantSwitchNameMaxWidth() })
+          Text(this.getCurrentAssistantName())
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_primary'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .constraintSize({ maxWidth: this.getAssistantSwitchNameMaxWidth() })
 
-      SymbolGlyph($r('sys.symbol.chevron_down'))
-        .fontSize(13)
-        .fontColor([$r('app.color.text_secondary')])
+          SymbolGlyph($r('sys.symbol.chevron_down'))
+            .fontSize(13)
+            .fontColor([$r('app.color.text_secondary')])
+        }
+        .alignItems(VerticalAlign.Center)
+      }, (renderKey: string) => renderKey)
     }
     .height(44)
     .padding({ left: 0, right: 10 })
-    .alignItems(VerticalAlign.Center)
     .constraintSize({ maxWidth: this.getAssistantSwitchMaxWidth() })
     .onClick(() => {
       this.showAssistantSwitchSheet = true

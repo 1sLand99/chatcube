@@ -100,6 +100,7 @@ struct AssistantManagePage {
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
   private assistantAvatarObserverDisposer: (() => void) | null = null
   private handledAssistantAvatarRefreshAt: number = 0
+  private assistantLoadSeq: number = 0
 
   aboutToAppear(): void {
     this.registerAssistantAvatarObserver()
@@ -153,8 +154,14 @@ struct AssistantManagePage {
   }
 
   private async loadData(): Promise<void> {
+    const seq = this.assistantLoadSeq + 1
+    this.assistantLoadSeq = seq
     this.providers = await this.providerViewModel.loadProviders()
-    this.assistants = await this.assistantService.getAllAssistants()
+    const assistants = await this.assistantService.getAllAssistants()
+    if (seq !== this.assistantLoadSeq) {
+      return
+    }
+    this.assistants = assistants
     this.bumpAssistantAvatarRenderTick()
     if (!this.consumedInitialAction && this.initialAction === 'new') {
       this.consumedInitialAction = true
@@ -214,7 +221,11 @@ struct AssistantManagePage {
     if (replaced) {
       this.assistants = nextAssistants
       this.bumpAssistantAvatarRenderTick()
+      return
     }
+    nextAssistants.push(assistant)
+    this.assistants = nextAssistants
+    this.bumpAssistantAvatarRenderTick()
   }
 
   private buildAssistantAvatarStateKey(assistants: Assistant[]): string {
@@ -223,6 +234,11 @@ struct AssistantManagePage {
       parts.push(`${assistants[i].id}:${assistants[i].avatarSymbol}:${assistants[i].color}`)
     }
     return parts.join('|')
+  }
+
+  private getAssistantAvatarRenderKey(symbol: string, color: ResourceColor, size: number, radius: number,
+    fontSize: number): string {
+    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${this.assistantAvatarRenderTick}`
   }
 
   private bumpAssistantAvatarRenderTick(): void {
@@ -304,6 +320,7 @@ struct AssistantManagePage {
     } else {
       await this.assistantService.saveAssistant(assistant)
     }
+    this.assistantLoadSeq = this.assistantLoadSeq + 1
     this.patchAssistantInMemory(assistant)
     await this.loadData()
     const savedAssistant = this.assistants.find((item: Assistant) => item.id === assistant.id)
@@ -640,14 +657,7 @@ struct AssistantManagePage {
   private AssistantEditorPreview() {
     Column({ space: 12 }) {
       Row({ space: 12 }) {
-        AssistantAvatarView({
-          value: this.formAvatarSymbol,
-          color: this.getCurrentFormAccentColor(),
-          avatarSize: 52,
-          radius: 18,
-          fontSize: 28,
-          cacheKey: this.assistantAvatarRenderTick
-        })
+        this.FormAssistantAvatarBadge(52, 18, 28)
 
         Column({ space: 5 }) {
           Row({ space: 6 }) {
@@ -744,14 +754,39 @@ struct AssistantManagePage {
 
   @Builder
   private AssistantAvatarBadge(symbol: string, color: ResourceColor, size: number, radius: number, fontSize: number) {
-    AssistantAvatarView({
-      value: symbol,
-      color: color,
-      avatarSize: size,
-      radius: radius,
-      fontSize: fontSize,
-      cacheKey: this.assistantAvatarRenderTick
-    })
+    Stack() {
+      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize)], (_renderKey: string) => {
+        AssistantAvatarView({
+          value: symbol,
+          color: color,
+          avatarSize: size,
+          radius: radius,
+          fontSize: fontSize,
+          cacheKey: this.assistantAvatarRenderTick
+        })
+      }, (renderKey: string) => renderKey)
+    }
+    .width(size)
+    .height(size)
+  }
+
+  @Builder
+  private FormAssistantAvatarBadge(size: number, radius: number, fontSize: number) {
+    Stack() {
+      ForEach([this.getAssistantAvatarRenderKey(this.formAvatarSymbol, this.getCurrentFormAccentColor(), size, radius,
+        fontSize)], (_renderKey: string) => {
+        AssistantAvatarView({
+          value: this.formAvatarSymbol,
+          color: this.getCurrentFormAccentColor(),
+          avatarSize: size,
+          radius: radius,
+          fontSize: fontSize,
+          cacheKey: this.assistantAvatarRenderTick
+        })
+      }, (renderKey: string) => renderKey)
+    }
+    .width(size)
+    .height(size)
   }
 
   @Builder
@@ -778,14 +813,7 @@ struct AssistantManagePage {
           })
 
         Button() {
-          AssistantAvatarView({
-            value: this.formAvatarSymbol,
-            color: this.getCurrentFormAccentColor(),
-            avatarSize: 60,
-            radius: 20,
-            fontSize: 34,
-            cacheKey: this.assistantAvatarRenderTick
-          })
+          this.FormAssistantAvatarBadge(60, 20, 34)
         }
         .width(60)
         .height(60)
