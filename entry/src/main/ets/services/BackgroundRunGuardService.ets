@@ -11,6 +11,7 @@ export class BackgroundRunGuardService {
   private runningTaskCount: number = 0
   private continuousTaskActive: boolean = false
   private syncInProgress: boolean = false
+  private syncAgainRequested: boolean = false
 
   static getInstance(): BackgroundRunGuardService {
     if (BackgroundRunGuardService.instance === null) {
@@ -35,6 +36,7 @@ export class BackgroundRunGuardService {
 
   private async syncContinuousTaskState(): Promise<void> {
     if (this.syncInProgress) {
+      this.syncAgainRequested = true
       return
     }
     this.syncInProgress = true
@@ -51,6 +53,10 @@ export class BackgroundRunGuardService {
       }
     } finally {
       this.syncInProgress = false
+      if (this.syncAgainRequested) {
+        this.syncAgainRequested = false
+        void this.syncContinuousTaskState()
+      }
     }
   }
 
