@@ -10,7 +10,7 @@
     },
     {
       "name": "primary_light",
-      "value": "#E8EEF2"
+      "value": "#D8E2EE"
     },
     {
       "name": "background",
@@ -30,7 +30,7 @@
     },
     {
       "name": "text_tertiary",
-      "value": "#9B9488"
+      "value": "#8A8178"
     },
     {
       "name": "divider",
@@ -70,7 +70,7 @@
     },
     {
       "name": "chat_user_bubble",
-      "value": "#5A7597"
+      "value": "#52688A"
     },
     {
       "name": "chat_ai_bubble",
@@ -98,7 +98,7 @@
     },
     {
       "name": "markdown_link_bg",
-      "value": "#E8EEF2"
+      "value": "#D8E2EE"
     },
     {
       "name": "markdown_code_bg",
@@ -106,7 +106,7 @@
     },
     {
       "name": "markdown_code_text",
-      "value": "#6D4F3F"
+      "value": "#8F5E45"
     },
     {
       "name": "markdown_table_bg",

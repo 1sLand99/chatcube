@@ -24,9 +24,6 @@ export function getColorThemeDisplayTextForIndex(theme: ColorTheme): Resource {
   if (theme === ColorTheme.DEFAULT) {
     return $r('app.string.theme_color_default')
   }
-  if (theme === ColorTheme.YUANBAO) {
-    return $r('app.string.theme_color_yuanbao')
-  }
   if (theme === ColorTheme.CLAUDE) {
     return $r('app.string.theme_color_claude')
   }
@@ -39,8 +36,8 @@ export function getColorThemeDisplayTextForIndex(theme: ColorTheme): Resource {
   if (theme === ColorTheme.MINT) {
     return $r('app.string.theme_color_mint')
   }
-  if (theme === ColorTheme.SUNSET) {
-    return $r('app.string.theme_color_sunset')
+  if (theme === ColorTheme.NOTION) {
+    return $r('app.string.theme_color_notion')
   }
   return $r('app.string.theme_color_default')
 }

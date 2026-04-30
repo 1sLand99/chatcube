@@ -781,14 +781,6 @@
       "value": "低饱和蓝灰"
     },
     {
-      "name": "theme_color_yuanbao",
-      "value": "元宝护眼"
-    },
-    {
-      "name": "theme_color_yuanbao_desc",
-      "value": "暖色调护眼"
-    },
-    {
       "name": "theme_color_claude",
       "value": "Claude"
     },
@@ -821,20 +813,12 @@
       "value": "低饱和松绿"
     },
     {
-      "name": "theme_color_sunset",
-      "value": "日落橙"
+      "name": "theme_color_notion",
+      "value": "Notion"
     },
     {
-      "name": "theme_color_sunset_desc",
-      "value": "活力温暖"
-    },
-    {
-      "name": "theme_color_berry",
-      "value": "莓果粉"
-    },
-    {
-      "name": "theme_color_berry_desc",
-      "value": "柔和莓粉"
+      "name": "theme_color_notion_desc",
+      "value": "极简纯净"
     },
     {
       "name": "screenshot_banner_title",

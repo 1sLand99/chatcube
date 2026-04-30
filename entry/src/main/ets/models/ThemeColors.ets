@@ -1,13 +1,11 @@
 // 主题类型枚举
 export enum ColorTheme {
   DEFAULT = 'default',      // 默认暖纸
-  YUANBAO = 'yuanbao',      // 旧主题，保留枚举用于兼容历史偏好
   CLAUDE = 'claude',        // Claude 暖棕
   CHATGPT = 'chatgpt',      // 清爽蓝
   VIOLET = 'violet',        // 雾紫
   MINT = 'mint',            // 松雾绿
-  SUNSET = 'sunset',        // 旧主题，保留枚举用于兼容历史偏好
-  BERRY = 'berry'           // 旧主题，保留枚举用于兼容历史偏好
+  NOTION = 'notion'         // Notion 极简
 }
 
 // 主题颜色配置接口
@@ -49,7 +47,7 @@ export interface ThemeInfo {
   id: ColorTheme
   nameKey: string           // 字符串资源 key
   descriptionKey: string    // 描述字符串资源 key
-  previewColors: string[]   // 预览色块（3个颜色：背景、弱染色、气泡）
+  previewColors: string[]   // 预览色块（4 个颜色：背景、弱染色、主色、气泡）
   light: ThemeColorConfig
   dark: ThemeColorConfig
 }
@@ -59,25 +57,25 @@ const DEFAULT_THEME: ThemeInfo = {
   id: ColorTheme.DEFAULT,
   nameKey: 'theme_color_default',
   descriptionKey: 'theme_color_default_desc',
-  previewColors: ['#FAF8F3', '#E8EEF2', '#5A7597'],
+  previewColors: ['#FAF8F3', '#D8E2EE', '#4E6F9E', '#52688A'],
   light: {
     primary: '#4E6F9E',
-    primaryLight: '#E8EEF2',
+    primaryLight: '#D8E2EE',
     background: '#FAF8F3',
     surface: '#FFFDF8',
     divider: '#DED8CC',
-    userBubble: '#5A7597',
+    userBubble: '#52688A',
     userBubbleText: '#FFFFFF',
     aiBubble: '#FFFDF8',
     textPrimary: '#24211C',
     textSecondary: '#6F6A60',
-    textTertiary: '#9B9488',
+    textTertiary: '#8A8178',
     markdownTitle: '#24211C',
     markdownText: '#3D3830',
     markdownLink: '#4E6F9E',
-    markdownLinkBg: '#E8EEF2',
+    markdownLinkBg: '#D8E2EE',
     markdownCodeBg: '#F3EFE8',
-    markdownCodeText: '#6D4F3F',
+    markdownCodeText: '#8F5E45',
     markdownQuoteBg: '#F3EFE8',
     markdownTableBg: '#FFFDF8',
     markdownTableHeaderBg: '#F3EFE8',
@@ -115,7 +113,7 @@ const CLAUDE_THEME: ThemeInfo = {
   id: ColorTheme.CLAUDE,
   nameKey: 'theme_color_claude',
   descriptionKey: 'theme_color_claude_desc',
-  previewColors: ['#FAF7F0', '#F1E8E0', '#8F5E45'],
+  previewColors: ['#FAF7F0', '#F1E8E0', '#A65F3B', '#8F5E45'],
   light: {
     primary: '#A65F3B',
     primaryLight: '#F1E8E0',
@@ -143,7 +141,7 @@ const CLAUDE_THEME: ThemeInfo = {
   dark: {
     primary: '#C87552',
     primaryLight: '#3A2C25',
-    background: '#1F1E1A',
+    background: '#251F1A',
     surface: '#292722',
     divider: '#403C34',
     userBubble: '#7A4E3D',
@@ -171,7 +169,7 @@ const CHATGPT_THEME: ThemeInfo = {
   id: ColorTheme.CHATGPT,
   nameKey: 'theme_color_chatgpt',
   descriptionKey: 'theme_color_chatgpt_desc',
-  previewColors: ['#F7FAFC', '#E4EDF6', '#4D719C'],
+  previewColors: ['#F7FAFC', '#E4EDF6', '#416FAD', '#4D719C'],
   light: {
     primary: '#416FAD',
     primaryLight: '#E4EDF6',
@@ -227,9 +225,9 @@ const VIOLET_THEME: ThemeInfo = {
   id: ColorTheme.VIOLET,
   nameKey: 'theme_color_violet',
   descriptionKey: 'theme_color_violet_desc',
-  previewColors: ['#FAF8FC', '#ECE8F2', '#675F82'],
+  previewColors: ['#FAF8FC', '#ECE8F2', '#7E5F92', '#675F82'],
   light: {
-    primary: '#71658F',
+    primary: '#7E5F92',
     primaryLight: '#ECE8F2',
     background: '#FAF8FC',
     surface: '#FFFDFF',
@@ -283,7 +281,7 @@ const MINT_THEME: ThemeInfo = {
   id: ColorTheme.MINT,
   nameKey: 'theme_color_mint',
   descriptionKey: 'theme_color_mint_desc',
-  previewColors: ['#F7FAF6', '#E5EFE9', '#587A68'],
+  previewColors: ['#F7FAF6', '#E5EFE9', '#4D8069', '#587A68'],
   light: {
     primary: '#4D8069',
     primaryLight: '#E5EFE9',
@@ -334,13 +332,70 @@ const MINT_THEME: ThemeInfo = {
   }
 }
 
+// Notion 极简主题：纯白/深灰底，蓝色强调；浅色 surface/aiBubble 用 Notion 标志性的米白做"块"层次。
+const NOTION_THEME: ThemeInfo = {
+  id: ColorTheme.NOTION,
+  nameKey: 'theme_color_notion',
+  descriptionKey: 'theme_color_notion_desc',
+  previewColors: ['#FFFFFF', '#E3E8EF', '#2E7AC2', '#1F6AB3'],
+  light: {
+    primary: '#2E7AC2',
+    primaryLight: '#E3E8EF',
+    background: '#FFFFFF',
+    surface: '#FBFBFA',
+    divider: '#E3E5E8',
+    userBubble: '#1F6AB3',
+    userBubbleText: '#FFFFFF',
+    aiBubble: '#F7F6F3',
+    textPrimary: '#37352F',
+    textSecondary: '#787774',
+    textTertiary: '#9B9A97',
+    markdownTitle: '#37352F',
+    markdownText: '#37352F',
+    markdownLink: '#2E7AC2',
+    markdownLinkBg: '#E3E8EF',
+    markdownCodeBg: '#F7F6F3',
+    markdownCodeText: '#EB5757',
+    markdownQuoteBg: '#F7F6F3',
+    markdownTableBg: '#FBFBFA',
+    markdownTableHeaderBg: '#F7F6F3',
+    markdownTableAltBg: '#FAFAF8',
+    markdownTableBorder: '#E3E5E8'
+  },
+  dark: {
+    primary: '#5B9DD9',
+    primaryLight: '#2C3E50',
+    background: '#191919',
+    surface: '#202020',
+    divider: '#373737',
+    userBubble: '#3D6A99',
+    userBubbleText: '#FFFFFF',
+    aiBubble: '#202020',
+    textPrimary: '#FFFFFF',
+    textSecondary: '#9B9A97',
+    textTertiary: '#6F6E69',
+    markdownTitle: '#FFFFFF',
+    markdownText: '#E3E2E0',
+    markdownLink: '#71A7D9',
+    markdownLinkBg: '#2C3E50',
+    markdownCodeBg: '#2F2F2F',
+    markdownCodeText: '#FF6B6B',
+    markdownQuoteBg: '#2F2F2F',
+    markdownTableBg: '#202020',
+    markdownTableHeaderBg: '#2A2A2A',
+    markdownTableAltBg: '#252525',
+    markdownTableBorder: '#373737'
+  }
+}
+
 // 精简后的可选主题列表
 export const ALL_THEMES: ThemeInfo[] = [
   DEFAULT_THEME,
   CLAUDE_THEME,
   CHATGPT_THEME,
   MINT_THEME,
-  VIOLET_THEME
+  VIOLET_THEME,
+  NOTION_THEME
 ]
 
 // 根据主题 ID 获取主题信息

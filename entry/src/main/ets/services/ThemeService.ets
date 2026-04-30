@@ -39,6 +39,18 @@ export class ThemeStorageKeys {
 // 偏好设置键名
 const PREF_KEY_COLOR_THEME = AppStorageKeys.COLOR_THEME
 
+// 已废弃的旧主题 ID，需在升级时迁移到默认主题。
+const DEPRECATED_THEME_IDS: string[] = ['yuanbao', 'sunset', 'berry']
+
+function isDeprecatedTheme(value: string): boolean {
+  for (let i = 0; i < DEPRECATED_THEME_IDS.length; i++) {
+    if (DEPRECATED_THEME_IDS[i] === value) {
+      return true
+    }
+  }
+  return false
+}
+
 // 主题服务 - 单例模式
 export class ThemeService {
   private static instance: ThemeService | null = null
@@ -73,12 +85,20 @@ export class ThemeService {
 
     // 从偏好设置加载保存的主题
     const savedTheme = await getPreferencesService().getString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
-    this.currentTheme = savedTheme as ColorTheme
 
-    // 验证主题是否有效
-    const validTheme = getThemeById(this.currentTheme)
-    if (validTheme.id !== this.currentTheme) {
+    // 旧版本主题（yuanbao/sunset/berry）已下线，迁移到默认主题并写回偏好
+    if (isDeprecatedTheme(savedTheme)) {
+      console.info('ThemeService', `Migrating deprecated theme '${savedTheme}' to default`)
       this.currentTheme = ColorTheme.DEFAULT
+      await getPreferencesService().setString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
+    } else {
+      this.currentTheme = savedTheme as ColorTheme
+      // 验证主题是否有效
+      const validTheme = getThemeById(this.currentTheme)
+      if (validTheme.id !== this.currentTheme) {
+        this.currentTheme = ColorTheme.DEFAULT
+        await getPreferencesService().setString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
+      }
     }
 
     // 应用主题到 AppStorage
@@ -132,14 +152,20 @@ export class ThemeService {
   // 重新从偏好设置加载主题（导入后刷新用）
   async reloadTheme(): Promise<void> {
     const savedTheme = await getPreferencesService().getString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
-    const newTheme = savedTheme as ColorTheme
 
-    // 验证主题是否有效
-    const validTheme = getThemeById(newTheme)
-    if (validTheme.id !== newTheme) {
+    if (isDeprecatedTheme(savedTheme)) {
+      console.info('ThemeService', `Reload migrated deprecated theme '${savedTheme}' to default`)
       this.currentTheme = ColorTheme.DEFAULT
+      await getPreferencesService().setString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
     } else {
-      this.currentTheme = newTheme
+      const newTheme = savedTheme as ColorTheme
+      const validTheme = getThemeById(newTheme)
+      if (validTheme.id !== newTheme) {
+        this.currentTheme = ColorTheme.DEFAULT
+        await getPreferencesService().setString(PREF_KEY_COLOR_THEME, ColorTheme.DEFAULT)
+      } else {
+        this.currentTheme = newTheme
+      }
     }
 
     // 强制刷新 AppStorage 和通知回调

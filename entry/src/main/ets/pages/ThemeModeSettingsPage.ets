@@ -94,9 +94,6 @@ export struct ThemeAppearanceSettingsView {
   }
 
   private getThemeName(themeId: ColorTheme): Resource {
-    if (themeId === ColorTheme.YUANBAO) {
-      return $r('app.string.theme_color_yuanbao')
-    }
     if (themeId === ColorTheme.CLAUDE) {
       return $r('app.string.theme_color_claude')
     }
@@ -109,19 +106,13 @@ export struct ThemeAppearanceSettingsView {
     if (themeId === ColorTheme.MINT) {
       return $r('app.string.theme_color_mint')
     }
-    if (themeId === ColorTheme.SUNSET) {
-      return $r('app.string.theme_color_sunset')
-    }
-    if (themeId === ColorTheme.BERRY) {
-      return $r('app.string.theme_color_berry')
+    if (themeId === ColorTheme.NOTION) {
+      return $r('app.string.theme_color_notion')
     }
     return $r('app.string.theme_color_default')
   }
 
   private getThemeDescription(themeId: ColorTheme): Resource {
-    if (themeId === ColorTheme.YUANBAO) {
-      return $r('app.string.theme_color_yuanbao_desc')
-    }
     if (themeId === ColorTheme.CLAUDE) {
       return $r('app.string.theme_color_claude_desc')
     }
@@ -134,11 +125,8 @@ export struct ThemeAppearanceSettingsView {
     if (themeId === ColorTheme.MINT) {
       return $r('app.string.theme_color_mint_desc')
     }
-    if (themeId === ColorTheme.SUNSET) {
-      return $r('app.string.theme_color_sunset_desc')
-    }
-    if (themeId === ColorTheme.BERRY) {
-      return $r('app.string.theme_color_berry_desc')
+    if (themeId === ColorTheme.NOTION) {
+      return $r('app.string.theme_color_notion_desc')
     }
     return $r('app.string.theme_color_default_desc')
   }

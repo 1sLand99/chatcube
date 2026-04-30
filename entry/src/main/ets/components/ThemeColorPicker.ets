@@ -40,30 +40,38 @@ export struct ThemeColorPicker {
       Row() {
         // 背景色预览
         Column()
-          .width(24)
-          .height(24)
-          .borderRadius(12)
+          .width(22)
+          .height(22)
+          .borderRadius(11)
           .backgroundColor(theme.previewColors[0])
           .border({
             width: 1,
             color: this.isDarkMode ? theme.dark.divider : theme.light.divider
           })
 
-        // 主色调预览
+        // 弱染色（primaryLight）
         Column()
-          .width(24)
-          .height(24)
-          .borderRadius(12)
+          .width(22)
+          .height(22)
+          .borderRadius(11)
           .backgroundColor(theme.previewColors[1])
-          .margin({ left: 8 })
+          .margin({ left: 6 })
 
-        // 气泡色预览
+        // 主色调
         Column()
-          .width(24)
-          .height(24)
-          .borderRadius(12)
+          .width(22)
+          .height(22)
+          .borderRadius(11)
           .backgroundColor(theme.previewColors[2])
-          .margin({ left: 8 })
+          .margin({ left: 6 })
+
+        // 气泡色
+        Column()
+          .width(22)
+          .height(22)
+          .borderRadius(11)
+          .backgroundColor(theme.previewColors[3])
+          .margin({ left: 6 })
 
         Blank()
 
@@ -112,8 +120,6 @@ export struct ThemeColorPicker {
   private getThemeName(themeId: ColorTheme): Resource {
     if (themeId === ColorTheme.DEFAULT) {
       return $r('app.string.theme_color_default')
-    } else if (themeId === ColorTheme.YUANBAO) {
-      return $r('app.string.theme_color_yuanbao')
     } else if (themeId === ColorTheme.CLAUDE) {
       return $r('app.string.theme_color_claude')
     } else if (themeId === ColorTheme.CHATGPT) {
@@ -122,8 +128,8 @@ export struct ThemeColorPicker {
       return $r('app.string.theme_color_violet')
     } else if (themeId === ColorTheme.MINT) {
       return $r('app.string.theme_color_mint')
-    } else if (themeId === ColorTheme.SUNSET) {
-      return $r('app.string.theme_color_sunset')
+    } else if (themeId === ColorTheme.NOTION) {
+      return $r('app.string.theme_color_notion')
     } else {
       return $r('app.string.theme_color_default')
     }
@@ -132,8 +138,6 @@ export struct ThemeColorPicker {
   private getThemeDescription(themeId: ColorTheme): Resource {
     if (themeId === ColorTheme.DEFAULT) {
       return $r('app.string.theme_color_default_desc')
-    } else if (themeId === ColorTheme.YUANBAO) {
-      return $r('app.string.theme_color_yuanbao_desc')
     } else if (themeId === ColorTheme.CLAUDE) {
       return $r('app.string.theme_color_claude_desc')
     } else if (themeId === ColorTheme.CHATGPT) {
@@ -142,8 +146,8 @@ export struct ThemeColorPicker {
       return $r('app.string.theme_color_violet_desc')
     } else if (themeId === ColorTheme.MINT) {
       return $r('app.string.theme_color_mint_desc')
-    } else if (themeId === ColorTheme.SUNSET) {
-      return $r('app.string.theme_color_sunset_desc')
+    } else if (themeId === ColorTheme.NOTION) {
+      return $r('app.string.theme_color_notion_desc')
     } else {
       return $r('app.string.theme_color_default_desc')
     }

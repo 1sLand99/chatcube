@@ -383,8 +383,6 @@ export class SettingsManager {
   getColorThemeDisplayText(theme: ColorTheme): Resource {
     if (theme === ColorTheme.DEFAULT) {
       return $r('app.string.theme_color_default')
-    } else if (theme === ColorTheme.YUANBAO) {
-      return $r('app.string.theme_color_yuanbao')
     } else if (theme === ColorTheme.CLAUDE) {
       return $r('app.string.theme_color_claude')
     } else if (theme === ColorTheme.CHATGPT) {
@@ -393,8 +391,8 @@ export class SettingsManager {
       return $r('app.string.theme_color_violet')
     } else if (theme === ColorTheme.MINT) {
       return $r('app.string.theme_color_mint')
-    } else if (theme === ColorTheme.SUNSET) {
-      return $r('app.string.theme_color_sunset')
+    } else if (theme === ColorTheme.NOTION) {
+      return $r('app.string.theme_color_notion')
     } else {
       return $r('app.string.theme_color_default')
     }

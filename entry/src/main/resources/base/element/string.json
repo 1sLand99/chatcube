@@ -781,14 +781,6 @@
       "value": "Muted blue gray"
     },
     {
-      "name": "theme_color_yuanbao",
-      "value": "Yuanbao"
-    },
-    {
-      "name": "theme_color_yuanbao_desc",
-      "value": "Warm eye-care"
-    },
-    {
       "name": "theme_color_claude",
       "value": "Claude"
     },
@@ -821,20 +813,12 @@
       "value": "Muted pine green"
     },
     {
-      "name": "theme_color_sunset",
-      "value": "Sunset"
+      "name": "theme_color_notion",
+      "value": "Notion"
     },
     {
-      "name": "theme_color_sunset_desc",
-      "value": "Warm orange"
-    },
-    {
-      "name": "theme_color_berry",
-      "value": "Berry"
-    },
-    {
-      "name": "theme_color_berry_desc",
-      "value": "Soft berry pink"
+      "name": "theme_color_notion_desc",
+      "value": "Clean minimalist"
     },
     {
       "name": "screenshot_banner_title",
