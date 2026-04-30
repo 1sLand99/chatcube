@@ -6,7 +6,7 @@
 
 <p align="center">
   A native AI chat client for HarmonyOS 6 (API 23).<br/>
-  One app, 14+ providers, web search, MCP, and ArkTS-native UX.
+  One app, 15+ providers, web search, MCP, and ArkTS-native UX.
 </p>
 
 <p align="center">
@@ -46,19 +46,19 @@ These screenshots reflect the current HarmonyOS 6 (API 23) build:
   </tr>
 </table>
 
-## Highlights in 1.0.13
+## Highlights in 1.1.0
 
-- Chat input now has a dedicated setting for choosing between keyboard newline and keyboard send behavior
-- Assistant messages support inline text selection from long press or the message menu, with cleaner plain-text copying from Markdown
-- MCP tool readiness no longer blocks sending immediately; availability refresh now continues in the background
-- The home-screen New Chat floating button has refined sizing, press motion, shadows, and bottom spacing for better one-handed use
-- Theme color alpha handling is now centralized, making input bars, message bubbles, the tools center, and scroll buttons more stable
+- Added an Assistant module for managing multiple assistants, viewing their conversations, and starting assistant-specific chats
+- The Assistant module includes custom assistant avatars with text, image links, QQ avatars, and gallery images, rendered more consistently across the app
+- The chat card page now uses HDS material navigation with gradient blur, and search, favorites, and title state behave more consistently while scrolling
+- Reasoning controls now adapt more precisely to provider and model capability, including auto, low, medium, high, and extra-high levels
+- Added the Xiaomi MiMo preset provider; exports now include connection settings by default so imports are ready to use
 
 ## Features
 
 ### Talk to any model
 
-Connect to 14+ AI providers out of the box. Bring your own API key, pick a model, and start chatting. Add any OpenAI / Anthropic / Gemini compatible provider in seconds.
+Connect to 15+ AI providers out of the box. Bring your own API key, pick a model, and start chatting. Add any OpenAI / Anthropic / Gemini compatible provider in seconds.
 
 ### Tools, web search, and MCP
 
@@ -106,6 +106,7 @@ Switch to another app while waiting for a long response. ChatCube keeps working 
 | Doubao (Volcengine) | OpenAI-compatible | Doubao series |
 | MiniMax | OpenAI-compatible | MiniMax models |
 | AiHubMix | OpenAI-compatible | Multi-provider gateway |
+| MiMo | OpenAI-compatible | Xiaomi MiMo models |
 
 ...or add any compatible provider yourself.
 
