@@ -1034,7 +1034,12 @@ struct Index {
   }
 
   private getChatListTopSpacerHeight(): number {
-    return this.isExpandedLayout() ? 0 : this.getCompactChatHeaderOverlayHeight()
+    if (this.isExpandedLayout()) {
+      return 0
+    }
+    // 顶部模糊蒙版会向下渐变 maskExtraHeight，列表第一项需让出这一段，
+    // 否则会落在模糊带上（卡片时间被模糊、筛选汇总行无法点击）。
+    return this.getCompactChatHeaderOverlayHeight() + this.getCompactChatTitleBarMaskExtraHeight()
   }
 
   private readMeasuredAreaHeight(area: Area): number {
@@ -1987,7 +1992,7 @@ struct Index {
   }
 
   private getCompactChatTitleBarMaskExtraHeight(): number {
-    return this.windowWidthVp > this.windowHeightVp ? 28 : 36
+    return this.windowWidthVp > this.windowHeightVp ? 16 : 20
   }
 
   private getCompactChatTitleBarScrollEffectType(): ScrollEffectType {
