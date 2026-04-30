@@ -122,7 +122,7 @@ struct Index {
   @Local assistants: Assistant[] = []
   @Local currentAssistantName: string = '默认助手'
   @Local currentAssistantAvatarSymbol: string = 'AI'
-  @Local currentAssistantColor: string = '#0A59F7'
+  @Local currentAssistantColor: string = '#4E6F9E'
   @Local assistantProviders: ModelProvider[] = []
   @Local currentAssistantId: string = DEFAULT_ASSISTANT_ID
   @Local showAssistantSwitchSheet: boolean = false
@@ -137,7 +137,7 @@ struct Index {
   @Local editingAssistantIsDefault: boolean = false
   @Local assistantFormName: string = ''
   @Local assistantFormAvatarSymbol: string = 'AI'
-  @Local assistantFormColor: string = '#0A59F7'
+  @Local assistantFormColor: string = '#4E6F9E'
   @Local assistantFormSystemPrompt: string = ''
   @Local assistantFormDefaultProviderId: string = ''
   @Local assistantFormDefaultModelId: string = ''
@@ -2184,7 +2184,7 @@ struct Index {
     this.editingAssistantIsDefault = false
     this.assistantFormName = ''
     this.assistantFormAvatarSymbol = 'AI'
-    this.assistantFormColor = '#0A59F7'
+    this.assistantFormColor = '#4E6F9E'
     this.assistantFormSystemPrompt = ''
     this.assistantFormDefaultProviderId = ''
     this.assistantFormDefaultModelId = ''
@@ -2200,7 +2200,7 @@ struct Index {
     this.editingAssistantIsDefault = assistant.id === DEFAULT_ASSISTANT_ID || assistant.isDefault
     this.assistantFormName = assistant.name
     this.assistantFormAvatarSymbol = this.normalizeAssistantAvatarSymbol(assistant.avatarSymbol)
-    this.assistantFormColor = assistant.color !== '' ? assistant.color : '#0A59F7'
+    this.assistantFormColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
     this.assistantFormSystemPrompt = assistant.systemPrompt
     this.assistantFormDefaultProviderId = assistant.defaultProviderId
     this.assistantFormDefaultModelId = assistant.defaultModelId

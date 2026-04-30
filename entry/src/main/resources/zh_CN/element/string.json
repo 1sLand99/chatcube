@@ -774,11 +774,11 @@
     },
     {
       "name": "theme_color_default",
-      "value": "默认主题"
+      "value": "默认暖纸"
     },
     {
       "name": "theme_color_default_desc",
-      "value": "经典蓝色"
+      "value": "低饱和蓝灰"
     },
     {
       "name": "theme_color_yuanbao",
@@ -794,31 +794,31 @@
     },
     {
       "name": "theme_color_claude_desc",
-      "value": "橄榄绿调"
+      "value": "暖棕纸面"
     },
     {
       "name": "theme_color_chatgpt",
-      "value": "ChatGPT"
+      "value": "清爽蓝"
     },
     {
       "name": "theme_color_chatgpt_desc",
-      "value": "冷色深空"
+      "value": "冷静蓝灰"
     },
     {
       "name": "theme_color_violet",
-      "value": "紫罗兰"
+      "value": "雾紫"
     },
     {
       "name": "theme_color_violet_desc",
-      "value": "神秘优雅"
+      "value": "柔和紫灰"
     },
     {
       "name": "theme_color_mint",
-      "value": "薄荷绿"
+      "value": "松雾绿"
     },
     {
       "name": "theme_color_mint_desc",
-      "value": "清新自然"
+      "value": "低饱和松绿"
     },
     {
       "name": "theme_color_sunset",

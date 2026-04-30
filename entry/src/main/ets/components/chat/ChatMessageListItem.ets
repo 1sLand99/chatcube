@@ -17,7 +17,7 @@ export struct ChatMessageListItem {
   @Param contentRenderSignature: string = ''
   @Param currentModelId: string = ''
   @Param assistantAvatarSymbol: string = 'AI'
-  @Param assistantAvatarColor: string = '#0A59F7'
+  @Param assistantAvatarColor: string = '#4E6F9E'
   @Param assistantAvatarCacheKey: number = 0
   @Param chatFontSize: number = 15
   @Param themeRenderKey: string = ''

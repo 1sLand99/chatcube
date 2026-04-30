@@ -259,7 +259,7 @@ export function getPresetProviderBrandColor(providerId: string): string {
   if (preset !== null) {
     return preset.brandColorHex
   }
-  return '#0A59F7' // 默认主题色
+  return '#4E6F9E' // 默认主题色
 }
 
 /**

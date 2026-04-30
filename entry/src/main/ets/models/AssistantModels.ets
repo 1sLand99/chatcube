@@ -22,7 +22,7 @@ export class Assistant {
     this.id = id
     this.name = name
     this.avatarSymbol = 'AI'
-    this.color = '#0A59F7'
+    this.color = '#4E6F9E'
     this.systemPrompt = ''
     this.defaultProviderId = ''
     this.defaultModelId = ''
@@ -39,7 +39,7 @@ export class Assistant {
 export function createDefaultAssistant(): Assistant {
   const assistant = new Assistant(DEFAULT_ASSISTANT_ID, '默认助手')
   assistant.avatarSymbol = 'AI'
-  assistant.color = '#0A59F7'
+  assistant.color = '#4E6F9E'
   assistant.isDefault = true
   assistant.sortOrder = 0
   return assistant

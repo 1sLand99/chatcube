@@ -87,7 +87,7 @@ struct AssistantManagePage {
   @Local editingIsDefault: boolean = false
   @Local formName: string = ''
   @Local formAvatarSymbol: string = 'AI'
-  @Local formColor: string = '#0A59F7'
+  @Local formColor: string = '#4E6F9E'
   @Local formSystemPrompt: string = ''
   @Local formDefaultProviderId: string = ''
   @Local formDefaultModelId: string = ''
@@ -184,7 +184,7 @@ struct AssistantManagePage {
     this.editingIsDefault = assistant.id === DEFAULT_ASSISTANT_ID || assistant.isDefault
     this.formName = assistant.name
     this.formAvatarSymbol = this.normalizeAvatarSymbol(assistant.avatarSymbol)
-    this.formColor = assistant.color !== '' ? assistant.color : '#0A59F7'
+    this.formColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
     this.formSystemPrompt = assistant.systemPrompt
     this.formDefaultProviderId = assistant.defaultProviderId
     this.formDefaultModelId = assistant.defaultModelId
@@ -201,7 +201,7 @@ struct AssistantManagePage {
     this.editingIsDefault = false
     this.formName = ''
     this.formAvatarSymbol = 'AI'
-    this.formColor = '#0A59F7'
+    this.formColor = '#4E6F9E'
     this.formSystemPrompt = ''
     this.formDefaultProviderId = ''
     this.formDefaultModelId = ''

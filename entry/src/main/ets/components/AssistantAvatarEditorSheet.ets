@@ -25,7 +25,7 @@ const ASSISTANT_AVATAR_DIR: string = 'assistant_avatars'
 export struct AssistantAvatarEditorSheet {
   @Param avatarValue: string = 'AI'
   @Event $avatarValue: (value: string) => void = (_value: string) => {}
-  @Param avatarColor: string = '#0A59F7'
+  @Param avatarColor: string = '#4E6F9E'
   @Event $avatarColor: (value: string) => void = (_value: string) => {}
   @Param defaultProviderId: string = ''
   @Param defaultModelId: string = ''
@@ -37,7 +37,7 @@ export struct AssistantAvatarEditorSheet {
   @Local qqAvatarValue: string = ''
   @Local qqNumberValue: string = ''
   @Local galleryValue: string = ''
-  @Local tempAvatarColor: string = '#0A59F7'
+  @Local tempAvatarColor: string = '#4E6F9E'
   @Local showColorPicker: boolean = false
   @Local isPickingImage: boolean = false
 

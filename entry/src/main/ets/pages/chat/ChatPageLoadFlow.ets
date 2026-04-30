@@ -25,7 +25,7 @@ export class ChatPageLoadResult {
   isNewEmptySession: boolean = false
   assistantId: string = DEFAULT_ASSISTANT_ID
   assistantAvatarSymbol: string = 'AI'
-  assistantColor: string = '#0A59F7'
+  assistantColor: string = '#4E6F9E'
 }
 
 export interface ChatPageLoadFlowDependencies {
@@ -120,7 +120,7 @@ export class ChatPageLoadFlow {
   private applyAssistantSnapshot(result: ChatPageLoadResult, assistant: Assistant): void {
     result.assistantId = assistant.id !== '' ? assistant.id : DEFAULT_ASSISTANT_ID
     result.assistantAvatarSymbol = assistant.avatarSymbol !== '' ? assistant.avatarSymbol : 'AI'
-    result.assistantColor = assistant.color !== '' ? assistant.color : '#0A59F7'
+    result.assistantColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
   }
 
   private cloneDraftAttachments(attachments: MessageAttachment[]): MessageAttachment[] {

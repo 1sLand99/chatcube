@@ -195,7 +195,7 @@ export class ChatMessageRowData {
     renderSignature: string,
     contentRenderSignature: string = '',
     assistantAvatarSymbol: string = 'AI',
-    assistantAvatarColor: string = '#0A59F7',
+    assistantAvatarColor: string = '#4E6F9E',
     assistantAvatarCacheKey: number = 0
   ) {
     this.message = message

@@ -1131,7 +1131,7 @@ export class ImportExportService {
         assistantData.name
       )
       assistant.avatarSymbol = await this.resolveImportedAssistantAvatarSymbol(assistantData, tempDir)
-      assistant.color = assistantData.color !== '' ? assistantData.color : '#0A59F7'
+      assistant.color = assistantData.color !== '' ? assistantData.color : '#4E6F9E'
       assistant.systemPrompt = assistantData.systemPrompt || ''
       assistant.defaultProviderId = assistantData.defaultProviderId || ''
       assistant.defaultModelId = assistantData.defaultModelId || ''

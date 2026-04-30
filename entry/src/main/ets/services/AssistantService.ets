@@ -35,7 +35,7 @@ export class AssistantService {
   private normalizeAssistant(assistant: Assistant): Assistant {
     assistant.name = assistant.name.trim() !== '' ? assistant.name.trim() : '未命名助手'
     assistant.avatarSymbol = assistant.avatarSymbol.trim() !== '' ? assistant.avatarSymbol.trim() : 'AI'
-    assistant.color = assistant.color.trim() !== '' ? assistant.color.trim() : '#0A59F7'
+    assistant.color = assistant.color.trim() !== '' ? assistant.color.trim() : '#4E6F9E'
     if (assistant.id === DEFAULT_ASSISTANT_ID) {
       assistant.isDefault = true
     }

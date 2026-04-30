@@ -5,12 +5,12 @@ let storage = new LocalStorage();
 struct NewChatCard {
   @LocalStorageProp('title') title: string = '新对话';
   @LocalStorageProp('subtitle') subtitle: string = '点击开始聊天';
-  @LocalStorageProp('themePrimary') themePrimary: string = '#0A59F7';
-  @LocalStorageProp('textPrimary') textPrimary: string = '#191919';
+  @LocalStorageProp('themePrimary') themePrimary: string = '#4E6F9E';
+  @LocalStorageProp('textPrimary') textPrimary: string = '#24211C';
   @LocalStorageProp('textColor') textColor: string = '';
-  @LocalStorageProp('glassBgColor') glassBgColor: string = 'rgba(255,255,255,0.55)';
-  @LocalStorageProp('shadowColor') shadowColor: string = 'rgba(0,0,0,0.1)';
-  @LocalStorageProp('borderColor') glassBorderColor: string = 'rgba(0,0,0,0.06)';
+  @LocalStorageProp('glassBgColor') glassBgColor: string = 'rgba(255,253,248,0.62)';
+  @LocalStorageProp('shadowColor') shadowColor: string = 'rgba(78,58,35,0.08)';
+  @LocalStorageProp('borderColor') glassBorderColor: string = 'rgba(255,255,255,0.76)';
 
   private getEffectiveTextColor(): string {
     return this.textColor || this.textPrimary;

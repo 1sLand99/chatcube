@@ -124,7 +124,7 @@ export struct ChatPage {
   @Local currentModelId: string = ''
   @Local currentAssistantId: string = DEFAULT_ASSISTANT_ID
   @Local currentAssistantAvatarSymbol: string = 'AI'
-  @Local currentAssistantColor: string = '#0A59F7'
+  @Local currentAssistantColor: string = '#4E6F9E'
   @Local assistantAvatarRenderTick: number = 0
   @Local isModelSelectorVisible: boolean = false
   @Local modelSheetActivePanel: string = 'selector'
@@ -582,7 +582,7 @@ export struct ChatPage {
   private applyAssistantSnapshot(assistantId: string, avatarSymbol: string, color: string): void {
     this.currentAssistantId = assistantId.trim() !== '' ? assistantId.trim() : DEFAULT_ASSISTANT_ID
     this.currentAssistantAvatarSymbol = normalizeAssistantAvatarValue(avatarSymbol)
-    this.currentAssistantColor = color.trim() !== '' ? color.trim() : '#0A59F7'
+    this.currentAssistantColor = color.trim() !== '' ? color.trim() : '#4E6F9E'
     this.bumpAssistantAvatarRenderTick()
   }
 
@@ -610,7 +610,7 @@ export struct ChatPage {
       return
     }
     if (assistant === null) {
-      this.applyAssistantSnapshot(DEFAULT_ASSISTANT_ID, 'AI', '#0A59F7')
+      this.applyAssistantSnapshot(DEFAULT_ASSISTANT_ID, 'AI', '#4E6F9E')
       return
     }
     this.applyAssistantSnapshot(assistant.id, assistant.avatarSymbol, assistant.color)

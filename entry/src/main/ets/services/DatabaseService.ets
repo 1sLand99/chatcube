@@ -623,7 +623,7 @@ export class DatabaseService {
 	      this.safeGetString(resultSet, 'name')
 	    )
 	    assistant.avatarSymbol = this.safeGetString(resultSet, 'avatar_symbol', 'AI')
-	    assistant.color = this.safeGetString(resultSet, 'color', '#0A59F7')
+	    assistant.color = this.safeGetString(resultSet, 'color', '#4E6F9E')
 	    assistant.systemPrompt = this.safeGetString(resultSet, 'system_prompt')
 	    assistant.defaultProviderId = this.safeGetString(resultSet, 'default_provider_id')
 	    assistant.defaultModelId = this.safeGetString(resultSet, 'default_model_id')

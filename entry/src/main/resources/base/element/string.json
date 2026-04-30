@@ -774,11 +774,11 @@
     },
     {
       "name": "theme_color_default",
-      "value": "Default"
+      "value": "Warm Paper"
     },
     {
       "name": "theme_color_default_desc",
-      "value": "Classic blue"
+      "value": "Muted blue gray"
     },
     {
       "name": "theme_color_yuanbao",
@@ -794,31 +794,31 @@
     },
     {
       "name": "theme_color_claude_desc",
-      "value": "Olive green"
+      "value": "Warm paper brown"
     },
     {
       "name": "theme_color_chatgpt",
-      "value": "ChatGPT"
+      "value": "Soft Blue"
     },
     {
       "name": "theme_color_chatgpt_desc",
-      "value": "Cool deep space"
+      "value": "Calm blue gray"
     },
     {
       "name": "theme_color_violet",
-      "value": "Violet"
+      "value": "Mist Violet"
     },
     {
       "name": "theme_color_violet_desc",
-      "value": "Elegant purple"
+      "value": "Soft violet gray"
     },
     {
       "name": "theme_color_mint",
-      "value": "Mint"
+      "value": "Pine Mist"
     },
     {
       "name": "theme_color_mint_desc",
-      "value": "Fresh green"
+      "value": "Muted pine green"
     },
     {
       "name": "theme_color_sunset",

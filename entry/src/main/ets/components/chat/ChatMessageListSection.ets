@@ -12,7 +12,7 @@ import {
 @ComponentV2
 export struct ChatMessageListSection {
   @Param isLoading: boolean = false
-  @Param loadingColor: ResourceColor = '#0A59F7'
+  @Param loadingColor: ResourceColor = '#4E6F9E'
   @Param scroller: Scroller = new Scroller()
   @Param messages: ChatMessage[] = []
   @Param isEditingMessage: boolean = false
@@ -28,7 +28,7 @@ export struct ChatMessageListSection {
   @Param topInsetHeight: number = 0
   @Param currentModelId: string = ''
   @Param assistantAvatarSymbol: string = 'AI'
-  @Param assistantAvatarColor: string = '#0A59F7'
+  @Param assistantAvatarColor: string = '#4E6F9E'
   @Param assistantAvatarCacheKey: number = 0
   @Param chatFontSize: number = 15
   @Param themeRenderKey: string = ''

@@ -8,20 +8,20 @@ import { getPreferencesService, PreferenceKeys } from '../services/PreferencesSe
 
 const FORM_IDS_PREF_KEY = 'entry_form_ids_json'
 const PREFERENCES_NAME = 'chatbox_preferences'
-const DEFAULT_THEME_PRIMARY = '#0A59F7'
-const LIGHT_FORM_TEXT_COLOR = '#191919'
-const DARK_FORM_TEXT_COLOR = '#F5F5F7'
+const DEFAULT_THEME_PRIMARY = '#4E6F9E'
+const LIGHT_FORM_TEXT_COLOR = '#24211C'
+const DARK_FORM_TEXT_COLOR = '#F3EFE6'
 
 class NewChatFormData {
   title: string = '新对话'
   subtitle: string = '点击开始聊天'
   themePrimary: string = DEFAULT_THEME_PRIMARY
-  surfaceColor: string = '#FFFFFF'
-  textPrimary: string = '#191919'
+  surfaceColor: string = '#FFFDF8'
+  textPrimary: string = '#24211C'
   textColor: string = ''
-  glassBgColor: string = 'rgba(255,255,255,0.55)'
-  shadowColor: string = 'rgba(0,0,0,0.1)'
-  borderColor: string = 'rgba(255,255,255,0.2)'
+  glassBgColor: string = 'rgba(255,253,248,0.62)'
+  shadowColor: string = 'rgba(78,58,35,0.08)'
+  borderColor: string = 'rgba(255,255,255,0.76)'
 }
 
 function parseStoredFormIds(rawValue: string): string[] {
@@ -77,16 +77,16 @@ export function createNewChatFormBindingData(colors: ThemeColorConfig, isSystemD
   // 玻璃色跟随系统深浅色，不跟随应用主题
   if (isSystemDarkMode === true) {
     formData.textColor = DARK_FORM_TEXT_COLOR
-    // 深色模式提高青色占比并略提不透明度，避免发灰。
-    formData.glassBgColor = 'rgba(46,77,81,0.80)'
+    // 深色模式使用暖灰玻璃，避免青色和应用主界面脱节。
+    formData.glassBgColor = 'rgba(48,45,38,0.82)'
     formData.shadowColor = 'rgba(0,0,0,0.10)'
-    formData.borderColor = 'rgba(226,242,244,0.14)'
+    formData.borderColor = 'rgba(243,239,230,0.14)'
   } else {
     formData.textColor = LIGHT_FORM_TEXT_COLOR
-    // 浅色模式向运动健康的浅青玻璃靠近，同时避免纯白发飘。
-    formData.glassBgColor = 'rgba(224,243,245,0.52)'
-    formData.shadowColor = 'rgba(40,66,79,0.06)'
-    formData.borderColor = 'rgba(255,255,255,0.78)'
+    // 浅色模式使用暖纸玻璃，保留通透但不发飘。
+    formData.glassBgColor = 'rgba(255,253,248,0.62)'
+    formData.shadowColor = 'rgba(78,58,35,0.08)'
+    formData.borderColor = 'rgba(255,255,255,0.76)'
   }
   return formBindingData.createFormBindingData(formData)
 }
