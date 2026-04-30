@@ -8,6 +8,8 @@ import { SettingsCompactPageHeader } from '../components/settings/SettingsCompac
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import {
   AssistantAvatarView,
+  buildAssistantModelAvatarValue,
+  isModelAssistantAvatar,
   normalizeAssistantAvatarValue,
   refreshAssistantAvatarCache
 } from '../components/AssistantAvatar'
@@ -16,6 +18,7 @@ import { getSettingsPageContentMaxWidth, getSettingsPageCompactTabsTotalInset } 
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { getAppUiState, observeAppUiState } from '../state/AppUiState'
+import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 
 let assistantManagePathStack: NavPathStack | null = null
 
@@ -243,9 +246,10 @@ struct AssistantManagePage {
       `${assistant.isDefault ? '1' : '0'}:${assistant.sortOrder}:${this.assistantAvatarRenderTick}`
   }
 
-  private getAssistantAvatarRenderKey(symbol: string, color: ResourceColor, size: number, radius: number,
-    fontSize: number): string {
-    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${this.assistantAvatarRenderTick}`
+  private getAssistantAvatarRenderKey(symbol: string, color: string, size: number, radius: number,
+    fontSize: number, providerId: string = '', modelId: string = '', modelName: string = ''): string {
+    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${providerId}:${modelId}:${modelName}:` +
+      `${this.assistantAvatarRenderTick}`
   }
 
   private bumpAssistantAvatarRenderTick(): void {
@@ -261,10 +265,18 @@ struct AssistantManagePage {
   }
 
   private getAssistantAccentColor(assistant: Assistant): string {
+    return assistant.color !== '' && assistant.color !== TRANSPARENT_BG_COLOR ? assistant.color : this.themePrimary
+  }
+
+  private getAssistantAvatarColor(assistant: Assistant): string {
     return assistant.color !== '' ? assistant.color : this.themePrimary
   }
 
   private getCurrentFormAccentColor(): string {
+    return this.formColor !== '' && this.formColor !== TRANSPARENT_BG_COLOR ? this.formColor : this.themePrimary
+  }
+
+  private getCurrentFormAvatarColor(): string {
     return this.formColor !== '' ? this.formColor : this.themePrimary
   }
 
@@ -276,6 +288,11 @@ struct AssistantManagePage {
     this.formAvatarSymbol = this.normalizeAvatarSymbol(value)
     this.bumpAssistantAvatarRenderTick()
     refreshAssistantAvatarCache(this.formAvatarSymbol)
+  }
+
+  private setFormAvatarColor(value: string): void {
+    this.formColor = value !== '' ? value : this.themePrimary
+    this.bumpAssistantAvatarRenderTick()
   }
 
   private getAssistantPromptStateText(assistant: Assistant): ResourceStr {
@@ -300,6 +317,10 @@ struct AssistantManagePage {
     this.formDefaultProviderId = ''
     this.formDefaultModelId = ''
     this.formDefaultModelName = ''
+    if (isModelAssistantAvatar(this.formAvatarSymbol)) {
+      this.formAvatarSymbol = buildAssistantModelAvatarValue('', '')
+      this.bumpAssistantAvatarRenderTick()
+    }
   }
 
   private async saveCurrentAssistant(): Promise<void> {
@@ -310,7 +331,9 @@ struct AssistantManagePage {
     }
 
     const assistant = new Assistant(this.editingAssistantId, name)
-    assistant.avatarSymbol = this.normalizeAvatarSymbol(this.formAvatarSymbol)
+    assistant.avatarSymbol = isModelAssistantAvatar(this.formAvatarSymbol) ?
+      buildAssistantModelAvatarValue(this.formDefaultProviderId, this.formDefaultModelId) :
+      this.normalizeAvatarSymbol(this.formAvatarSymbol)
     assistant.color = this.formColor
     assistant.systemPrompt = this.formSystemPrompt.trim()
     assistant.defaultProviderId = this.formDefaultProviderId
@@ -381,6 +404,10 @@ struct AssistantManagePage {
     this.formDefaultProviderId = providerId
     this.formDefaultModelId = modelId
     this.formDefaultModelName = modelName !== '' ? modelName : modelId
+    if (isModelAssistantAvatar(this.formAvatarSymbol)) {
+      this.formAvatarSymbol = buildAssistantModelAvatarValue(providerId, modelId)
+      this.bumpAssistantAvatarRenderTick()
+    }
     this.showModelSheet = false
   }
 
@@ -501,7 +528,8 @@ struct AssistantManagePage {
   private AssistantRowContent(assistant: Assistant) {
     Column({ space: 10 }) {
       Row({ space: 12 }) {
-        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAccentColor(assistant), 44, 15, 23)
+        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAvatarColor(assistant), 44, 15, 23,
+          assistant.defaultProviderId, assistant.defaultModelId, assistant.defaultModelName)
 
         Column({ space: 5 }) {
           Row({ space: 6 }) {
@@ -759,16 +787,21 @@ struct AssistantManagePage {
   }
 
   @Builder
-  private AssistantAvatarBadge(symbol: string, color: ResourceColor, size: number, radius: number, fontSize: number) {
+  private AssistantAvatarBadge(symbol: string, color: string, size: number, radius: number, fontSize: number,
+    modelProviderId: string = '', modelId: string = '', modelName: string = '') {
     Stack() {
-      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize)], (_renderKey: string) => {
+      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize, modelProviderId, modelId,
+        modelName)], (_renderKey: string) => {
         AssistantAvatarView({
           value: symbol,
           color: color,
           avatarSize: size,
           radius: radius,
           fontSize: fontSize,
-          cacheKey: this.assistantAvatarRenderTick
+          cacheKey: this.assistantAvatarRenderTick,
+          modelProviderId: modelProviderId,
+          modelId: modelId,
+          modelName: modelName
         })
       }, (renderKey: string) => renderKey)
     }
@@ -779,15 +812,18 @@ struct AssistantManagePage {
   @Builder
   private FormAssistantAvatarBadge(size: number, radius: number, fontSize: number) {
     Stack() {
-      ForEach([this.getAssistantAvatarRenderKey(this.formAvatarSymbol, this.getCurrentFormAccentColor(), size, radius,
-        fontSize)], (_renderKey: string) => {
+      ForEach([this.getAssistantAvatarRenderKey(this.formAvatarSymbol, this.getCurrentFormAvatarColor(), size, radius,
+        fontSize, this.formDefaultProviderId, this.formDefaultModelId, this.formDefaultModelName)], (_renderKey: string) => {
         AssistantAvatarView({
           value: this.formAvatarSymbol,
-          color: this.getCurrentFormAccentColor(),
+          color: this.getCurrentFormAvatarColor(),
           avatarSize: size,
           radius: radius,
           fontSize: fontSize,
-          cacheKey: this.assistantAvatarRenderTick
+          cacheKey: this.assistantAvatarRenderTick,
+          modelProviderId: this.formDefaultProviderId,
+          modelId: this.formDefaultModelId,
+          modelName: this.formDefaultModelName
         })
       }, (renderKey: string) => renderKey)
     }
@@ -843,7 +879,13 @@ struct AssistantManagePage {
       $avatarValue: (value: string): void => {
         this.setFormAvatarSymbol(value)
       },
-      avatarColor: this.getCurrentFormAccentColor(),
+      avatarColor: this.getCurrentFormAvatarColor(),
+      $avatarColor: (value: string): void => {
+        this.setFormAvatarColor(value)
+      },
+      defaultProviderId: this.formDefaultProviderId,
+      defaultModelId: this.formDefaultModelId,
+      defaultModelName: this.formDefaultModelName,
       onClose: (): void => {
         this.showAvatarEditorSheet = false
       }

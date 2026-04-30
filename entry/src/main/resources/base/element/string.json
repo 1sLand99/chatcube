@@ -1821,8 +1821,24 @@
       "value": "Gallery"
     },
     {
+      "name": "assistant_avatar_source_model",
+      "value": "Model"
+    },
+    {
       "name": "assistant_avatar_text_label",
       "value": "Text or emoji"
+    },
+    {
+      "name": "assistant_avatar_background_color",
+      "value": "Background color"
+    },
+    {
+      "name": "assistant_avatar_model_hint",
+      "value": "Use the assistant default model icon. If no default model is set, a generic AI icon is shown."
+    },
+    {
+      "name": "assistant_avatar_model_missing",
+      "value": "No default model selected"
     },
     {
       "name": "assistant_avatar_text_placeholder",

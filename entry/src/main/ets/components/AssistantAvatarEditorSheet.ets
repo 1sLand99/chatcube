@@ -1,17 +1,21 @@
 import { fileIo, fileUri } from '@kit.CoreFileKit'
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
 import {
+  ASSISTANT_AVATAR_MODE_MODEL,
   ASSISTANT_AVATAR_MODE_IMAGE,
   ASSISTANT_AVATAR_MODE_SYMBOL,
   AssistantAvatarView,
+  buildAssistantModelAvatarValue,
   buildQqAssistantAvatarUrl,
   extractQqFromAssistantAvatar,
   getAssistantAvatarInputMode,
   isQqAssistantAvatar,
+  isModelAssistantAvatar,
   normalizeAssistantAvatarValue,
   sanitizeAssistantQqNumber,
 } from './AssistantAvatar'
 import { getAppUiState } from '../state/AppUiState'
+import { generateSoftColor, getAllSoftColors, TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 
 const ASSISTANT_AVATAR_MODE_QQ: string = 'qq'
 const ASSISTANT_AVATAR_MODE_GALLERY: string = 'gallery'
@@ -21,7 +25,11 @@ const ASSISTANT_AVATAR_DIR: string = 'assistant_avatars'
 export struct AssistantAvatarEditorSheet {
   @Param avatarValue: string = 'AI'
   @Event $avatarValue: (value: string) => void = (_value: string) => {}
-  @Param avatarColor: ResourceColor = '#0A59F7'
+  @Param avatarColor: string = '#0A59F7'
+  @Event $avatarColor: (value: string) => void = (_value: string) => {}
+  @Param defaultProviderId: string = ''
+  @Param defaultModelId: string = ''
+  @Param defaultModelName: string = ''
   @Event onClose: () => void = () => {}
   @Local editMode: string = ASSISTANT_AVATAR_MODE_SYMBOL
   @Local textValue: string = 'AI'
@@ -29,6 +37,8 @@ export struct AssistantAvatarEditorSheet {
   @Local qqAvatarValue: string = ''
   @Local qqNumberValue: string = ''
   @Local galleryValue: string = ''
+  @Local tempAvatarColor: string = '#0A59F7'
+  @Local showColorPicker: boolean = false
   @Local isPickingImage: boolean = false
 
   private get themePrimary(): string {
@@ -38,7 +48,15 @@ export struct AssistantAvatarEditorSheet {
   aboutToAppear(): void {
     const normalized = normalizeAssistantAvatarValue(this.avatarValue)
     const normalizedLower = normalized.toLowerCase()
-    if (isQqAssistantAvatar(normalized)) {
+    this.tempAvatarColor = this.avatarColor !== '' ? this.avatarColor : this.themePrimary
+    if (isModelAssistantAvatar(normalized)) {
+      this.editMode = ASSISTANT_AVATAR_MODE_MODEL
+      this.textValue = 'AI'
+      this.linkValue = ''
+      this.qqAvatarValue = ''
+      this.qqNumberValue = ''
+      this.galleryValue = ''
+    } else if (isQqAssistantAvatar(normalized)) {
       this.editMode = ASSISTANT_AVATAR_MODE_QQ
       this.qqAvatarValue = normalized
       this.qqNumberValue = extractQqFromAssistantAvatar(normalized)
@@ -70,6 +88,9 @@ export struct AssistantAvatarEditorSheet {
   }
 
   private getPreviewValue(): string {
+    if (this.editMode === ASSISTANT_AVATAR_MODE_MODEL) {
+      return buildAssistantModelAvatarValue(this.defaultProviderId, this.defaultModelId)
+    }
     if (this.editMode === ASSISTANT_AVATAR_MODE_IMAGE) {
       return this.linkValue !== '' ? this.linkValue : 'AI'
     }
@@ -194,10 +215,13 @@ export struct AssistantAvatarEditorSheet {
   private confirmAvatarValue(): void {
     const nextValue = normalizeAssistantAvatarValue(this.getPreviewValue())
     const applyAvatarValue = this.$avatarValue
+    const applyAvatarColor = this.$avatarColor
     applyAvatarValue(nextValue)
+    applyAvatarColor(this.tempAvatarColor !== '' ? this.tempAvatarColor : this.themePrimary)
     this.onClose()
     setTimeout(() => {
       applyAvatarValue(nextValue)
+      applyAvatarColor(this.tempAvatarColor !== '' ? this.tempAvatarColor : this.themePrimary)
     }, 30)
   }
 
@@ -242,23 +266,41 @@ export struct AssistantAvatarEditorSheet {
 
       AssistantAvatarView({
         value: this.getPreviewValue(),
-        color: this.avatarColor,
+        color: this.tempAvatarColor,
         avatarSize: 88,
         radius: 28,
-        fontSize: 42
+        fontSize: 42,
+        modelProviderId: this.defaultProviderId,
+        modelId: this.defaultModelId,
+        modelName: this.defaultModelName
       })
         .alignSelf(ItemAlign.Center)
+        .bindSheet($$this.showColorPicker, this.ColorPickerSheet(), {
+          height: 400,
+          showClose: true,
+          onDisappear: () => {
+            this.showColorPicker = false
+          }
+        })
 
-      Row({ space: 8 }) {
-        this.SourceButton(ASSISTANT_AVATAR_MODE_SYMBOL, $r('app.string.assistant_avatar_source_text'))
-        this.SourceButton(ASSISTANT_AVATAR_MODE_IMAGE, $r('app.string.assistant_avatar_source_link'))
-        this.SourceButton(ASSISTANT_AVATAR_MODE_QQ, $r('app.string.assistant_avatar_type_qq'))
-        this.SourceButton(ASSISTANT_AVATAR_MODE_GALLERY, $r('app.string.assistant_avatar_source_gallery'))
+      Column({ space: 8 }) {
+        Row({ space: 8 }) {
+          this.SourceButton(ASSISTANT_AVATAR_MODE_SYMBOL, $r('app.string.assistant_avatar_source_text'))
+          this.SourceButton(ASSISTANT_AVATAR_MODE_MODEL, $r('app.string.assistant_avatar_source_model'))
+          this.SourceButton(ASSISTANT_AVATAR_MODE_IMAGE, $r('app.string.assistant_avatar_source_link'))
+        }
+        .width('100%')
+
+        Row({ space: 8 }) {
+          this.SourceButton(ASSISTANT_AVATAR_MODE_QQ, $r('app.string.assistant_avatar_type_qq'))
+          this.SourceButton(ASSISTANT_AVATAR_MODE_GALLERY, $r('app.string.assistant_avatar_source_gallery'))
+        }
+        .width('100%')
       }
       .width('100%')
 
       if (this.editMode === ASSISTANT_AVATAR_MODE_SYMBOL) {
-        Column({ space: 8 }) {
+        Column({ space: 12 }) {
           Text($r('app.string.assistant_avatar_text_label'))
             .fontSize(13)
             .fontColor($r('app.color.text_secondary'))
@@ -276,6 +318,26 @@ export struct AssistantAvatarEditorSheet {
             .onChange((text: string) => {
               this.textValue = text
             })
+
+          this.TextAvatarColorRow()
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      } else if (this.editMode === ASSISTANT_AVATAR_MODE_MODEL) {
+        Column({ space: 8 }) {
+          Text($r('app.string.assistant_avatar_model_hint'))
+            .fontSize(13)
+            .fontColor($r('app.color.text_secondary'))
+            .width('100%')
+          Text(this.defaultModelName !== '' ? this.defaultModelName :
+            $r('app.string.assistant_avatar_model_missing'))
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.defaultModelName !== '' ? $r('app.color.text_primary') : $r('app.color.text_tertiary'))
+            .width('100%')
+            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+            .backgroundColor($r('app.color.surface'))
+            .borderRadius(16)
         }
         .width('100%')
         .alignItems(HorizontalAlign.Start)
@@ -356,6 +418,142 @@ export struct AssistantAvatarEditorSheet {
     }
     .width('100%')
     .padding({ left: 20, right: 20, top: 18, bottom: 28 })
+    .backgroundColor($r('app.color.background'))
+  }
+
+  @Builder
+  private TextAvatarColorRow() {
+    Column({ space: 8 }) {
+      Row() {
+        Text($r('app.string.assistant_avatar_background_color'))
+          .fontSize(13)
+          .fontColor($r('app.color.text_secondary'))
+          .layoutWeight(1)
+        Button($r('app.string.icon_random_generate'))
+          .fontSize(12)
+          .type(ButtonType.Normal)
+          .borderRadius(8)
+          .backgroundColor($r('app.color.surface'))
+          .fontColor($r('app.color.text_primary'))
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .onClick(() => {
+            this.tempAvatarColor = generateSoftColor()
+          })
+      }
+      .width('100%')
+
+      Row({ space: 12 }) {
+        if (this.tempAvatarColor === TRANSPARENT_BG_COLOR) {
+          Column() {
+            Text($r('app.string.icon_none'))
+              .fontSize(12)
+              .fontColor($r('app.color.text_tertiary'))
+          }
+          .width(40)
+          .height(40)
+          .borderRadius(10)
+          .border({ width: 1, color: $r('app.color.divider') })
+          .justifyContent(FlexAlign.Center)
+        } else {
+          Column()
+            .width(40)
+            .height(40)
+            .backgroundColor(this.tempAvatarColor)
+            .borderRadius(10)
+            .border({ width: 1, color: $r('app.color.divider') })
+        }
+
+        Text(this.tempAvatarColor === TRANSPARENT_BG_COLOR ? $r('app.string.icon_transparent_hint') :
+          this.tempAvatarColor)
+          .fontSize(14)
+          .fontColor($r('app.color.text_secondary'))
+          .layoutWeight(1)
+
+        Button($r('app.string.icon_select_color'))
+          .fontSize(12)
+          .type(ButtonType.Normal)
+          .borderRadius(8)
+          .backgroundColor($r('app.color.surface'))
+          .fontColor($r('app.color.text_primary'))
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .onClick(() => {
+            this.showColorPicker = true
+          })
+      }
+      .width('100%')
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private ColorPickerSheet() {
+    Column({ space: 16 }) {
+      Text($r('app.string.icon_color_picker_title'))
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_primary'))
+        .width('100%')
+
+      Row() {
+        Column() {
+          Text($r('app.string.icon_none'))
+            .fontSize(14)
+            .fontColor($r('app.color.text_tertiary'))
+        }
+        .width(50)
+        .height(50)
+        .borderRadius(10)
+        .border({
+          width: this.tempAvatarColor === TRANSPARENT_BG_COLOR ? 3 : 1,
+          color: this.tempAvatarColor === TRANSPARENT_BG_COLOR ? this.themePrimary : $r('app.color.divider')
+        })
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          this.tempAvatarColor = TRANSPARENT_BG_COLOR
+          this.showColorPicker = false
+        })
+
+        Text($r('app.string.icon_transparent_hint'))
+          .fontSize(13)
+          .fontColor($r('app.color.text_secondary'))
+          .margin({ left: 12 })
+      }
+      .width('100%')
+      .padding({ bottom: 8 })
+
+      Divider().color($r('app.color.divider'))
+
+      Scroll() {
+        Grid() {
+          ForEach(getAllSoftColors(), (color: string) => {
+            GridItem() {
+              Column()
+                .width(50)
+                .height(50)
+                .backgroundColor(color)
+                .borderRadius(10)
+                .border({
+                  width: this.tempAvatarColor === color ? 3 : 1,
+                  color: this.tempAvatarColor === color ? this.themePrimary : $r('app.color.divider')
+                })
+                .onClick(() => {
+                  this.tempAvatarColor = color
+                  this.showColorPicker = false
+                })
+            }
+          })
+        }
+        .columnsTemplate('1fr 1fr 1fr 1fr')
+        .rowsGap(12)
+        .columnsGap(12)
+        .width('100%')
+      }
+      .width('100%')
+      .height(250)
+      .scrollBar(BarState.Off)
+    }
+    .width('100%')
+    .padding(20)
     .backgroundColor($r('app.color.background'))
   }
 

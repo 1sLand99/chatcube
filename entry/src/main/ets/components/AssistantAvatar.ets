@@ -1,11 +1,25 @@
 import { refreshAssistantAvatar } from '../services/AssistantAvatarCache'
 import { fileIo, fileUri } from '@kit.CoreFileKit'
 import { util } from '@kit.ArkTS'
+import { ModelIconRenderData, buildModelIconRenderData } from '../utils/ModelIconRenderUtils'
+import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 
 export const ASSISTANT_AVATAR_MODE_SYMBOL: string = 'symbol'
 export const ASSISTANT_AVATAR_MODE_IMAGE: string = 'image'
+export const ASSISTANT_AVATAR_MODE_MODEL: string = 'model'
 
 const QQ_AVATAR_PREFIX: string = 'qq:'
+const MODEL_AVATAR_PREFIX: string = 'model:'
+
+class AssistantModelAvatarInfo {
+  providerId: string = ''
+  modelId: string = ''
+
+  constructor(providerId: string = '', modelId: string = '') {
+    this.providerId = providerId
+    this.modelId = modelId
+  }
+}
 
 function stripLocalAvatarUriVersion(value: string): string {
   let source = value.trim()
@@ -123,6 +137,27 @@ export function isImageAssistantAvatar(value: string): boolean {
   return isQqAssistantAvatar(value) || isDirectImageAssistantAvatar(value)
 }
 
+export function isModelAssistantAvatar(value: string): boolean {
+  return value.trim().toLowerCase().startsWith(MODEL_AVATAR_PREFIX)
+}
+
+export function buildAssistantModelAvatarValue(providerId: string, modelId: string): string {
+  return `${MODEL_AVATAR_PREFIX}${providerId.trim()}:${modelId.trim()}`
+}
+
+function parseAssistantModelAvatar(value: string): AssistantModelAvatarInfo {
+  const avatar = value.trim()
+  if (!isModelAssistantAvatar(avatar)) {
+    return new AssistantModelAvatarInfo()
+  }
+  const payload = avatar.substring(MODEL_AVATAR_PREFIX.length)
+  const separatorIndex = payload.indexOf(':')
+  if (separatorIndex < 0) {
+    return new AssistantModelAvatarInfo(payload, '')
+  }
+  return new AssistantModelAvatarInfo(payload.substring(0, separatorIndex), payload.substring(separatorIndex + 1))
+}
+
 export function resolveAssistantAvatarImageSource(value: string): string {
   const qqNumber = extractQqFromAssistantAvatar(value)
   if (qqNumber !== '') {
@@ -148,6 +183,9 @@ export function resolveAssistantAvatarRenderSource(value: string, cacheKey: numb
 }
 
 export function refreshAssistantAvatarCache(value: string): void {
+  if (isModelAssistantAvatar(value)) {
+    return
+  }
   const source = resolveAssistantAvatarImageSource(value)
   const lower = source.toLowerCase()
   if (lower.startsWith('http://') || lower.startsWith('https://')) {
@@ -156,6 +194,9 @@ export function refreshAssistantAvatarCache(value: string): void {
 }
 
 export function getAssistantAvatarInputMode(value: string): string {
+  if (isModelAssistantAvatar(value)) {
+    return ASSISTANT_AVATAR_MODE_MODEL
+  }
   if (isQqAssistantAvatar(value) || isDirectImageAssistantAvatar(value)) {
     return ASSISTANT_AVATAR_MODE_IMAGE
   }
@@ -167,6 +208,10 @@ export function normalizeAssistantAvatarValue(value: string): string {
   if (avatar === '' || avatar === QQ_AVATAR_PREFIX) {
     return 'AI'
   }
+  if (isModelAssistantAvatar(avatar)) {
+    const modelInfo = parseAssistantModelAvatar(avatar)
+    return buildAssistantModelAvatarValue(modelInfo.providerId, modelInfo.modelId)
+  }
   const qqNumber = extractQqFromAssistantAvatar(avatar)
   if (qqNumber !== '') {
     return buildQqAssistantAvatarUrl(qqNumber)
@@ -175,6 +220,9 @@ export function normalizeAssistantAvatarValue(value: string): string {
 }
 
 export function getAssistantAvatarFallbackText(value: string): string {
+  if (isModelAssistantAvatar(value)) {
+    return 'AI'
+  }
   if (isQqAssistantAvatar(value)) {
     return 'QQ'
   }
@@ -187,11 +235,14 @@ export function getAssistantAvatarFallbackText(value: string): string {
 @ComponentV2
 export struct AssistantAvatarView {
   @Param value: string = 'AI'
-  @Param color: ResourceColor = '#0A59F7'
+  @Param color: string = '#0A59F7'
   @Param avatarSize: number = 44
   @Param radius: number = 15
   @Param fontSize: number = 23
   @Param cacheKey: number = 0
+  @Param modelProviderId: string = ''
+  @Param modelId: string = ''
+  @Param modelName: string = ''
 
   @Computed
   get renderImageSource(): string {
@@ -200,6 +251,26 @@ export struct AssistantAvatarView {
       return resolveLocalAvatarDataSource(source)
     }
     return resolveAssistantAvatarRenderSource(this.value, this.cacheKey)
+  }
+
+  @Computed
+  get modelIconRenderData(): ModelIconRenderData {
+    const modelInfo = parseAssistantModelAvatar(this.value)
+    const providerId = this.modelProviderId !== '' ? this.modelProviderId : modelInfo.providerId
+    const modelId = this.modelId !== '' ? this.modelId : modelInfo.modelId
+    return buildModelIconRenderData(modelId, providerId, this.modelName)
+  }
+
+  private isTransparentTextAvatar(): boolean {
+    return this.color === TRANSPARENT_BG_COLOR
+  }
+
+  private getTextAvatarBackgroundColor(): ResourceColor {
+    return this.isTransparentTextAvatar() ? Color.Transparent : this.color
+  }
+
+  private getTextAvatarFontColor(): ResourceColor {
+    return this.isTransparentTextAvatar() ? $r('app.color.text_primary') : Color.White
   }
 
   @Builder
@@ -218,8 +289,42 @@ export struct AssistantAvatarView {
       .clip(true)
   }
 
+  @Builder
+  private AvatarModelIcon() {
+    Column() {
+      if (this.modelIconRenderData.hasIcon()) {
+        if (this.modelIconRenderData.isRawfile()) {
+          Image($rawfile(this.modelIconRenderData.resourcePath))
+            .width(this.avatarSize * 0.72)
+            .height(this.avatarSize * 0.72)
+            .objectFit(ImageFit.Contain)
+            .interpolation(ImageInterpolation.High)
+        } else {
+          Image(this.modelIconRenderData.resourcePath)
+            .width(this.avatarSize * 0.72)
+            .height(this.avatarSize * 0.72)
+            .objectFit(ImageFit.Contain)
+            .interpolation(ImageInterpolation.High)
+        }
+      } else {
+        SymbolGlyph($r('sys.symbol.ai_edit'))
+          .fontSize(this.avatarSize * 0.5)
+          .fontColor([$r('app.color.text_tertiary')])
+      }
+    }
+    .width(this.avatarSize)
+    .height(this.avatarSize)
+    .borderRadius(this.radius)
+    .backgroundColor($r('app.color.model_icon_bg'))
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .clip(true)
+  }
+
   build() {
-    if (isImageAssistantAvatar(this.value)) {
+    if (isModelAssistantAvatar(this.value)) {
+      this.AvatarModelIcon()
+    } else if (isImageAssistantAvatar(this.value)) {
       Stack() {
         if (this.cacheKey % 2 === 0) {
           this.AvatarImage()
@@ -236,7 +341,7 @@ export struct AssistantAvatarView {
         Text(getAssistantAvatarFallbackText(this.value))
           .fontSize(this.fontSize)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Color.White)
+          .fontColor(this.getTextAvatarFontColor())
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .textAlign(TextAlign.Center)
@@ -244,8 +349,12 @@ export struct AssistantAvatarView {
       }
       .width(this.avatarSize)
       .height(this.avatarSize)
-      .backgroundColor(this.color)
+      .backgroundColor(this.getTextAvatarBackgroundColor())
       .borderRadius(this.radius)
+      .border({
+        width: this.isTransparentTextAvatar() ? 1 : 0,
+        color: this.isTransparentTextAvatar() ? $r('app.color.divider') : Color.Transparent
+      })
       .clip(true)
     }
   }

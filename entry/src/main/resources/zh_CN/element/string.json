@@ -1821,8 +1821,24 @@
       "value": "图库"
     },
     {
+      "name": "assistant_avatar_source_model",
+      "value": "模型"
+    },
+    {
       "name": "assistant_avatar_text_label",
       "value": "文字或 emoji"
+    },
+    {
+      "name": "assistant_avatar_background_color",
+      "value": "背景色"
+    },
+    {
+      "name": "assistant_avatar_model_hint",
+      "value": "使用助手默认模型图标。未设置默认模型时显示通用 AI 图标。"
+    },
+    {
+      "name": "assistant_avatar_model_missing",
+      "value": "未选择默认模型"
     },
     {
       "name": "assistant_avatar_text_placeholder",

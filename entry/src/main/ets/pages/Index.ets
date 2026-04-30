@@ -51,6 +51,8 @@ import { ChatMultiSelectToolbar } from '../components/chat/ChatMultiSelectToolba
 import { ModelSelectorContent } from '../components/ModelSelector'
 import {
   AssistantAvatarView,
+  buildAssistantModelAvatarValue,
+  isModelAssistantAvatar,
   normalizeAssistantAvatarValue,
   refreshAssistantAvatarCache
 } from '../components/AssistantAvatar'
@@ -83,6 +85,7 @@ import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentati
 import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/AppUiState'
 import { tryHandleProviderDetailInternalBack } from '../components/ProviderDetailSheet'
 import { tryHandleModelManageInternalBack } from './ModelManagePage'
+import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 
 @Entry
 @ComponentV2
@@ -1723,9 +1726,10 @@ struct Index {
       `${assistant.isDefault ? '1' : '0'}:${assistant.sortOrder}:${this.assistantAvatarRenderTick}`
   }
 
-  private getAssistantAvatarRenderKey(symbol: string, color: ResourceColor, size: number, radius: number,
-    fontSize: number): string {
-    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${this.assistantAvatarRenderTick}`
+  private getAssistantAvatarRenderKey(symbol: string, color: string, size: number, radius: number,
+    fontSize: number, providerId: string = '', modelId: string = '', modelName: string = ''): string {
+    return `${symbol}:${color}:${size}:${radius}:${fontSize}:${providerId}:${modelId}:${modelName}:` +
+      `${this.assistantAvatarRenderTick}`
   }
 
   private getCurrentAssistantSwitchRenderKey(): string {
@@ -2062,6 +2066,10 @@ struct Index {
   }
 
   private getAssistantAccentColor(assistant: Assistant): string {
+    return assistant.color !== '' && assistant.color !== TRANSPARENT_BG_COLOR ? assistant.color : this.themePrimary
+  }
+
+  private getAssistantAvatarColor(assistant: Assistant): string {
     return assistant.color !== '' ? assistant.color : this.themePrimary
   }
 
@@ -2207,6 +2215,11 @@ struct Index {
     refreshAssistantAvatarCache(this.assistantFormAvatarSymbol)
   }
 
+  private setAssistantFormAvatarColor(value: string): void {
+    this.assistantFormColor = value !== '' ? value : this.themePrimary
+    this.bumpAssistantAvatarRenderTick()
+  }
+
   private async openAssistantEditorForNew(): Promise<void> {
     this.resetAssistantEditorForm()
     this.showAssistantEditorSheet = true
@@ -2232,12 +2245,20 @@ struct Index {
     this.assistantFormDefaultProviderId = ''
     this.assistantFormDefaultModelId = ''
     this.assistantFormDefaultModelName = ''
+    if (isModelAssistantAvatar(this.assistantFormAvatarSymbol)) {
+      this.assistantFormAvatarSymbol = buildAssistantModelAvatarValue('', '')
+      this.bumpAssistantAvatarRenderTick()
+    }
   }
 
   private selectAssistantDefaultModel(providerId: string, modelId: string, modelName: string): void {
     this.assistantFormDefaultProviderId = providerId
     this.assistantFormDefaultModelId = modelId
     this.assistantFormDefaultModelName = modelName !== '' ? modelName : modelId
+    if (isModelAssistantAvatar(this.assistantFormAvatarSymbol)) {
+      this.assistantFormAvatarSymbol = buildAssistantModelAvatarValue(providerId, modelId)
+      this.bumpAssistantAvatarRenderTick()
+    }
     this.showAssistantModelSheet = false
   }
 
@@ -2249,7 +2270,9 @@ struct Index {
     }
 
     const assistant = new Assistant(this.editingAssistantId, name)
-    assistant.avatarSymbol = this.normalizeAssistantAvatarSymbol(this.assistantFormAvatarSymbol)
+    assistant.avatarSymbol = isModelAssistantAvatar(this.assistantFormAvatarSymbol) ?
+      buildAssistantModelAvatarValue(this.assistantFormDefaultProviderId, this.assistantFormDefaultModelId) :
+      this.normalizeAssistantAvatarSymbol(this.assistantFormAvatarSymbol)
     assistant.color = this.assistantFormColor
     assistant.systemPrompt = this.assistantFormSystemPrompt.trim()
     assistant.defaultProviderId = this.assistantFormDefaultProviderId
@@ -2649,8 +2672,9 @@ struct Index {
   private AssistantJumpCardContent(assistant: Assistant, featured: boolean) {
     Column({ space: featured ? 12 : 10 }) {
       Row({ space: 12 }) {
-        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAccentColor(assistant), featured ? 48 : 44,
-          featured ? 16 : 15, featured ? 25 : 23)
+        this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAvatarColor(assistant), featured ? 48 : 44,
+          featured ? 16 : 15, featured ? 25 : 23, assistant.defaultProviderId, assistant.defaultModelId,
+          assistant.defaultModelName)
 
         Column({ space: 5 }) {
           Row({ space: 6 }) {
@@ -2941,16 +2965,21 @@ struct Index {
   }
 
   @Builder
-  private AssistantAvatarBadge(symbol: string, color: ResourceColor, size: number, radius: number, fontSize: number) {
+  private AssistantAvatarBadge(symbol: string, color: string, size: number, radius: number, fontSize: number,
+    modelProviderId: string = '', modelId: string = '', modelName: string = '') {
     Stack() {
-      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize)], (_renderKey: string) => {
+      ForEach([this.getAssistantAvatarRenderKey(symbol, color, size, radius, fontSize, modelProviderId, modelId,
+        modelName)], (_renderKey: string) => {
         AssistantAvatarView({
           value: symbol,
           color: color,
           avatarSize: size,
           radius: radius,
           fontSize: fontSize,
-          cacheKey: this.assistantAvatarRenderTick
+          cacheKey: this.assistantAvatarRenderTick,
+          modelProviderId: modelProviderId,
+          modelId: modelId,
+          modelName: modelName
         })
       }, (renderKey: string) => renderKey)
     }
@@ -2962,14 +2991,18 @@ struct Index {
   private AssistantFormAvatarBadge(size: number, radius: number, fontSize: number) {
     Stack() {
       ForEach([this.getAssistantAvatarRenderKey(this.assistantFormAvatarSymbol, this.assistantFormColor, size, radius,
-        fontSize)], (_renderKey: string) => {
+        fontSize, this.assistantFormDefaultProviderId, this.assistantFormDefaultModelId,
+        this.assistantFormDefaultModelName)], (_renderKey: string) => {
         AssistantAvatarView({
           value: this.assistantFormAvatarSymbol,
           color: this.assistantFormColor,
           avatarSize: size,
           radius: radius,
           fontSize: fontSize,
-          cacheKey: this.assistantAvatarRenderTick
+          cacheKey: this.assistantAvatarRenderTick,
+          modelProviderId: this.assistantFormDefaultProviderId,
+          modelId: this.assistantFormDefaultModelId,
+          modelName: this.assistantFormDefaultModelName
         })
       }, (renderKey: string) => renderKey)
     }
@@ -3026,6 +3059,12 @@ struct Index {
         this.setAssistantFormAvatarSymbol(value)
       },
       avatarColor: this.assistantFormColor !== '' ? this.assistantFormColor : this.themePrimary,
+      $avatarColor: (value: string): void => {
+        this.setAssistantFormAvatarColor(value)
+      },
+      defaultProviderId: this.assistantFormDefaultProviderId,
+      defaultModelId: this.assistantFormDefaultModelId,
+      defaultModelName: this.assistantFormDefaultModelName,
       onClose: (): void => {
         this.showAssistantAvatarEditorSheet = false
       }
@@ -3251,7 +3290,8 @@ struct Index {
   @Builder
   private AssistantSwitchSheetRow(assistant: Assistant) {
     Row({ space: 12 }) {
-      this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAccentColor(assistant), 42, 14, 22)
+      this.AssistantAvatarBadge(assistant.avatarSymbol, this.getAssistantAvatarColor(assistant), 42, 14, 22,
+        assistant.defaultProviderId, assistant.defaultModelId, assistant.defaultModelName)
 
       Column({ space: 5 }) {
         Row({ space: 6 }) {
