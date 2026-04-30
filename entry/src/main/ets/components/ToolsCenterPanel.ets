@@ -75,11 +75,11 @@ export struct ToolsCenterPanel {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#1F1E1A' : '#FAF8F3'
+    return getAppUiState().themeBackground
   }
 
   private get dividerHex(): string {
-    return this.isDarkMode ? '#2A2A2A' : '#E5E5E5'
+    return getAppUiState().themeDivider
   }
 
   private toolRegistry: ToolRegistry = ServiceRegistry.toolRegistry()
@@ -1922,11 +1922,11 @@ struct SearchServiceCardItem {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#1F1E1A' : '#FAF8F3'
+    return getAppUiState().themeBackground
   }
 
   private get dividerHex(): string {
-    return this.isDarkMode ? '#2A2A2A' : '#E5E5E5'
+    return getAppUiState().themeDivider
   }
 
   private getDisabledText(): string {
@@ -2084,11 +2084,11 @@ struct McpServerCardItem {
   }
 
   private get backgroundHex(): string {
-    return this.isDarkMode ? '#1F1E1A' : '#FAF8F3'
+    return getAppUiState().themeBackground
   }
 
   private get dividerHex(): string {
-    return this.isDarkMode ? '#2A2A2A' : '#E5E5E5'
+    return getAppUiState().themeDivider
   }
 
   private getWriteToolCount(): number {

@@ -12,7 +12,7 @@ import {
 @ComponentV2
 export struct ChatMessageListSection {
   @Param isLoading: boolean = false
-  @Param loadingColor: ResourceColor = '#4E6F9E'
+  @Param loadingColor: string = '#4E6F9E'
   @Param scroller: Scroller = new Scroller()
   @Param messages: ChatMessage[] = []
   @Param isEditingMessage: boolean = false
