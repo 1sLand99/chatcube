@@ -83,11 +83,11 @@ struct PrivacyPolicyPage {
         .domStorageAccess(true)
         .darkMode(this.appIsDarkMode ? WebDarkMode.On : WebDarkMode.Off)
         .forceDarkAccess(this.appIsDarkMode)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
     }
     .width('100%')
     .layoutWeight(1)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .padding({
       top: this.isDetailPaneMode() ? 0 : this.getCompactContentTopPadding(),
       bottom: this.getContentBottomPadding()
@@ -110,7 +110,7 @@ struct PrivacyPolicyPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -139,7 +139,7 @@ struct PrivacyPolicyPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .titleMode(HdsNavigationTitleMode.MINI)
         .hideBackButton(true)
@@ -150,7 +150,7 @@ struct PrivacyPolicyPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

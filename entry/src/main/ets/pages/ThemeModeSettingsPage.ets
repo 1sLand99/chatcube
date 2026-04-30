@@ -43,6 +43,12 @@ export struct ThemeAppearanceSettingsView {
   private get themePrimaryLight(): string {
     return getAppUiState().themePrimaryLight
   }
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
   private get isDarkMode(): boolean {
     return getAppUiState().isDarkMode
   }
@@ -320,7 +326,7 @@ export struct ThemeAppearanceSettingsView {
       this.ModeRadioRow(ThemeMode.DARK, $r('app.string.theme_dark'))
     }
     .width('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(24)
     .border({ width: 1, color: $r('app.color.divider') })
     .padding({ top: 6, bottom: 6 })
@@ -436,86 +442,90 @@ export struct ThemeAppearanceSettingsView {
 
   @Builder
   private ThemeCard(theme: ThemeInfo) {
-    Column({ space: 12 }) {
-      Column({ space: 14 }) {
-        Row({ space: 10 }) {
-          Column()
-            .layoutWeight(1)
-            .height(16)
-            .borderRadius(8)
-            .backgroundColor(this.getThemePreviewSwatch(theme, 0))
-            .border({ width: 1, color: this.getPreviewColors(theme.id).divider })
+    Column() {
+      Column({ space: 12 }) {
+        Column({ space: 14 }) {
+          Row({ space: 10 }) {
+            Column()
+              .layoutWeight(1)
+              .height(16)
+              .borderRadius(8)
+              .backgroundColor(this.getThemePreviewSwatch(theme, 0))
+              .border({ width: 1, color: this.getPreviewColors(theme.id).divider })
 
-          Column()
-            .layoutWeight(1)
-            .height(16)
-            .borderRadius(8)
-            .backgroundColor(this.getThemePreviewSwatch(theme, 1))
+            Column()
+              .layoutWeight(1)
+              .height(16)
+              .borderRadius(8)
+              .backgroundColor(this.getThemePreviewSwatch(theme, 1))
 
-          Column()
+            Column()
+              .layoutWeight(1)
+              .height(16)
+              .borderRadius(8)
+              .backgroundColor(this.getThemePreviewSwatch(theme, 2))
+          }
+          .width('100%')
+
+          Row({ space: 12 }) {
+            Column({ space: 8 }) {
+              this.PreviewLine(this.getPreviewColors(theme.id).primary, '100%')
+              this.PreviewLine(this.getPreviewColors(theme.id).primaryLight, '72%')
+            }
             .layoutWeight(1)
-            .height(16)
-            .borderRadius(8)
-            .backgroundColor(this.getThemePreviewSwatch(theme, 2))
+            .alignItems(HorizontalAlign.Start)
+
+            Column()
+              .width(30)
+              .height(30)
+              .borderRadius(15)
+              .backgroundColor(this.getPreviewColors(theme.id).userBubble)
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Bottom)
         }
         .width('100%')
+        .padding(14)
+        .backgroundColor(this.getPreviewColors(theme.id).background)
+        .borderRadius(18)
+        .border({ width: 1, color: this.getPreviewColors(theme.id).divider })
 
-        Row({ space: 12 }) {
-          Column({ space: 8 }) {
-            this.PreviewLine(this.getPreviewColors(theme.id).primary, '100%')
-            this.PreviewLine(this.getPreviewColors(theme.id).primaryLight, '72%')
+        Row({ space: 8 }) {
+          Column({ space: 2 }) {
+            Text(this.getThemeName(theme.id))
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.text_primary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+            Text(this.getThemeDescription(theme.id))
+              .fontSize(11)
+              .fontColor($r('app.color.text_secondary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
           }
           .layoutWeight(1)
           .alignItems(HorizontalAlign.Start)
 
-          Column()
-            .width(30)
-            .height(30)
-            .borderRadius(15)
-            .backgroundColor(this.getPreviewColors(theme.id).userBubble)
+          if (this.currentColorTheme === theme.id) {
+            SymbolGlyph($r('sys.symbol.checkmark_circle_fill'))
+              .fontSize(18)
+              .fontColor([this.themePrimary])
+          }
         }
         .width('100%')
-        .alignItems(VerticalAlign.Bottom)
       }
       .width('100%')
-      .padding(14)
-      .backgroundColor(this.getPreviewColors(theme.id).background)
-      .borderRadius(18)
-      .border({ width: 1, color: this.getPreviewColors(theme.id).divider })
-
-      Row({ space: 8 }) {
-        Column({ space: 2 }) {
-          Text(this.getThemeName(theme.id))
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.text_primary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-          Text(this.getThemeDescription(theme.id))
-            .fontSize(11)
-            .fontColor($r('app.color.text_secondary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
-
-        if (this.currentColorTheme === theme.id) {
-          SymbolGlyph($r('sys.symbol.checkmark_circle_fill'))
-            .fontSize(18)
-            .fontColor([this.themePrimary])
-        }
-      }
-      .width('100%')
+      .padding(10)
+      .backgroundColor(this.themeSurface)
+      .borderRadius(20)
     }
-    .padding(12)
-    .backgroundColor($r('app.color.surface'))
+    .padding(2)
+    .backgroundColor(this.currentColorTheme === theme.id ? this.themePrimary : this.themeSurface)
     .borderRadius(22)
-    .border({
-      width: this.currentColorTheme === theme.id ? 2 : 1,
-      color: this.currentColorTheme === theme.id ? this.themePrimary : $r('app.color.divider')
-    })
+    .border({ width: 1, color: $r('app.color.divider') })
+    .clip(true)
     .onClick(() => {
       this.handleColorThemeSelected(theme.id)
     })
@@ -589,7 +599,7 @@ export struct ThemeAppearanceSettingsView {
       }
       .width('100%')
       .padding(18)
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(this.themeSurface)
       .borderRadius(24)
     }
     .width('100%')
@@ -685,7 +695,7 @@ export struct ThemeAppearanceSettingsView {
           }
           .width('100%')
           .padding(18)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(24)
 
           this.SectionHeader($r('app.string.material_effect_title'),
@@ -699,7 +709,7 @@ export struct ThemeAppearanceSettingsView {
             this.MaterialTypeRadioRow(101, $r('app.string.material_type_immersive'))
           }
           .width('100%')
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(24)
           .border({ width: 1, color: $r('app.color.divider') })
           .padding({ top: 6, bottom: 6 })
@@ -717,7 +727,7 @@ export struct ThemeAppearanceSettingsView {
             this.MaterialLevelRadioRow(10, $r('app.string.material_level_adaptive'))
           }
           .width('100%')
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(24)
           .border({ width: 1, color: $r('app.color.divider') })
           .padding({ top: 6, bottom: 6 })
@@ -731,7 +741,7 @@ export struct ThemeAppearanceSettingsView {
             this.LightColorModeRadioRow('theme', $r('app.string.light_color_mode_theme'))
           }
           .width('100%')
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(24)
           .border({ width: 1, color: $r('app.color.divider') })
           .padding({ top: 6, bottom: 6 })
@@ -772,7 +782,7 @@ export struct ThemeAppearanceSettingsView {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -791,7 +801,7 @@ export struct ThemeAppearanceSettingsView {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(this.themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.compactScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -803,7 +813,7 @@ export struct ThemeAppearanceSettingsView {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 }
 

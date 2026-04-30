@@ -1037,7 +1037,7 @@ export struct ProviderDetailPanel {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
       .titleBar(this.getStandaloneTitleBarOptions())
       .bindToScrollable([this.pageConfigScroller, this.pageModelListScroller])
       .titleMode(HdsNavigationTitleMode.MINI)
@@ -1054,7 +1054,7 @@ export struct ProviderDetailPanel {
       .width('100%')
       .height('100%')
       .backgroundColor(this.presentationMode === ProviderDetailPresentationMode.SHEET ? Color.Transparent
-        : $r('app.color.background'))
+        : getAppUiState().themeBackground)
     }
   }
 
@@ -1246,7 +1246,7 @@ export struct ProviderDetailPanel {
     }
     .width('100%')
     .height(this.getDetailPaneBottomBarHeight())
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .backgroundBlurStyle(BlurStyle.Thin)
     .border({ width: { top: 1 }, color: $r('app.color.divider') })
   }
@@ -1460,7 +1460,7 @@ export struct ProviderDetailPanel {
       }
       .width('100%')
       .padding({ left: 16, right: 16, bottom: 6 })
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
     } else if (this.isDetailPanePresentation()) {
       Column() {
         Row({ space: 10 }) {
@@ -1530,7 +1530,7 @@ export struct ProviderDetailPanel {
         .alignItems(VerticalAlign.Center)
       }
       .width('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
       .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
     } else {
       Row() {
@@ -1750,7 +1750,7 @@ export struct ProviderDetailPanel {
                 .fontColor((this.provider?.isConnected ?? false) ? this.themePrimary : $r('app.color.text_secondary'))
             }
             .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-            .backgroundColor((this.provider?.isConnected ?? false) ? this.themePrimaryLight : $r('app.color.background'))
+            .backgroundColor((this.provider?.isConnected ?? false) ? this.themePrimaryLight : getAppUiState().themeBackground)
             .borderRadius(14)
 
             Row({ space: 6 }) {
@@ -1763,7 +1763,7 @@ export struct ProviderDetailPanel {
                 .fontColor($r('app.color.text_secondary'))
             }
             .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .borderRadius(14)
 
             Row({ space: 6 }) {
@@ -1776,7 +1776,7 @@ export struct ProviderDetailPanel {
                 .fontColor($r('app.color.text_secondary'))
             }
             .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .borderRadius(14)
 
             if (this.provider?.apiStyle === ApiStyle.OPENAI) {
@@ -1790,7 +1790,7 @@ export struct ProviderDetailPanel {
                   .fontColor($r('app.color.text_secondary'))
               }
               .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-              .backgroundColor($r('app.color.background'))
+              .backgroundColor(getAppUiState().themeBackground)
               .borderRadius(14)
             }
           }
@@ -1800,7 +1800,7 @@ export struct ProviderDetailPanel {
         .padding({ left: 16, right: 16, top: 16, bottom: 14 })
       }
       .width('100%')
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .borderRadius(20)
       .clip(true)
       .margin({ left: 16, right: 16, top: 2, bottom: 4 })
@@ -1902,7 +1902,7 @@ export struct ProviderDetailPanel {
         .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       }
       .width('100%')
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .borderRadius(16)
       .margin({ left: 16, right: 16, top: 4 })
     }
@@ -1920,7 +1920,7 @@ export struct ProviderDetailPanel {
         .fontColor(accent ? this.themePrimary : $r('app.color.text_secondary'))
     }
     .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-    .backgroundColor(accent ? this.themePrimaryLight : $r('app.color.background'))
+    .backgroundColor(accent ? this.themePrimaryLight : getAppUiState().themeBackground)
     .borderRadius(14)
   }
 
@@ -1983,7 +1983,7 @@ export struct ProviderDetailPanel {
             })
           }
           .width('100%')
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
           .borderRadius(8)
           .margin({ top: 8 })
         }
@@ -2041,7 +2041,7 @@ export struct ProviderDetailPanel {
               })
             }
             .width('100%')
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .borderRadius(8)
             .margin({ top: 8 })
           }
@@ -2142,7 +2142,7 @@ export struct ProviderDetailPanel {
         }
         .width('100%')
         .height(48)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .borderRadius(8)
         .padding({ left: 12, right: 8 })
         .margin({ top: 8 })
@@ -2169,7 +2169,7 @@ export struct ProviderDetailPanel {
         TextInput({ text: this.provider?.baseUrl ?? '', placeholder: $r('app.string.provider_base_url_placeholder') })
           .fontSize(14)
           .fontColor($r('app.color.text_primary'))
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
           .borderRadius(8)
           .height(48)
           .width('100%')
@@ -2198,7 +2198,7 @@ export struct ProviderDetailPanel {
         TextInput({ text: this.provider?.apiPath ?? '', placeholder: $r('app.string.provider_api_path_placeholder') })
           .fontSize(14)
           .fontColor($r('app.color.text_primary'))
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
           .borderRadius(8)
           .height(48)
           .width('100%')
@@ -2287,7 +2287,7 @@ export struct ProviderDetailPanel {
                   .fontSize(11)
                   .type(ButtonType.Capsule)
                   .stateEffect(false)
-                  .backgroundColor($r('app.color.surface'))
+                  .backgroundColor(getAppUiState().themeSurface)
                   .border({ width: 1, color: this.isDarkMode ? '#6A3139' : '#F2CBD2' })
                   .fontColor('#D9485F')
                   .onClick(() => {
@@ -2310,7 +2310,7 @@ export struct ProviderDetailPanel {
                   .width('100%')
                   .height(44)
                   .borderRadius(14)
-                  .backgroundColor($r('app.color.background'))
+                  .backgroundColor(getAppUiState().themeBackground)
                   .border({ width: 1, color: $r('app.color.divider') })
                   .padding({ left: 14, right: 14 })
               }
@@ -2333,7 +2333,7 @@ export struct ProviderDetailPanel {
                     .width('100%')
                     .height(44)
                     .borderRadius(14)
-                    .backgroundColor($r('app.color.background'))
+                    .backgroundColor(getAppUiState().themeBackground)
                     .border({ width: 1, color: $r('app.color.divider') })
                     .padding({ left: 14, right: 14 })
                 } else {
@@ -2345,7 +2345,7 @@ export struct ProviderDetailPanel {
                     .width('100%')
                     .height(44)
                     .borderRadius(14)
-                    .backgroundColor($r('app.color.background'))
+                    .backgroundColor(getAppUiState().themeBackground)
                     .border({ width: 1, color: $r('app.color.divider') })
                     .padding({ left: 14, right: 14 })
                 }
@@ -2355,7 +2355,7 @@ export struct ProviderDetailPanel {
             .width('100%')
             .padding(14)
             .borderRadius(18)
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .border({ width: 1, color: $r('app.color.divider') })
           }, (entry: ProviderHeaderEntry) => entry.id)
         }
@@ -2364,7 +2364,7 @@ export struct ProviderDetailPanel {
       .padding({ left: 16, right: 16, bottom: 16 })
   }
   .width('100%')
-  .backgroundColor($r('app.color.surface'))
+  .backgroundColor(getAppUiState().themeSurface)
   .borderRadius(16)
   .margin({ left: 16, right: 16, top: 8 })
 }
@@ -2401,7 +2401,7 @@ ModelsCard() {
           }
           .height(32)
           .padding({ left: 10, right: 10 })
-          .backgroundColor(this.isAllModelsEnabled() ? $r('app.color.background') : this.themePrimaryLight)
+          .backgroundColor(this.isAllModelsEnabled() ? getAppUiState().themeBackground : this.themePrimaryLight)
           .borderRadius(16)
           .margin({ right: 8 })
           .onClick(() => {
@@ -2468,7 +2468,7 @@ ModelsCard() {
       Search({ value: this.searchKeywords, placeholder: $r('app.string.filter_models_placeholder') })
         .width('100%')
         .height(40)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .margin({ left: 16, right: 16 })
         .padding({ left: 16, right: 16 })
         .onChange((value: string) => {
@@ -2483,7 +2483,7 @@ ModelsCard() {
             .layoutWeight(1)
             .height(36)
             .fontSize(14)
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .borderRadius(8)
             .onChange((value: string) => {
               this.addModelIdText = value
@@ -2513,7 +2513,7 @@ ModelsCard() {
           .type(ButtonType.Circle)
           .width(36)
           .height(36)
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
           .onClick(() => {
             this.showAddModelInput = false
             this.addModelIdText = ''
@@ -2649,7 +2649,7 @@ ModelsCard() {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
     .margin({ left: 16, right: 16, top: 8 })
   }
@@ -2687,7 +2687,7 @@ ModelsCard() {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
     }
   }
 

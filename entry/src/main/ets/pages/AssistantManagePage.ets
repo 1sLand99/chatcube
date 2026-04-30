@@ -465,7 +465,7 @@ struct AssistantManagePage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -554,7 +554,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
     .border({
       width: assistant.id === this.editingAssistantId ? 1.5 : 1,
@@ -588,7 +588,7 @@ struct AssistantManagePage {
               .fontColor($r('app.color.text_secondary'))
               .height(22)
               .padding({ left: 8, right: 8 })
-              .backgroundColor($r('app.color.background'))
+              .backgroundColor(getAppUiState().themeBackground)
               .borderRadius(11)
           }
           .width('100%')
@@ -656,7 +656,7 @@ struct AssistantManagePage {
     .layoutWeight(1)
     .height(28)
     .padding({ left: 10, right: 10 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .borderRadius(10)
   }
 
@@ -679,7 +679,7 @@ struct AssistantManagePage {
         .fontSize(14)
         .fontColor($r('app.color.text_primary'))
         .placeholderColor($r('app.color.text_tertiary'))
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .borderRadius(16)
         .padding(14)
         .onChange((value: string) => {
@@ -709,7 +709,7 @@ struct AssistantManagePage {
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.status_error'))
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
             .borderRadius(22)
             .onClick(() => {
               const assistant = this.assistants.find((item: Assistant) => item.id === this.editingAssistantId)
@@ -723,7 +723,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(20)
     .border({ width: 1, color: $r('app.color.divider') })
   }
@@ -745,7 +745,7 @@ struct AssistantManagePage {
               .fontColor($r('app.color.text_secondary'))
               .height(22)
               .padding({ left: 8, right: 8 })
-              .backgroundColor($r('app.color.background'))
+              .backgroundColor(getAppUiState().themeBackground)
               .borderRadius(11)
           }
           .width('100%')
@@ -776,7 +776,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .borderRadius(16)
   }
 
@@ -802,7 +802,7 @@ struct AssistantManagePage {
     .padding({ left: 12, right: 12 })
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(12)
   }
 
@@ -822,7 +822,7 @@ struct AssistantManagePage {
     }
     .height(22)
     .padding({ left: 8, right: 8 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .borderRadius(11)
     .border({ width: 1, color: $r('app.color.divider') })
   }
@@ -888,7 +888,7 @@ struct AssistantManagePage {
           .fontSize(15)
           .fontColor($r('app.color.text_primary'))
           .placeholderColor($r('app.color.text_tertiary'))
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
           .borderRadius(18)
           .padding({ left: 14, right: 14 })
           .onChange((text: string) => {
@@ -959,7 +959,7 @@ struct AssistantManagePage {
         .width(34)
         .height(34)
         .borderRadius(17)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .onClick(() => {
           this.clearDefaultModel()
         })
@@ -971,7 +971,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .padding({ left: 14, right: 12, top: 12, bottom: 12 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .borderRadius(16)
     .onClick(() => {
       this.showModelSheet = true
@@ -1014,7 +1014,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .borderRadius(16)
   }
 
@@ -1042,7 +1042,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   build() {
@@ -1056,7 +1056,7 @@ struct AssistantManagePage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.compactScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -1083,7 +1083,7 @@ struct AssistantManagePage {
           height: SheetSize.FIT_CONTENT,
           dragBar: true,
           showClose: false,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: getAppUiState().themeBackground,
           preferType: SheetType.BOTTOM,
           onDisappear: () => {
             this.showAvatarEditorSheet = false
@@ -1092,7 +1092,7 @@ struct AssistantManagePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

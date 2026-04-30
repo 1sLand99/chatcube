@@ -1,4 +1,5 @@
 import { ToolConfig, ToolPermissionLevel, ToolSourceType } from '../../models/ChatModels'
+import { getAppUiState } from '../../state/AppUiState'
 import { pickLocalizedText } from '../../utils/LocalizedTextUtils'
 
 class McpToolGroup {
@@ -27,6 +28,14 @@ export struct ChatToolPickerSheetContent {
     (_toolId: string, _enabled: boolean): void => {}
   @Event onToggleMcpGroup: (toolIds: string[], enabled: boolean) => void =
     (_toolIds: string[], _enabled: boolean): void => {}
+
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
 
   private isMcpChatTool(tool: ToolConfig): boolean {
     return tool.sourceType === ToolSourceType.MCP && tool.sourceId.trim() !== ''
@@ -86,7 +95,7 @@ export struct ChatToolPickerSheetContent {
   }
 
   private getCardBackground(selected: boolean): ResourceColor {
-    return selected ? this.themePrimaryLight : $r('app.color.surface')
+    return selected ? this.themePrimaryLight : this.themeSurface
   }
 
   private getCardBorderColor(selected: boolean): ResourceColor {
@@ -179,7 +188,7 @@ export struct ChatToolPickerSheetContent {
             .width('100%')
             .padding({ left: 20, right: 20, top: 28, bottom: 28 })
             .borderRadius(20)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(this.themeSurface)
             .border({
               width: 0.5,
               color: $r('app.color.divider')
@@ -377,6 +386,6 @@ export struct ChatToolPickerSheetContent {
       .scrollBar(BarState.Off)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 }

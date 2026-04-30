@@ -7,6 +7,8 @@ import {
   hdsEffect,
   hdsMaterial
 } from '@kit.UIDesignKit'
+import { getAppUiState } from '../state/AppUiState'
+import { withColorAlpha } from './ColorAlphaUtils'
 
 export function buildPointLightBorderEffect(sourceBright: boolean = false): uiEffect.VisualEffect {
   return new hdsEffect.HdsEffectBuilder()
@@ -54,6 +56,14 @@ export function getHdsTopNavigationInitialBlurRadius(materialType: number): numb
   return materialType === 0 ? 0 : 8
 }
 
+function getHdsTopNavigationOriginBackgroundColor(): string {
+  return withColorAlpha(getAppUiState().themeBackground, '00')
+}
+
+function getHdsTopNavigationScrolledBackgroundColor(): string {
+  return withColorAlpha(getAppUiState().themeBackground, 'E6')
+}
+
 export function getHdsTopNavigationBlurRadius(materialType: number, materialLevel: number,
   windowWidthVp: number, windowHeightVp: number): number {
   if (materialType === 0) {
@@ -94,14 +104,14 @@ export function buildHdsTopNavigationTitleBarOptions(
       },
       originalStyle: {
         backgroundStyle: {
-          backgroundColor: $r('app.color.top_navigation_blur_origin'),
+          backgroundColor: getHdsTopNavigationOriginBackgroundColor(),
           maskExtraHeight: options.maskExtraHeightVp,
           blurRadius: getHdsTopNavigationInitialBlurRadius(options.materialType)
         }
       },
       scrollEffectStyle: {
         backgroundStyle: {
-          backgroundColor: $r('app.color.top_navigation_blur_scrolled'),
+          backgroundColor: getHdsTopNavigationScrolledBackgroundColor(),
           maskExtraHeight: options.maskExtraHeightVp,
           blurRadius: getHdsTopNavigationBlurRadius(options.materialType, options.materialLevel, options.windowWidthVp,
             options.windowHeightVp)

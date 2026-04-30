@@ -311,7 +311,7 @@ struct ExportDataPage {
                 }, (session: ChatSession) => session.id)
               }
               .width('100%')
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(16)
               .margin({ bottom: 24 })
 
@@ -328,7 +328,7 @@ struct ExportDataPage {
                   (value: boolean) => { this.includePreferences = value })
               }
               .width('100%')
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(16)
 
               this.ExportSecurityNotice()
@@ -363,7 +363,7 @@ struct ExportDataPage {
         .width('100%')
         .justifyContent(FlexAlign.Center)
         .padding({ left: 16, right: 16, top: 12, bottom: this.getBottomActionBarPadding() })
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .shadow({
           radius: 8,
           color: '#10000000',
@@ -391,7 +391,7 @@ struct ExportDataPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -420,7 +420,7 @@ struct ExportDataPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.compactScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -432,7 +432,7 @@ struct ExportDataPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder

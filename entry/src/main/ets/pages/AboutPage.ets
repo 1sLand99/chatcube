@@ -225,7 +225,7 @@ struct AboutPage {
             })
           }
           .width('100%')
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .borderRadius(16)
 
           Column({ space: 4 }) {
@@ -268,7 +268,7 @@ struct AboutPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -297,7 +297,7 @@ struct AboutPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.compactScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -309,12 +309,12 @@ struct AboutPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .bindSheet($$this.showQqGroupSheet, this.QqGroupSheetBuilder(), {
       height: SheetSize.FIT_CONTENT,
       showClose: true,
       dragBar: true,
-      backgroundColor: $r('app.color.background')
+      backgroundColor: getAppUiState().themeBackground
     })
   }
 

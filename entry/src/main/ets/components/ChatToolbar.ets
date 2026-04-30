@@ -171,7 +171,7 @@ export struct ChatToolbar {
         .bindMenu(this.ReasoningMenuBuilder(), {
           placement: Placement.BottomLeft,
           offset: { x: 0, y: 8 },
-          backgroundColor: $r('app.color.surface'),
+          backgroundColor: this.themeSurface,
           backgroundBlurStyle: BlurStyle.Regular
         })
       }

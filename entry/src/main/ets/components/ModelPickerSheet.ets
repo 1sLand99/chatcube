@@ -240,7 +240,7 @@ export struct ModelPickerSheet {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -291,7 +291,7 @@ export struct ModelPickerSheet {
     Search({ value: this.searchKeywords, placeholder: $r('app.string.filter_models_placeholder') })
       .width('100%')
       .height(40)
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .margin({ left: 16, right: 16 })
       .padding({ left: 16, right: 16 })
       .onChange((value: string) => {
@@ -348,7 +348,7 @@ export struct ModelPickerSheet {
       }
       .height(32)
       .padding({ left: 12, right: 12 })
-      .backgroundColor(this.showSelectedOnly ? this.themePrimaryLight : $r('app.color.surface'))
+      .backgroundColor(this.showSelectedOnly ? this.themePrimaryLight : getAppUiState().themeSurface)
       .borderRadius(16)
       .enabled(this.showSelectedOnly || this.getSelectedCountInFiltered() > 0)
       .opacity(this.showSelectedOnly || this.getSelectedCountInFiltered() > 0 ? 1 : 0.45)
@@ -381,7 +381,7 @@ export struct ModelPickerSheet {
               .padding({ left: 12, right: 12 })
               .backgroundColor(this.activeGroupFilter === index
                 ? this.themePrimary
-                : $r('app.color.surface'))
+                : getAppUiState().themeSurface)
               .borderRadius(16)
               .onClick(() => {
                 this.activeGroupFilter = this.activeGroupFilter === index ? -1 : index
@@ -398,7 +398,7 @@ export struct ModelPickerSheet {
       }
       .width('100%')
       .height(40)
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
       .zIndex(1)
     }
   }
@@ -501,7 +501,7 @@ export struct ModelPickerSheet {
       .width('100%')
       .constraintSize({ minHeight: 56 })
       .padding({ left: 12, right: 12, top: 12, bottom: 12 })
-      .backgroundColor(this.isSelected(row.modelId) ? this.themePrimaryLight : $r('app.color.surface'))
+      .backgroundColor(this.isSelected(row.modelId) ? this.themePrimaryLight : getAppUiState().themeSurface)
       .borderRadius(this.buildRowRadius(row.groupPosition))
       .onClick(() => {
         this.toggleModel(row.modelId)

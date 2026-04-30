@@ -107,7 +107,7 @@ export struct ModelEditSheet {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -181,7 +181,7 @@ export struct ModelEditSheet {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
     .margin({ bottom: 12 })
   }
@@ -207,7 +207,7 @@ export struct ModelEditSheet {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
     .margin({ bottom: 12 })
   }
@@ -317,7 +317,7 @@ export struct ModelEditSheet {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
     .margin({ bottom: 12 })
   }
@@ -548,7 +548,7 @@ export struct ModelEditSheet {
       top: 0,
       bottom: 16
     })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
   }
 }

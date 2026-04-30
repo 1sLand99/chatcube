@@ -4,14 +4,14 @@ export function withColorAlpha(color: string, alphaHex: string): string {
     return color
   }
   if (color.length === 4) {
-    return '#' + color.charAt(1) + color.charAt(1) + color.charAt(2) + color.charAt(2) + color.charAt(3) +
-      color.charAt(3) + normalizedAlpha
+    return '#' + normalizedAlpha + color.charAt(1) + color.charAt(1) + color.charAt(2) + color.charAt(2) +
+      color.charAt(3) + color.charAt(3)
   }
   if (color.length === 7) {
-    return color + normalizedAlpha
+    return '#' + normalizedAlpha + color.substring(1)
   }
   if (color.length === 9) {
-    return color.substring(0, 7) + normalizedAlpha
+    return '#' + normalizedAlpha + color.substring(3)
   }
   return color
 }

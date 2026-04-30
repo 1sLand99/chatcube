@@ -114,7 +114,7 @@ struct ToolsCenterPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -143,7 +143,7 @@ struct ToolsCenterPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.toolsCenterScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -155,7 +155,7 @@ struct ToolsCenterPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

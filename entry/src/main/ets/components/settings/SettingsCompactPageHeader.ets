@@ -1,5 +1,6 @@
 import { getAppUiState } from '../../state/AppUiState'
 import { getHdsTopNavigationMaskExtraHeight } from '../../utils/HdsVisualEffectUtil'
+import { withColorAlpha } from '../../utils/ColorAlphaUtils'
 
 @ComponentV2
 export struct SettingsCompactTitleBarContent {
@@ -77,11 +78,11 @@ export struct SettingsCompactPageHeader {
       Column()
         .width('100%')
         .height(this.getMaskExtraHeight())
-        .backgroundColor($r('app.color.top_navigation_blur_origin'))
+        .backgroundColor(withColorAlpha(getAppUiState().themeBackground, '00'))
         .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
     }
     .width('100%')
-    .backgroundColor($r('app.color.top_navigation_blur_scrolled'))
+    .backgroundColor(withColorAlpha(getAppUiState().themeBackground, 'E6'))
     .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
     .renderGroup(true)
   }

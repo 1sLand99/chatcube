@@ -69,7 +69,7 @@ export struct ProviderIconEditSheet {
           customImagePath: '',
           iconSize: 80,
           radius: 20,
-          bgColor: $r('app.color.surface'),
+          bgColor: getAppUiState().themeSurface,
           fallbackSymbol: $r('sys.symbol.message'),
           fallbackColor: $r('app.color.text_tertiary')
         })
@@ -107,7 +107,7 @@ export struct ProviderIconEditSheet {
             .fontSize(12)
             .type(ButtonType.Normal)
             .borderRadius(6)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .onClick(() => {
@@ -146,7 +146,7 @@ export struct ProviderIconEditSheet {
             .fontSize(12)
             .type(ButtonType.Normal)
             .borderRadius(6)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .onClick(() => {
@@ -164,7 +164,7 @@ export struct ProviderIconEditSheet {
             .fontSize(14)
             .type(ButtonType.Normal)
             .borderRadius(8)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .onClick(() => {
               this.onResetToPreset()
@@ -175,7 +175,7 @@ export struct ProviderIconEditSheet {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -246,7 +246,7 @@ export struct ProviderIconEditSheet {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

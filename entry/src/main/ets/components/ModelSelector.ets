@@ -213,7 +213,7 @@ export struct ModelSelectorContent {
       Search({ value: this.searchKeywords, placeholder: this.searchPlaceholder })
         .layoutWeight(1)
         .height(40)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .onChange((value: string) => {
           this.searchKeywords = value
           this.rebuildRows()
@@ -235,7 +235,7 @@ export struct ModelSelectorContent {
         .height(32)
         .padding({ left: 10, right: 10 })
         .margin({ left: 8 })
-        .backgroundColor(this.showFavoritesOnly ? this.favoriteFilterActiveBackground : $r('app.color.surface'))
+        .backgroundColor(this.showFavoritesOnly ? this.favoriteFilterActiveBackground : getAppUiState().themeSurface)
         .border({
           width: this.showFavoritesOnly ? 1 : 0.5,
           color: this.showFavoritesOnly ? this.favoriteAccentColor : $r('app.color.divider')
@@ -271,7 +271,7 @@ export struct ModelSelectorContent {
             }
             .width('100%')
             .padding(16)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .borderRadius(12)
             .onClick(() => {
               this.onClearSelection()
@@ -455,7 +455,7 @@ export struct ModelSelectorContent {
       }
       .width('100%')
       .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-      .backgroundColor(this.isSelectedModel(row) ? this.themePrimaryLight : $r('app.color.surface'))
+      .backgroundColor(this.isSelectedModel(row) ? this.themePrimaryLight : getAppUiState().themeSurface)
       .borderRadius(this.buildRowRadius(row.groupPosition))
 
       if (row.groupPosition === ModelRowGroupPosition.FIRST || row.groupPosition === ModelRowGroupPosition.MIDDLE) {

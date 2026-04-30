@@ -165,7 +165,7 @@ struct DefaultModelPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -194,7 +194,7 @@ struct DefaultModelPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.compactScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -225,7 +225,7 @@ struct DefaultModelPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -466,7 +466,7 @@ struct DefaultModelPage {
       }
       .width('100%')
       .padding(16)
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .borderRadius(12)
       .margin({ left: 16, right: 16, top: 16 })
 
@@ -474,7 +474,7 @@ struct DefaultModelPage {
       TextArea({ text: this.currentPrompt })
         .fontSize(14)
         .fontColor($r('app.color.text_primary'))
-        .backgroundColor($r('app.color.surface'))
+        .backgroundColor(getAppUiState().themeSurface)
         .borderRadius(12)
         .margin({ left: 16, right: 16, top: 16 })
         .layoutWeight(1)
@@ -487,7 +487,7 @@ struct DefaultModelPage {
         Button($r('app.string.default_model_reset_prompt'))
           .fontSize(15)
           .fontColor($r('app.color.text_secondary'))
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .borderRadius(24)
           .height(44)
           .width('100%')
@@ -713,7 +713,7 @@ struct ModelConfigCard {
       }
     }
     .width('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .borderRadius(16)
   }
 }

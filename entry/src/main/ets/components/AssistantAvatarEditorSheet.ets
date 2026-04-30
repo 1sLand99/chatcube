@@ -312,7 +312,7 @@ export struct AssistantAvatarEditorSheet {
             .fontSize(15)
             .fontColor($r('app.color.text_primary'))
             .placeholderColor($r('app.color.text_tertiary'))
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .borderRadius(16)
             .padding({ left: 14, right: 14 })
             .onChange((text: string) => {
@@ -336,7 +336,7 @@ export struct AssistantAvatarEditorSheet {
             .fontColor(this.defaultModelName !== '' ? $r('app.color.text_primary') : $r('app.color.text_tertiary'))
             .width('100%')
             .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .borderRadius(16)
         }
         .width('100%')
@@ -353,7 +353,7 @@ export struct AssistantAvatarEditorSheet {
             .fontSize(14)
             .fontColor($r('app.color.text_primary'))
             .placeholderColor($r('app.color.text_tertiary'))
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .borderRadius(16)
             .padding({ left: 14, right: 14 })
             .onChange((text: string) => {
@@ -372,7 +372,7 @@ export struct AssistantAvatarEditorSheet {
               .fontSize(14)
               .fontColor($r('app.color.text_primary'))
               .placeholderColor($r('app.color.text_tertiary'))
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(16)
               .padding({ left: 14, right: 14 })
               .onChange((text: string) => {
@@ -383,7 +383,7 @@ export struct AssistantAvatarEditorSheet {
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themePrimary)
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(16)
               .padding({ left: 14, right: 14 })
               .onClick(() => {
@@ -418,7 +418,7 @@ export struct AssistantAvatarEditorSheet {
     }
     .width('100%')
     .padding({ left: 20, right: 20, top: 18, bottom: 28 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -433,7 +433,7 @@ export struct AssistantAvatarEditorSheet {
           .fontSize(12)
           .type(ButtonType.Normal)
           .borderRadius(8)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .fontColor($r('app.color.text_primary'))
           .padding({ left: 12, right: 12, top: 6, bottom: 6 })
           .onClick(() => {
@@ -473,7 +473,7 @@ export struct AssistantAvatarEditorSheet {
           .fontSize(12)
           .type(ButtonType.Normal)
           .borderRadius(8)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .fontColor($r('app.color.text_primary'))
           .padding({ left: 12, right: 12, top: 6, bottom: 6 })
           .onClick(() => {
@@ -554,7 +554,7 @@ export struct AssistantAvatarEditorSheet {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -565,7 +565,7 @@ export struct AssistantAvatarEditorSheet {
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
       .fontColor(this.editMode === mode ? Color.White : $r('app.color.text_secondary'))
-      .backgroundColor(this.editMode === mode ? this.themePrimary : $r('app.color.surface'))
+      .backgroundColor(this.editMode === mode ? this.themePrimary : getAppUiState().themeSurface)
       .borderRadius(19)
       .border({
         width: this.editMode === mode ? 0 : 1,

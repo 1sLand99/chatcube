@@ -1,4 +1,5 @@
 import { ToolPreviewEntry } from '../../utils/ToolPayloadSummaryUtils'
+import { getAppUiState } from '../../state/AppUiState'
 import { pickLocalizedText } from '../../utils/LocalizedTextUtils'
 
 @ComponentV2
@@ -15,6 +16,14 @@ export struct ChatToolExecutionApprovalSheetContent {
   @Event onToggleShowRaw: () => void = (): void => {}
   @Event onCancel: () => void = (): void => {}
   @Event onApprove: () => void = (): void => {}
+
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
 
   build() {
     Column({ space: 16 }) {
@@ -74,7 +83,7 @@ export struct ChatToolExecutionApprovalSheetContent {
       .width('100%')
       .padding(14)
       .borderRadius(16)
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(this.themeSurface)
 
       Column({ space: 6 }) {
         Text(pickLocalizedText('风险提醒', 'Risk Notice'))
@@ -138,7 +147,7 @@ export struct ChatToolExecutionApprovalSheetContent {
           .width('100%')
           .padding(12)
           .borderRadius(14)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
         } else {
           Text(this.argumentSummary)
             .width('100%')
@@ -147,7 +156,7 @@ export struct ChatToolExecutionApprovalSheetContent {
             .fontColor($r('app.color.text_secondary'))
             .padding(12)
             .borderRadius(14)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(this.themeSurface)
         }
 
         if (this.showRawArguments) {
@@ -184,7 +193,7 @@ export struct ChatToolExecutionApprovalSheetContent {
           .layoutWeight(1)
           .height(46)
           .type(ButtonType.Capsule)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .fontColor($r('app.color.text_primary'))
           .border({
             width: 0.5,
@@ -208,6 +217,6 @@ export struct ChatToolExecutionApprovalSheetContent {
     }
     .width('100%')
     .padding({ left: 20, right: 20, top: 12, bottom: 24 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 }

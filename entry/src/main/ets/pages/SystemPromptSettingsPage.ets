@@ -160,7 +160,7 @@ struct SystemPromptSettingsPage {
           .fontSize(14)
           .fontColor($r('app.color.text_primary'))
           .placeholderColor($r('app.color.text_tertiary'))
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .borderRadius(20)
           .padding(16)
           .enabled(this.systemPromptEnabled)
@@ -176,7 +176,7 @@ struct SystemPromptSettingsPage {
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_secondary'))
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .borderRadius(22)
             .onClick(() => {
               this.resetSystemPrompt()
@@ -222,7 +222,7 @@ struct SystemPromptSettingsPage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -251,7 +251,7 @@ struct SystemPromptSettingsPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .titleMode(HdsNavigationTitleMode.MINI)
         .hideBackButton(true)
@@ -262,7 +262,7 @@ struct SystemPromptSettingsPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

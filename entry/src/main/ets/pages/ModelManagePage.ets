@@ -33,6 +33,7 @@ import {
   filterProvidersByTab,
   reorderProvidersWithinTab
 } from '../config/ProviderOrderUtils'
+import { withColorAlpha } from '../utils/ColorAlphaUtils'
 
 let modelManagePagePathStack: NavPathStack | null = null
 let modelManageInternalBackHandler: (() => boolean) | null = null
@@ -445,7 +446,7 @@ struct ModelManagePage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(getAppUiState().themeBackground)
         .titleBar(this.getCompactTitleBarOptions())
         .bindToScrollable([this.providerListScroller])
         .titleMode(HdsNavigationTitleMode.MINI)
@@ -457,7 +458,7 @@ struct ModelManagePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -502,7 +503,7 @@ struct ModelManagePage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
@@ -625,11 +626,11 @@ struct ModelManagePage {
       Column()
         .width('100%')
         .height(this.getCompactTitleBarMaskExtraHeight())
-        .backgroundColor($r('app.color.top_navigation_blur_origin'))
+        .backgroundColor(withColorAlpha(getAppUiState().themeBackground, '00'))
         .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
     }
     .width('100%')
-    .backgroundColor($r('app.color.top_navigation_blur_scrolled'))
+    .backgroundColor(withColorAlpha(getAppUiState().themeBackground, 'E6'))
     .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
     .renderGroup(true)
   }
@@ -641,7 +642,7 @@ struct ModelManagePage {
     }
     .width('100%')
     .layoutWeight(1)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -744,7 +745,7 @@ struct ModelManagePage {
               }
               .width('100%')
               .height(56)
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(24)
               .onClick(() => {
                 this.openCreateProvider()
@@ -766,7 +767,7 @@ struct ModelManagePage {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
       .cachedCount(this.getProviderListCachedCount())
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
     } else {
       this.ProviderListPaneContent(isExpandedPane)
     }
@@ -854,7 +855,7 @@ struct ModelManagePage {
               }
               .width('100%')
               .height(56)
-              .backgroundColor($r('app.color.surface'))
+              .backgroundColor(getAppUiState().themeSurface)
               .borderRadius(24)
               .onClick(() => {
                 this.openCreateProvider()
@@ -877,7 +878,7 @@ struct ModelManagePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -901,7 +902,7 @@ struct ModelManagePage {
       .width('100%')
       .height(40)
       .padding({ left: 12, right: 12 })
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
       .borderRadius(20)
       .border({
         width: 1,
@@ -1235,7 +1236,7 @@ struct ProviderCardItem {
     .width('100%')
     .borderRadius(16)
     .clip(true)
-    .backgroundColor(this.active ? this.themePrimaryLight : $r('app.color.surface'))
+    .backgroundColor(this.active ? this.themePrimaryLight : getAppUiState().themeSurface)
     .border(this.active ? { width: 1.5, color: this.themePrimary } : { width: 0, color: Color.Transparent })
   }
 }

@@ -1,9 +1,13 @@
 import { IndexEmptyStateCard } from '../components/index/IndexEmptyStateCard'
 import { AppStorageKeys } from '../config/AppStorageKeys'
-import { setAppUiStateValue } from '../state/AppUiState'
+import { getAppUiState, setAppUiStateValue } from '../state/AppUiState'
 
-@Component
+@ComponentV2
 struct ChatDetailEmptyPage {
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+
   build() {
     NavDestination() {
       Column() {
@@ -20,7 +24,7 @@ struct ChatDetailEmptyPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
     }
     .hideTitleBar(true)
   }

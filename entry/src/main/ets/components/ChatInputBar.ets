@@ -47,6 +47,12 @@ export struct ChatInputBar {
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+  private get themeDivider(): string {
+    return getAppUiState().themeDivider
+  }
   private get themeUserBubble(): string {
     return getAppUiState().themeUserBubble
   }
@@ -193,7 +199,7 @@ export struct ChatInputBar {
         }
         .width(40)
         .height(40)
-        .backgroundColor(this.modelBtnPressed ? $r('app.color.divider') : this.themeAiBubble)
+        .backgroundColor(this.modelBtnPressed ? this.themeDivider : this.themeAiBubble)
         .scale({ x: this.modelBtnPressed ? 0.95 : 1, y: this.modelBtnPressed ? 0.95 : 1 })
         .animation({ duration: 150, curve: Curve.EaseOut })
         .onTouch((event: TouchEvent) => {
@@ -314,11 +320,11 @@ export struct ChatInputBar {
     }
     .width('100%')
     .borderRadius(24)
-    .backgroundColor(Color.Transparent)
+    .backgroundColor(this.themeAiBubble)
     .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
     .border({
       width: this.isEditing ? 2 : 0.5,
-      color: this.isEditing ? this.themePrimary : $r('app.color.divider')
+      color: this.isEditing ? this.themePrimary : this.themeDivider
     })
     .shadow({
       radius: this.isEditing ? 16 : 32,
@@ -406,7 +412,7 @@ export struct ChatInputBar {
         .width(60)
         .height(60)
         .borderRadius(8)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(this.themeBackground)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
       }

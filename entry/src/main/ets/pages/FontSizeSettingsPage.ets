@@ -1,4 +1,5 @@
 import { ThemeAppearanceSettingsView } from './ThemeModeSettingsPage'
+import { getAppUiState } from '../state/AppUiState'
 
 let fontSizeSettingsPathStack: NavPathStack | null = null
 
@@ -22,6 +23,7 @@ struct FontSizeSettingsPage {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

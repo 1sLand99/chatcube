@@ -1048,7 +1048,7 @@ export struct ToolsCenterPanel {
               .fontColor($r('app.color.text_primary'))
               .width('100%')
               .height(40)
-              .backgroundColor($r('app.color.background'))
+              .backgroundColor(getAppUiState().themeBackground)
               .borderRadius(10)
               .padding({ left: 8, right: 8 })
 
@@ -1063,7 +1063,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(40)
                 .borderRadius(10)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .padding({ left: 12, right: 12 })
                 .margin({ top: 8 })
             }
@@ -1079,7 +1079,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(40)
                 .borderRadius(10)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .padding({ left: 12, right: 12 })
                 .margin({ top: 8 })
             }
@@ -1095,7 +1095,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(40)
                 .borderRadius(10)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .padding({ left: 12, right: 12 })
                 .margin({ top: 8 })
 
@@ -1107,7 +1107,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(40)
                 .borderRadius(10)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .padding({ left: 12, right: 12 })
                 .margin({ top: 8 })
             }
@@ -1146,7 +1146,7 @@ export struct ToolsCenterPanel {
           .width('100%')
           .padding(12)
           .borderRadius(12)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
         }
         .width('100%')
         .padding({ left: 16, right: 16, bottom: 24 })
@@ -1157,7 +1157,7 @@ export struct ToolsCenterPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   @Builder
@@ -1275,14 +1275,14 @@ export struct ToolsCenterPanel {
                 .fontColor($r('app.color.text_secondary'))
                 .padding({ left: 10, right: 10, top: 6, bottom: 6 })
                 .borderRadius(999)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
             }
             .width('100%')
           }
           .width('100%')
           .padding(16)
           .borderRadius(20)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
           .border({ width: 1, color: withColorAlpha(this.themePrimary, this.isDarkMode ? '20' : '10') })
 
           Column({ space: 12 }) {
@@ -1319,7 +1319,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(46)
                 .borderRadius(14)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .border({ width: 1, color: $r('app.color.divider') })
                 .padding({ left: 14, right: 14 })
             }
@@ -1340,7 +1340,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .height(46)
                 .borderRadius(14)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .border({ width: 1, color: $r('app.color.divider') })
                 .padding({ left: 14, right: 14 })
 
@@ -1355,7 +1355,7 @@ export struct ToolsCenterPanel {
           .width('100%')
           .padding(16)
           .borderRadius(20)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
 
           Column({ space: 12 }) {
             Column({ space: 4 }) {
@@ -1389,7 +1389,7 @@ export struct ToolsCenterPanel {
                 .fontColor($r('app.color.text_primary'))
                 .width('100%')
                 .height(46)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .borderRadius(14)
                 .border({ width: 1, color: $r('app.color.divider') })
                 .padding({ left: 10, right: 10 })
@@ -1417,7 +1417,7 @@ export struct ToolsCenterPanel {
                   .width('100%')
                   .height(46)
                   .borderRadius(14)
-                  .backgroundColor($r('app.color.background'))
+                  .backgroundColor(getAppUiState().themeBackground)
                   .border({ width: 1, color: $r('app.color.divider') })
                   .padding({ left: 14, right: 14 })
 
@@ -1466,13 +1466,13 @@ export struct ToolsCenterPanel {
               .width('100%')
               .padding(12)
               .borderRadius(14)
-              .backgroundColor($r('app.color.background'))
+              .backgroundColor(getAppUiState().themeBackground)
             }
           }
           .width('100%')
           .padding(16)
           .borderRadius(20)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
 
           Column({ space: 12 }) {
             Row({ space: 8 }) {
@@ -1545,7 +1545,7 @@ export struct ToolsCenterPanel {
                       .fontSize(11)
                       .type(ButtonType.Capsule)
                       .stateEffect(false)
-                      .backgroundColor($r('app.color.surface'))
+                      .backgroundColor(getAppUiState().themeSurface)
                       .border({ width: 1, color: this.isDarkMode ? '#6A3139' : '#F2CBD2' })
                       .fontColor('#D9485F')
                       .onClick(() => {
@@ -1571,7 +1571,7 @@ export struct ToolsCenterPanel {
                       .width('100%')
                       .height(44)
                       .borderRadius(14)
-                      .backgroundColor($r('app.color.background'))
+                      .backgroundColor(getAppUiState().themeBackground)
                       .border({ width: 1, color: $r('app.color.divider') })
                       .padding({ left: 14, right: 14 })
                   }
@@ -1597,7 +1597,7 @@ export struct ToolsCenterPanel {
                         .width('100%')
                         .height(44)
                         .borderRadius(14)
-                        .backgroundColor($r('app.color.background'))
+                        .backgroundColor(getAppUiState().themeBackground)
                         .border({ width: 1, color: $r('app.color.divider') })
                         .padding({ left: 14, right: 14 })
                     } else {
@@ -1612,7 +1612,7 @@ export struct ToolsCenterPanel {
                         .width('100%')
                         .height(44)
                         .borderRadius(14)
-                        .backgroundColor($r('app.color.background'))
+                        .backgroundColor(getAppUiState().themeBackground)
                         .border({ width: 1, color: $r('app.color.divider') })
                         .padding({ left: 14, right: 14 })
                     }
@@ -1622,7 +1622,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .padding(14)
                 .borderRadius(18)
-                .backgroundColor($r('app.color.background'))
+                .backgroundColor(getAppUiState().themeBackground)
                 .border({ width: 1, color: $r('app.color.divider') })
               }, (entry: McpHeaderEntry) => entry.id)
             }
@@ -1630,7 +1630,7 @@ export struct ToolsCenterPanel {
           .width('100%')
           .padding(16)
           .borderRadius(20)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
 
           Row({ space: 12 }) {
             Column({ space: 4 }) {
@@ -1659,7 +1659,7 @@ export struct ToolsCenterPanel {
           .width('100%')
           .padding(16)
           .borderRadius(20)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(getAppUiState().themeSurface)
         }
         .width('100%')
         .padding({ left: 16, right: 16, bottom: 24 })
@@ -1670,7 +1670,7 @@ export struct ToolsCenterPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   build() {
@@ -1828,7 +1828,7 @@ export struct ToolsCenterPanel {
                 .width('100%')
                 .padding(18)
                 .borderRadius(20)
-                .backgroundColor($r('app.color.surface'))
+                .backgroundColor(getAppUiState().themeSurface)
                 .border({ width: 1, color: $r('app.color.divider') })
                 .shadow({
                   radius: 14,
@@ -1871,7 +1871,7 @@ export struct ToolsCenterPanel {
       }
       .width('100%')
       .layoutWeight(1)
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(getAppUiState().themeBackground)
 
       // bindSheet 宿主分离：布尔状态模式下不要把多个 sheet 链到同一个组件上
       Column()
@@ -1911,7 +1911,7 @@ export struct ToolsCenterPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 
@@ -2006,7 +2006,7 @@ struct SearchServiceCardItem {
     .padding(16)
     .margin({ bottom: 8 })
     .borderRadius(20)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .border({ width: 1, color: this.searchEnabled ? this.themePrimary : this.dividerHex })
     .shadow({
       radius: 16,
@@ -2052,7 +2052,7 @@ struct BuiltinToolCardItem {
       textItem: {
         customBuilder: (): void => { this.ToolCardText() }
       },
-      cardBackgroundColor: $r('app.color.surface'),
+      cardBackgroundColor: getAppUiState().themeSurface,
       cardBorderRadius: 12,
       accessibilityOptions: {
         accessibilityText: this.tool.name,
@@ -2216,7 +2216,7 @@ struct McpServerCardItem {
           .fontColor($r('app.color.text_secondary'))
           .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(999)
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(getAppUiState().themeBackground)
 
         if (this.authLabel !== 'None') {
           Text(this.authLabel)
@@ -2236,7 +2236,7 @@ struct McpServerCardItem {
             .fontColor($r('app.color.text_secondary'))
             .padding({ left: 10, right: 10, top: 6, bottom: 6 })
             .borderRadius(999)
-            .backgroundColor($r('app.color.background'))
+            .backgroundColor(getAppUiState().themeBackground)
         }
 
         if (this.getWriteToolCount() > 0) {
@@ -2377,7 +2377,7 @@ struct McpServerCardItem {
     .padding(16)
     .margin({ bottom: 10 })
     .borderRadius(20)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(getAppUiState().themeSurface)
     .border({ width: 1, color: this.serverEnabled ? this.themePrimary : this.dividerHex })
     .shadow({
       radius: 16,

@@ -14,9 +14,6 @@ import { setAppUiStateValue } from '../state/AppUiState';
 
 const DOMAIN = 0x0000;
 
-// Surface 颜色常量，需要与 color.json 保持一致（用于沉浸式效果）
-const SURFACE_COLOR_LIGHT = '#FFFDF8';
-const SURFACE_COLOR_DARK = '#292722';
 const STATUS_BAR_CONTENT_LIGHT = '#1F2329';
 const STATUS_BAR_CONTENT_DARK = '#F5F7FA';
 
@@ -197,6 +194,9 @@ export default class EntryAbility extends UIAbility {
       },
       onLanguageChanged: (language: AppLanguage): void => {
         ServiceRegistry.language().applyLanguage(this.context, language);
+      },
+      onColorThemeChanged: (): void => {
+        this.updateWindowAppearance();
       }
     };
     ServiceRegistry.settings().registerCallback(this.settingsCallback);
@@ -370,7 +370,6 @@ export default class EntryAbility extends UIAbility {
     // 使用 newConfig.colorMode 获取最新系统深浅色，this.context.config 在回调时可能尚未更新
     const latestColorMode = newConfig.colorMode ?? this.context.config.colorMode;
     void this.persistSystemDarkMode(latestColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
-    this.updateWindowAppearance(latestColorMode);
     this.updateColorModeStorage(latestColorMode);
 
     void ServiceRegistry.language().handleSystemConfigurationUpdate(this.context);
@@ -383,6 +382,7 @@ export default class EntryAbility extends UIAbility {
         ? false
         : latestColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
     ServiceRegistry.theme().updateDarkMode(isDarkMode);
+    this.updateWindowAppearance(latestColorMode);
   }
 
   // 更新颜色模式到 AppStorage
@@ -408,7 +408,7 @@ export default class EntryAbility extends UIAbility {
       return;
     }
     const isDarkMode = this.resolveIsDarkMode(colorMode);
-    const backgroundColor = isDarkMode ? SURFACE_COLOR_DARK : SURFACE_COLOR_LIGHT;
+    const backgroundColor = ServiceRegistry.theme().getCurrentColors().background;
     const statusBarContentColor = isDarkMode ? STATUS_BAR_CONTENT_DARK : STATUS_BAR_CONTENT_LIGHT;
     try {
       this.mainWindow.setWindowBackgroundColor(backgroundColor);

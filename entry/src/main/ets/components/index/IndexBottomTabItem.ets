@@ -1,4 +1,5 @@
 import { getAppUiState } from '../../state/AppUiState'
+import { createButtonTouchHandler, getButtonAnimation, getButtonScale } from '../../utils/ButtonAnimationUtils'
 
 @ComponentV2
 export struct IndexBottomTabItem {
@@ -7,6 +8,7 @@ export struct IndexBottomTabItem {
   @Param inactiveIcon: Resource = $r('sys.symbol.circle')
   @Param label: Resource = $r('app.string.tab_chat')
   @Param badgeCount: number = 0
+  @Local pressed: boolean = false
   private get themePrimary(): string {
     return getAppUiState().themePrimary
   }
@@ -44,6 +46,19 @@ export struct IndexBottomTabItem {
     .height('100%')
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
+    .scale(getButtonScale(this.pressed, {
+      pressedScale: 0.92,
+      animationDuration: 120,
+      animationCurve: Curve.EaseOut
+    }))
+    .animation(getButtonAnimation({
+      pressedScale: 0.92,
+      animationDuration: 120,
+      animationCurve: Curve.EaseOut
+    }))
+    .onTouch(createButtonTouchHandler((pressed: boolean) => {
+      this.pressed = pressed
+    }))
   }
 }
 

@@ -11,6 +11,7 @@ import { fileIo } from '@kit.CoreFileKit'
 import { util } from '@kit.ArkTS'
 import { BusinessError } from '@kit.BasicServicesKit'
 import { getAttachmentStorageService, AttachmentStorageService } from '../services/AttachmentStorageService'
+import { getAppUiState } from '../state/AppUiState'
 
 // 附件选项
 interface AttachmentOption {
@@ -26,6 +27,14 @@ export struct AttachmentPicker {
   @Event onSelectAttachments: (attachments: MessageAttachment[]) => void = () => {
   }
   @Event onClose: () => void = () => {
+  }
+
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
   }
 
   build() {
@@ -59,7 +68,7 @@ export struct AttachmentPicker {
       .padding({ left: 16, right: 16, top: this.showDragBar ? 0 : 16, bottom: 12 })
     }
     .width('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
   }
 
   @Builder
@@ -73,7 +82,7 @@ export struct AttachmentPicker {
       .width(64)
       .height(64)
       .borderRadius(16)
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
 

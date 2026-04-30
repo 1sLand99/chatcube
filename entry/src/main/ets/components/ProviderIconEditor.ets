@@ -48,7 +48,7 @@ export struct ProviderIconEditor {
           customImagePath: '',
           iconSize: 56,
           radius: 16,
-          bgColor: $r('app.color.surface'),
+          bgColor: getAppUiState().themeSurface,
           fallbackSymbol: $r('sys.symbol.message'),
           fallbackColor: $r('app.color.text_tertiary')
         })
@@ -75,7 +75,7 @@ export struct ProviderIconEditor {
       }
       .width('100%')
       .padding(12)
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .borderRadius(12)
 
       // 图标类型选择
@@ -85,7 +85,7 @@ export struct ProviderIconEditor {
           .fontSize(14)
           .type(ButtonType.Normal)
           .borderRadius(8)
-          .backgroundColor(this.iconType === 'text' ? this.themePrimary : $r('app.color.surface'))
+          .backgroundColor(this.iconType === 'text' ? this.themePrimary : getAppUiState().themeSurface)
           .fontColor(this.iconType === 'text' ? Color.White : $r('app.color.text_primary'))
           .layoutWeight(1)
           .onClick(() => {
@@ -98,7 +98,7 @@ export struct ProviderIconEditor {
             .fontSize(14)
             .type(ButtonType.Normal)
             .borderRadius(8)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .onClick(() => {
               this.resetToPresetIcon()
@@ -227,7 +227,7 @@ export struct ProviderIconEditor {
         customImagePath: '',
         iconSize: 80,
         radius: 20,
-        bgColor: $r('app.color.surface'),
+        bgColor: getAppUiState().themeSurface,
         fallbackSymbol: $r('sys.symbol.message'),
         fallbackColor: $r('app.color.text_tertiary')
       })
@@ -266,7 +266,7 @@ export struct ProviderIconEditor {
             .fontSize(12)
             .type(ButtonType.Normal)
             .borderRadius(6)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .onClick(() => {
@@ -309,7 +309,7 @@ export struct ProviderIconEditor {
             .fontSize(12)
             .type(ButtonType.Normal)
             .borderRadius(6)
-            .backgroundColor($r('app.color.surface'))
+            .backgroundColor(getAppUiState().themeSurface)
             .fontColor($r('app.color.text_primary'))
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .onClick(() => {
@@ -324,7 +324,7 @@ export struct ProviderIconEditor {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 
   // 颜色选择器 Sheet
@@ -399,7 +399,7 @@ export struct ProviderIconEditor {
     }
     .width('100%')
     .padding(20)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 

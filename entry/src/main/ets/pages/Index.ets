@@ -176,6 +176,12 @@ struct Index {
   private get themePrimaryLight(): string {
     return getAppUiState().themePrimaryLight
   }
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
   private get isDarkMode(): boolean {
     return getAppUiState().isDarkMode
   }
@@ -1365,7 +1371,7 @@ struct Index {
           height: SheetSize.LARGE,
           dragBar: true,
           showClose: false,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           blurStyle: BlurStyle.Thick,
           preferType: SheetType.BOTTOM,
           onDisappear: () => {
@@ -1411,7 +1417,7 @@ struct Index {
           height: SheetSize.LARGE,
           dragBar: true,
           showClose: false,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           preferType: SheetType.BOTTOM,
           onDisappear: () => {
             this.showSystemPromptSheet = false
@@ -1425,7 +1431,7 @@ struct Index {
           height: SheetSize.MEDIUM,
           dragBar: true,
           showClose: true,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           preferType: SheetType.BOTTOM,
           title: { title: $r('app.string.assistant_switch_title') },
           onDisappear: () => {
@@ -1440,7 +1446,7 @@ struct Index {
           height: SheetSize.LARGE,
           dragBar: true,
           showClose: false,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           preferType: SheetType.BOTTOM,
           onDisappear: () => {
             this.showAssistantEditorSheet = false
@@ -1456,7 +1462,7 @@ struct Index {
           height: SheetSize.FIT_CONTENT,
           dragBar: true,
           showClose: false,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           preferType: SheetType.BOTTOM,
           onDisappear: () => {
             this.showAssistantAvatarEditorSheet = false
@@ -1470,7 +1476,7 @@ struct Index {
           height: SheetSize.LARGE,
           dragBar: true,
           showClose: true,
-          backgroundColor: $r('app.color.background'),
+          backgroundColor: this.themeBackground,
           preferType: SheetType.BOTTOM,
           title: { title: $r('app.string.assistant_default_model') }
         })
@@ -1531,7 +1537,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   private shouldHideCompactTabsHost(): boolean {
@@ -1598,11 +1604,11 @@ struct Index {
         }
         .layoutWeight(1)
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -1612,7 +1618,7 @@ struct Index {
         .width('100%')
         .height(this.px2vp(this.topAvoidHeight))
 
-      this.RailTabButton(Index.TAB_ASSISTANTS, $r('sys.symbol.person'), $r('sys.symbol.person'),
+      this.RailTabButton(Index.TAB_ASSISTANTS, $r('sys.symbol.person_fill'), $r('sys.symbol.person'),
         $r('app.string.tab_assistants'))
       this.RailTabButton(Index.TAB_CHAT, $r('sys.symbol.message_fill'), $r('sys.symbol.message'), $r('app.string.tab_chat'))
       this.RailTabButton(Index.TAB_SETTINGS, $r('sys.symbol.gearshape_fill'), $r('sys.symbol.gearshape'), $r('app.string.tab_settings'))
@@ -1622,7 +1628,7 @@ struct Index {
     .width(88)
     .height('100%')
     .padding({ left: 8, right: 8, top: 8, bottom: 12 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .border({
       width: { right: 1 },
       color: $r('app.color.divider')
@@ -1636,7 +1642,7 @@ struct Index {
     }
     .width('100%')
     .layoutWeight(1)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .borderRadius(24)
     .clip(true)
     .border({
@@ -1835,7 +1841,7 @@ struct Index {
   TabBarAssistants() {
     IndexBottomTabItem({
       active: this.isTabActive(Index.TAB_ASSISTANTS),
-      activeIcon: $r('sys.symbol.person'),
+      activeIcon: $r('sys.symbol.person_fill'),
       inactiveIcon: $r('sys.symbol.person'),
       label: $r('app.string.tab_assistants')
     })
@@ -1934,7 +1940,7 @@ struct Index {
     .width(40)
     .height(40)
     .borderRadius(20)
-    .backgroundColor(this.isFavoriteFilterActive() ? this.themePrimaryLight : $r('app.color.surface'))
+    .backgroundColor(this.isFavoriteFilterActive() ? this.themePrimaryLight : this.themeSurface)
     .border({
       width: this.isFavoriteFilterActive() ? 1 : 0,
       color: this.isFavoriteFilterActive() ? this.themePrimary : Color.Transparent
@@ -1956,7 +1962,7 @@ struct Index {
     .width(40)
     .height(40)
     .borderRadius(20)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .justifyContent(FlexAlign.Center)
     .geometryTransition('SEARCH_BAR_ID', { follow: true })
     .transition(TransitionEffect.OPACITY)
@@ -1972,7 +1978,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .titleBar(this.getCompactChatTitleBarOptions())
     .bindToScrollable([this.sessionListScroller])
     .titleMode(HdsNavigationTitleMode.MINI)
@@ -2338,7 +2344,7 @@ struct Index {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
 
       this.AssistantFloatingActionButton()
     }
@@ -2360,7 +2366,7 @@ struct Index {
       .width('100%')
       .height('100%')
       .constraintSize({ maxWidth: 720 })
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
       .borderRadius(24)
       .clip(true)
       .border({
@@ -2414,7 +2420,7 @@ struct Index {
     }
     .height(30)
     .padding({ left: 10, right: 10 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(15)
     .border({ width: 1, color: $r('app.color.divider') })
   }
@@ -2435,7 +2441,7 @@ struct Index {
     }
     .height(22)
     .padding({ left: 8, right: 8 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .borderRadius(11)
     .border({ width: 1, color: $r('app.color.divider') })
   }
@@ -2629,7 +2635,7 @@ struct Index {
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: featured ? 14 : 12, bottom: featured ? 14 : 12 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(16)
     .border({
       width: assistant.id === this.currentAssistantId || this.openingAssistantId === assistant.id ? 1.5 : 1,
@@ -2739,12 +2745,12 @@ struct Index {
       .height(34)
       .borderRadius(17)
       .padding(0)
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
       .stateEffect(true)
       .bindMenu(this.AssistantCardMoreMenu(assistant), {
         placement: Placement.BottomRight,
         offset: { x: 0, y: 8 },
-        backgroundColor: $r('app.color.surface'),
+        backgroundColor: this.themeSurface,
         backgroundBlurStyle: BlurStyle.Regular
       })
     }
@@ -2826,7 +2832,7 @@ struct Index {
     .layoutWeight(1)
     .height(28)
     .padding({ left: 10, right: 10 })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .borderRadius(10)
   }
 
@@ -2897,7 +2903,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3005,7 +3011,7 @@ struct Index {
           .fontSize(15)
           .fontColor($r('app.color.text_primary'))
           .placeholderColor($r('app.color.text_tertiary'))
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(18)
           .padding({ left: 14, right: 14 })
           .onChange((text: string) => {
@@ -3065,7 +3071,7 @@ struct Index {
         .fontSize(14)
         .fontColor($r('app.color.text_primary'))
         .placeholderColor($r('app.color.text_tertiary'))
-        .backgroundColor($r('app.color.surface'))
+        .backgroundColor(this.themeSurface)
         .borderRadius(16)
         .padding(14)
         .onChange((value: string) => {
@@ -3101,7 +3107,7 @@ struct Index {
         .width(34)
         .height(34)
         .borderRadius(17)
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(this.themeBackground)
         .onClick(() => {
           this.clearAssistantDefaultModel()
         })
@@ -3113,7 +3119,7 @@ struct Index {
     }
     .width('100%')
     .padding({ left: 14, right: 12, top: 12, bottom: 12 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(16)
     .onClick(() => {
       this.showAssistantModelSheet = true
@@ -3158,7 +3164,7 @@ struct Index {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(16)
   }
 
@@ -3186,7 +3192,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3263,7 +3269,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3322,7 +3328,7 @@ struct Index {
     .width('100%')
     .constraintSize({ minHeight: 70 })
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(16)
     .border({ width: 1, color: $r('app.color.divider') })
     .onClick(() => {
@@ -3376,7 +3382,7 @@ struct Index {
           .height(40)
           .padding({ left: 12, right: 12 })
           .alignItems(VerticalAlign.Center)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(20)
           .geometryTransition('SEARCH_BAR_ID', { follow: true })
           .transition(TransitionEffect.OPACITY)
@@ -3545,7 +3551,7 @@ struct Index {
     }
     .width('100%')
     .layoutWeight(1)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3555,7 +3561,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3592,7 +3598,7 @@ struct Index {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(this.themeBackground)
       } else {
         Stack({ alignContent: Alignment.BottomEnd }) {
           this.ChatListViewportContent()
@@ -3637,7 +3643,7 @@ struct Index {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor($r('app.color.background'))
+        .backgroundColor(this.themeBackground)
       } else {
         Stack({ alignContent: Alignment.BottomEnd }) {
           this.CompactChatListViewport()
@@ -3778,7 +3784,7 @@ struct Index {
     .width('100%')
     .height('100%')
     .scrollBar(BarState.Off)
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   @Builder
@@ -3839,7 +3845,7 @@ struct Index {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
       .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       .title($r('app.string.tab_settings'))
       .titleMode(NavigationTitleMode.Mini)
@@ -3856,7 +3862,7 @@ struct Index {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
       .titleBar(this.getCompactSettingsTitleBarOptions())
       .bindToScrollable([this.settingsRootScroller])
       .titleMode(HdsNavigationTitleMode.MINI)
@@ -3875,8 +3881,8 @@ struct Index {
     return SheetSize.FIT_CONTENT
   }
 
-  private getSettingsSheetBackgroundColor(): Resource {
-    return $r('app.color.surface')
+  private getSettingsSheetBackgroundColor(): ResourceColor {
+    return this.themeSurface
   }
 
   @Builder
@@ -4139,7 +4145,7 @@ struct Index {
         Button($r('app.string.system_prompt_clear'))
           .fontSize(14)
           .fontColor($r('app.color.text_secondary'))
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .borderRadius(20)
           .height(40)
           .padding({ left: 18, right: 18 })

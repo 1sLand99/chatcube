@@ -32,7 +32,7 @@ export struct DefaultModelSelectSheetContent {
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor($r('app.color.surface'))
+      .backgroundColor(getAppUiState().themeSurface)
       .borderRadius(12)
       .margin({ left: 16, right: 16, top: 8 })
 

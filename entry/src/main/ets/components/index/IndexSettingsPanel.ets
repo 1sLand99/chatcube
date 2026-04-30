@@ -25,6 +25,12 @@ export struct IndexSettingsPanel {
   private get themePrimaryLight(): string {
     return getAppUiState().themePrimaryLight
   }
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
   @Local versionName: string = ''
 
   @Param sidebarMode: boolean = false
@@ -297,7 +303,7 @@ export struct IndexSettingsPanel {
       }, (item: SettingsListItemModel) => item.key)
     }
     .width('100%')
-    .backgroundColor($r('app.color.surface'))
+    .backgroundColor(this.themeSurface)
     .borderRadius(this.sidebarMode ? 20 : 22)
     .clip(true)
     .border({
@@ -324,7 +330,7 @@ export struct IndexSettingsPanel {
       top: this.sidebarMode ? 8 : 0,
       bottom: 28
     })
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 }
 

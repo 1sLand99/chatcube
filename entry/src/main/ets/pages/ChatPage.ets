@@ -234,6 +234,12 @@ export struct ChatPage {
   private get themePrimaryLight(): string {
     return getAppUiState().themePrimaryLight
   }
+  private get themeBackground(): string {
+    return getAppUiState().themeBackground
+  }
+  private get themeSurface(): string {
+    return getAppUiState().themeSurface
+  }
   private get themeUserBubble(): string {
     return getAppUiState().themeUserBubble
   }
@@ -780,7 +786,7 @@ export struct ChatPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
   }
 
   private scheduleInitialBottomAlignmentRetries(force: boolean = false): void {
@@ -2123,7 +2129,7 @@ export struct ChatPage {
         })
           .width('100%')
           .height('100%')
-          .backgroundColor($r('app.color.background'))
+          .backgroundColor(this.themeBackground)
 
         // 编辑模式点击层 - 点击空白处取消编辑
         if (this.isEditingMessage) {
@@ -2286,7 +2292,7 @@ export struct ChatPage {
           .alignItems(HorizontalAlign.Center)
           .height(this.attachmentPanelHeightVp)
           .opacity(this.showAttachmentPicker ? 1 : 0)
-          .backgroundColor($r('app.color.surface'))
+          .backgroundColor(this.themeSurface)
           .clip(true)
           .enabled(this.showAttachmentPicker)
           .animation({
@@ -2337,7 +2343,7 @@ export struct ChatPage {
           height: SheetSize.LARGE,
           dragBar: true,
             showClose: false,
-            backgroundColor: $r('app.color.background'),
+            backgroundColor: this.themeBackground,
             blurStyle: BlurStyle.Thick,
             preferType: SheetType.BOTTOM,
             onDisappear: () => {
@@ -2352,7 +2358,7 @@ export struct ChatPage {
             height: SheetSize.FIT_CONTENT,
             dragBar: true,
             showClose: false,
-            backgroundColor: $r('app.color.background'),
+            backgroundColor: this.themeBackground,
             blurStyle: BlurStyle.Thick,
             preferType: SheetType.BOTTOM,
             onDisappear: () => {
@@ -2367,7 +2373,7 @@ export struct ChatPage {
             height: SheetSize.FIT_CONTENT,
             dragBar: true,
             showClose: false,
-            backgroundColor: $r('app.color.background'),
+            backgroundColor: this.themeBackground,
             blurStyle: BlurStyle.Thick,
             preferType: SheetType.BOTTOM,
             maskColor: '#66000000',
@@ -2426,7 +2432,7 @@ export struct ChatPage {
       .width('100%')
       .height('100%')
       .clip(true)
-      .backgroundColor($r('app.color.background'))
+      .backgroundColor(this.themeBackground)
     }
     .titleBar(this.getTitleBarOptions())
     .bindToScrollable([this.scroller])
@@ -2438,7 +2444,7 @@ export struct ChatPage {
     )
     .hideBackButton(true)
     .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(this.themeBackground)
     .onReady((context: NavDestinationContext) => {
       this.navPathStack = context.pathStack
       const param = context.pathInfo.param as ChatPageRouteParams

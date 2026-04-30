@@ -4,6 +4,7 @@ import {
   tryHandleProviderDetailInternalBack
 } from '../components/ProviderDetailSheet'
 import { notifyModelManageRefresh } from './ModelManagePage'
+import { getAppUiState } from '../state/AppUiState'
 
 export interface ProviderDetailRouteParams {
   providerId?: string
@@ -45,7 +46,7 @@ struct ProviderDetailPageContent {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor(getAppUiState().themeBackground)
   }
 }
 
