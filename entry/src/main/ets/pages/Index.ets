@@ -2458,15 +2458,17 @@ struct Index {
         .focusable(false)
         .selectable(false)
 
-        ListItem({ style: ListItemStyle.NONE }) {
-          this.AssistantJumpCard(this.getWorkspaceCurrentAssistant(), true)
-        }
-        .swipeAction({
-          start: this.AssistantStartSwipePanel(this.getWorkspaceCurrentAssistant()),
-          end: this.AssistantEndSwipePanel(this.getWorkspaceCurrentAssistant())
-        })
-        .borderRadius(12)
-        .clip(true)
+        ForEach([this.getWorkspaceCurrentAssistant()], (assistant: Assistant) => {
+          ListItem({ style: ListItemStyle.NONE }) {
+            this.AssistantJumpCard(assistant, true)
+          }
+          .swipeAction({
+            start: this.AssistantStartSwipePanel(assistant),
+            end: this.AssistantEndSwipePanel(assistant)
+          })
+          .borderRadius(12)
+          .clip(true)
+        }, (assistant: Assistant) => this.getAssistantRenderKey(assistant))
 
         if (this.hasOtherAssistantsForWorkspace()) {
           ListItem() {

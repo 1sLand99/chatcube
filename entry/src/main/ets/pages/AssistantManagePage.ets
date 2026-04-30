@@ -236,6 +236,13 @@ struct AssistantManagePage {
     return parts.join('|')
   }
 
+  private getAssistantRenderKey(assistant: Assistant): string {
+    return `${assistant.id}:${assistant.name}:${assistant.avatarSymbol}:${assistant.color}:` +
+      `${assistant.defaultProviderId}:${assistant.defaultModelId}:${assistant.defaultModelName}:` +
+      `${assistant.systemPrompt}:${assistant.temperatureEnabled ? '1' : '0'}:${assistant.temperature}:` +
+      `${assistant.isDefault ? '1' : '0'}:${assistant.sortOrder}:${this.assistantAvatarRenderTick}`
+  }
+
   private getAssistantAvatarRenderKey(symbol: string, color: ResourceColor, size: number, radius: number,
     fontSize: number): string {
     return `${symbol}:${color}:${size}:${radius}:${fontSize}:${this.assistantAvatarRenderTick}`
@@ -467,8 +474,7 @@ struct AssistantManagePage {
     Column({ space: 10 }) {
       ForEach(this.assistants, (assistant: Assistant) => {
         this.AssistantRow(assistant)
-      }, (assistant: Assistant) =>
-        `${assistant.id}:${assistant.avatarSymbol}:${assistant.color}:${this.assistantAvatarRenderTick}`)
+      }, (assistant: Assistant) => this.getAssistantRenderKey(assistant))
     }
     .width('100%')
   }
