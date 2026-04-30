@@ -6,6 +6,11 @@
       "buildFunction": "ChatPageBuilder"
     },
     {
+      "name": "ChatDetailEmpty",
+      "pageSourceFile": "src/main/ets/pages/ChatDetailEmptyPage.ets",
+      "buildFunction": "ChatDetailEmptyPageBuilder"
+    },
+    {
       "name": "ModelManagePage",
       "pageSourceFile": "src/main/ets/pages/ModelManagePage.ets",
       "buildFunction": "ModelManagePageBuilder"

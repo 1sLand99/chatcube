@@ -149,7 +149,7 @@ struct Index {
   @Local assistantFormDefaultModelName: string = ''
   @Local assistantFormTemperatureEnabled: boolean = false
   @Local assistantFormTemperature: number = 0.7
-  @Local tabletDetailSessionId: string = ''
+  @Local chatTabTopSessionId: string = ''
   private get activeChatSessionId(): string {
     return getAppUiState().activeChatSessionId
   }
@@ -254,10 +254,10 @@ struct Index {
   // Settings Sheet 关闭动画期间的状态机（避免“关闭回调晚到”误关新弹窗）
   private settingsSheetClosing: boolean = false
   private pendingSettingsSheetType: SettingsSheetType = SettingsSheetType.NONE
-  private navPathStack: NavPathStack = new NavPathStack()
-  private tabletChatDetailPathStack: NavPathStack = new NavPathStack()
+  private chatTabNavStack: NavPathStack = new NavPathStack()
   private settingsNavPathStack: NavPathStack = new NavPathStack()
-  private currentTabletDetailParams: ChatPageRouteParams | null = null
+  private static readonly CHAT_DETAIL_EMPTY_ROUTE: string = 'ChatDetailEmpty'
+  private static readonly CHAT_PAGE_ROUTE: string = 'ChatPage'
   private settingsReturnTabIndex: number = Index.TAB_SETTINGS
   @Local currentSettingsRouteName: string = ''
   // 返回键退出控制
@@ -303,12 +303,7 @@ struct Index {
       }
       return
     }
-    if (this.currentTabIndex === Index.TAB_CHAT && this.currentTabletDetailParams !== null && this.navPathStack.size() === 0) {
-      const params = this.currentTabletDetailParams
-      this.clearTabletChatDetail(false)
-      this.navPathStack.pushPath({ name: 'ChatPage', param: params as ChatPageRouteParams })
-      return
-    }
+    this.syncChatDetailPlaceholder()
     this.refreshSessionListProjection()
   }
 
@@ -401,6 +396,7 @@ struct Index {
     this.currentTabIndex = index
     if (index === Index.TAB_CHAT) {
       this.loadSessions()
+      this.syncChatDetailPlaceholder()
       return
     }
     if (index === Index.TAB_ASSISTANTS) {
@@ -430,31 +426,50 @@ struct Index {
   }
 
   private openChatRouteAfterSearchReset(params: ChatPageRouteParams): void {
-    if (this.isExpandedLayout()) {
-      this.openTabletChatDetail(params)
+    if (this.isChatSplitLayout() && this.chatTabNavStack.size() > 0) {
+      this.chatTabNavStack.replacePath({ name: Index.CHAT_PAGE_ROUTE, param: params as ChatPageRouteParams })
       return
     }
-    this.navPathStack.pushPath({ name: 'ChatPage', param: params as ChatPageRouteParams })
+    this.chatTabNavStack.pushPath({ name: Index.CHAT_PAGE_ROUTE, param: params as ChatPageRouteParams })
   }
 
-  private openTabletChatDetail(params: ChatPageRouteParams): void {
-    this.currentTabletDetailParams = params
-    this.tabletDetailSessionId = params.sessionId ?? ''
-    this.refreshSessionListProjection()
-    if (this.tabletChatDetailPathStack.size() > 0) {
-      this.tabletChatDetailPathStack.replacePath({ name: 'ChatPage', param: params as ChatPageRouteParams })
+  private isChatSplitLayout(): boolean {
+    return this.layoutSizeClass !== LayoutSizeClass.COMPACT
+  }
+
+  private syncChatDetailPlaceholder(): void {
+    if (this.currentTabIndex !== Index.TAB_CHAT) {
       return
     }
-    this.tabletChatDetailPathStack.pushPath({ name: 'ChatPage', param: params as ChatPageRouteParams })
+    const wantsPlaceholder = this.isChatSplitLayout()
+    const stackSize = this.chatTabNavStack.size()
+    if (wantsPlaceholder) {
+      if (stackSize === 0) {
+        this.chatTabNavStack.pushPath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
+      }
+      return
+    }
+    if (stackSize === 1 && this.isChatTabTopPlaceholder()) {
+      this.chatTabNavStack.clear(false)
+    }
   }
 
-  private clearTabletChatDetail(animated: boolean = false): void {
-    if (this.tabletChatDetailPathStack.size() > 0) {
-      this.tabletChatDetailPathStack.clear(animated)
+  private isChatTabTopPlaceholder(): boolean {
+    const size = this.chatTabNavStack.size()
+    if (size === 0) {
+      return false
     }
-    this.currentTabletDetailParams = null
-    this.tabletDetailSessionId = ''
-    this.refreshSessionListProjection()
+    const names = this.chatTabNavStack.getAllPathName()
+    return names[size - 1] === Index.CHAT_DETAIL_EMPTY_ROUTE
+  }
+
+  private isChatTabShowingChatPage(): boolean {
+    const size = this.chatTabNavStack.size()
+    if (size === 0) {
+      return false
+    }
+    const names = this.chatTabNavStack.getAllPathName()
+    return names[size - 1] === Index.CHAT_PAGE_ROUTE
   }
 
   private openSettingsDestination(routeName: SettingsRouteName, param: Object | null = null): void {
@@ -551,33 +566,27 @@ struct Index {
 
   aboutToAppear(): void {
     this.registerAppUiStateObservers()
-    this.navPathStack.setInterception({
+    this.chatTabNavStack.setInterception({
       didShow: (from: NavDestinationContext | "navBar", to: NavDestinationContext | "navBar",
         operation: NavigationOperation, isAnimated: boolean): void => {
-        if (to === 'navBar') {
-          // pop 完成，navPathStack.size() 已变为 0，loadSessions 不再跳过
-          this.loadSessions()
-          // 补偿 pop 动画期间被 shouldHandleInAppTaskAlert 拦截的 alert（直接处理，不走守卫）
-          this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
-        }
-      }
-    })
-    this.tabletChatDetailPathStack.setInterception({
-      didShow: (from: NavDestinationContext | "navBar", to: NavDestinationContext | "navBar",
-        operation: NavigationOperation, isAnimated: boolean): void => {
-        if (to === 'navBar' || this.tabletChatDetailPathStack.size() <= 0) {
-          this.currentTabletDetailParams = null
-          this.tabletDetailSessionId = ''
+        const size = this.chatTabNavStack.size()
+        if (to === 'navBar' || size <= 0) {
+          this.chatTabTopSessionId = ''
           this.refreshSessionListProjection()
+          this.loadSessions()
           this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
           return
         }
-        const topParam = this.tabletChatDetailPathStack.getParamByIndex(
-          this.tabletChatDetailPathStack.size() - 1
-        ) as ChatPageRouteParams | undefined
-        this.currentTabletDetailParams = topParam ?? null
-        this.tabletDetailSessionId = topParam?.sessionId ?? ''
+        const names = this.chatTabNavStack.getAllPathName()
+        const topName = names[size - 1]
+        if (topName === Index.CHAT_PAGE_ROUTE) {
+          const topParam = this.chatTabNavStack.getParamByIndex(size - 1) as ChatPageRouteParams | undefined
+          this.chatTabTopSessionId = topParam?.sessionId ?? ''
+        } else {
+          this.chatTabTopSessionId = ''
+        }
         this.refreshSessionListProjection()
+        this.processInAppTaskAlertPayload(this.inAppTaskAlertPayload)
       }
     })
     this.settingsNavPathStack.setInterception({
@@ -669,8 +678,8 @@ struct Index {
       return true
     }
 
-    if (this.isExpandedLayout() && this.currentTabIndex === Index.TAB_CHAT && this.tabletChatDetailPathStack.size() > 0) {
-      this.clearTabletChatDetail(false)
+    if (this.currentTabIndex === Index.TAB_CHAT && this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
+      this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
       return true
     }
 
@@ -882,8 +891,8 @@ struct Index {
       this.searchText = ''
       this.isSearchExpanded = false
     }
-    if (previousAssistantId !== this.currentAssistantId && this.isExpandedLayout()) {
-      this.clearTabletChatDetail(false)
+    if (previousAssistantId !== this.currentAssistantId && this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
+      this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
     }
     this.refreshSessionListProjection()
   }
@@ -1039,9 +1048,6 @@ struct Index {
   }
 
   private getChatListTopSpacerHeight(): number {
-    if (this.isExpandedLayout()) {
-      return 0
-    }
     // 顶部模糊蒙版会向下渐变 maskExtraHeight，列表第一项需让出这一段，
     // 否则会落在模糊带上（卡片时间被模糊、筛选汇总行无法点击）。
     return this.getCompactChatHeaderOverlayHeight() + this.getCompactChatTitleBarMaskExtraHeight()
@@ -1153,10 +1159,7 @@ struct Index {
   }
 
   private shouldHandleInAppTaskAlert(): boolean {
-    if (this.navPathStack.size() > 0) {
-      return false
-    }
-    if (this.tabletChatDetailPathStack.size() > 0) {
+    if (this.isChatTabShowingChatPage()) {
       return false
     }
     return true
@@ -1207,7 +1210,7 @@ struct Index {
 
   async loadSessions(): Promise<void> {
     // pop 动画期间完全跳过，由 setInterception.didShow 在动画完成后统一触发
-    if (this.navPathStack.size() > 0) {
+    if (!this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
       return
     }
     this.sessionLoadSeq = this.sessionLoadSeq + 1
@@ -1282,8 +1285,12 @@ struct Index {
     await this.chatViewModel.deleteSession(sessionId)
     this.sessions = this.sessions.filter((session: ChatSession): boolean => session.id !== sessionId)
     this.selectedSessionIds = this.selectedSessionIds.filter((selectedId: string): boolean => selectedId !== sessionId)
-    if (this.tabletDetailSessionId === sessionId) {
-      this.clearTabletChatDetail(false)
+    if (this.chatTabTopSessionId === sessionId) {
+      if (this.isChatSplitLayout()) {
+        this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
+      } else {
+        this.chatTabNavStack.clear(false)
+      }
     }
     if (this.activeChatSessionId === sessionId) {
       setAppUiStateValue(AppStorageKeys.ACTIVE_CHAT_SESSION_ID, '')
@@ -1333,151 +1340,144 @@ struct Index {
   }
 
   private getActiveSessionIdForChatList(): string {
-    if (!this.isExpandedLayout()) {
+    if (!this.isChatSplitLayout()) {
       return ''
     }
     if (this.activeChatSessionId !== '') {
       return this.activeChatSessionId
     }
-    return this.tabletDetailSessionId
+    return this.chatTabTopSessionId
   }
 
   build() {
-    Navigation(this.navPathStack) {
-      Stack() {
-        if (this.isExpandedLayout()) {
-          this.ExpandedRoot()
-        } else {
-          this.CompactRoot()
-        }
-
-        // bindSheet 宿主：每个 bindSheet 必须挂在独立组件上，避免多 bindSheet 冲突
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showSharePreview, this.SharePreviewBuilder(), {
-            height: SheetSize.LARGE,
-            dragBar: true,
-            showClose: false,
-            backgroundColor: $r('app.color.background'),
-            blurStyle: BlurStyle.Thick,
-            preferType: SheetType.BOTTOM,
-            onDisappear: () => {
-              this.showSharePreview = false
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showSettingsSheet, this.SettingsSheetBuilder(), {
-            height: this.getActiveSettingsSheetHeight(),
-            dragBar: true,
-            showClose: false,
-            backgroundColor: this.getSettingsSheetBackgroundColor(),
-            blurStyle: BlurStyle.Thin,
-            preferType: SheetType.BOTTOM,
-            maskColor: '#66000000',
-            onWillDismiss: (dismissAction: DismissSheetAction) => {
-              this.handleSettingsSheetWillDismiss(dismissAction)
-            },
-            onWillSpringBackWhenDismiss: (springBackAction: SpringBackAction) => {
-              this.handleSettingsSheetWillSpringBackWhenDismiss(springBackAction)
-            },
-            onDisappear: () => {
-              // Closing 结束：如果有排队的打开请求，直接重开并切换内容。
-              this.settingsSheetClosing = false
-              if (this.pendingSettingsSheetType !== SettingsSheetType.NONE) {
-                const nextType = this.pendingSettingsSheetType
-                this.pendingSettingsSheetType = SettingsSheetType.NONE
-                this.activeSettingsSheetType = nextType
-                this.showSettingsSheet = true
-                return
-              }
-              this.activeSettingsSheetType = SettingsSheetType.NONE
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showSystemPromptSheet, this.SystemPromptSheetBuilder(), {
-            height: SheetSize.LARGE,
-            dragBar: true,
-            showClose: false,
-            backgroundColor: $r('app.color.background'),
-            preferType: SheetType.BOTTOM,
-            onDisappear: () => {
-              this.showSystemPromptSheet = false
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showAssistantSwitchSheet, this.AssistantSwitchSheetBuilder(), {
-            height: SheetSize.MEDIUM,
-            dragBar: true,
-            showClose: true,
-            backgroundColor: $r('app.color.background'),
-            preferType: SheetType.BOTTOM,
-            title: { title: $r('app.string.assistant_switch_title') },
-            onDisappear: () => {
-              this.showAssistantSwitchSheet = false
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showAssistantEditorSheet, this.AssistantEditorSheetBuilder(), {
-            height: SheetSize.LARGE,
-            dragBar: true,
-            showClose: false,
-            backgroundColor: $r('app.color.background'),
-            preferType: SheetType.BOTTOM,
-            onDisappear: () => {
-              this.showAssistantEditorSheet = false
-              this.showAssistantModelSheet = false
-              this.showAssistantAvatarEditorSheet = false
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showAssistantAvatarEditorSheet, this.AssistantAvatarEditorSheetBuilder(), {
-            height: SheetSize.FIT_CONTENT,
-            dragBar: true,
-            showClose: false,
-            backgroundColor: $r('app.color.background'),
-            preferType: SheetType.BOTTOM,
-            onDisappear: () => {
-              this.showAssistantAvatarEditorSheet = false
-            }
-          })
-
-        Column()
-          .width(0)
-          .height(0)
-          .bindSheet($$this.showAssistantModelSheet, this.AssistantModelSheetBuilder(), {
-            height: SheetSize.LARGE,
-            dragBar: true,
-            showClose: true,
-            backgroundColor: $r('app.color.background'),
-            preferType: SheetType.BOTTOM,
-            title: { title: $r('app.string.assistant_default_model') }
-          })
-
+    Stack() {
+      if (this.isExpandedLayout()) {
+        this.ExpandedRoot()
+      } else {
+        this.CompactRoot()
       }
-      .width('100%')
-      .height('100%')
+
+      // bindSheet 宿主：每个 bindSheet 必须挂在独立组件上，避免多 bindSheet 冲突
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showSharePreview, this.SharePreviewBuilder(), {
+          height: SheetSize.LARGE,
+          dragBar: true,
+          showClose: false,
+          backgroundColor: $r('app.color.background'),
+          blurStyle: BlurStyle.Thick,
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.showSharePreview = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showSettingsSheet, this.SettingsSheetBuilder(), {
+          height: this.getActiveSettingsSheetHeight(),
+          dragBar: true,
+          showClose: false,
+          backgroundColor: this.getSettingsSheetBackgroundColor(),
+          blurStyle: BlurStyle.Thin,
+          preferType: SheetType.BOTTOM,
+          maskColor: '#66000000',
+          onWillDismiss: (dismissAction: DismissSheetAction) => {
+            this.handleSettingsSheetWillDismiss(dismissAction)
+          },
+          onWillSpringBackWhenDismiss: (springBackAction: SpringBackAction) => {
+            this.handleSettingsSheetWillSpringBackWhenDismiss(springBackAction)
+          },
+          onDisappear: () => {
+            // Closing 结束：如果有排队的打开请求，直接重开并切换内容。
+            this.settingsSheetClosing = false
+            if (this.pendingSettingsSheetType !== SettingsSheetType.NONE) {
+              const nextType = this.pendingSettingsSheetType
+              this.pendingSettingsSheetType = SettingsSheetType.NONE
+              this.activeSettingsSheetType = nextType
+              this.showSettingsSheet = true
+              return
+            }
+            this.activeSettingsSheetType = SettingsSheetType.NONE
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showSystemPromptSheet, this.SystemPromptSheetBuilder(), {
+          height: SheetSize.LARGE,
+          dragBar: true,
+          showClose: false,
+          backgroundColor: $r('app.color.background'),
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.showSystemPromptSheet = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showAssistantSwitchSheet, this.AssistantSwitchSheetBuilder(), {
+          height: SheetSize.MEDIUM,
+          dragBar: true,
+          showClose: true,
+          backgroundColor: $r('app.color.background'),
+          preferType: SheetType.BOTTOM,
+          title: { title: $r('app.string.assistant_switch_title') },
+          onDisappear: () => {
+            this.showAssistantSwitchSheet = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showAssistantEditorSheet, this.AssistantEditorSheetBuilder(), {
+          height: SheetSize.LARGE,
+          dragBar: true,
+          showClose: false,
+          backgroundColor: $r('app.color.background'),
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.showAssistantEditorSheet = false
+            this.showAssistantModelSheet = false
+            this.showAssistantAvatarEditorSheet = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showAssistantAvatarEditorSheet, this.AssistantAvatarEditorSheetBuilder(), {
+          height: SheetSize.FIT_CONTENT,
+          dragBar: true,
+          showClose: false,
+          backgroundColor: $r('app.color.background'),
+          preferType: SheetType.BOTTOM,
+          onDisappear: () => {
+            this.showAssistantAvatarEditorSheet = false
+          }
+        })
+
+      Column()
+        .width(0)
+        .height(0)
+        .bindSheet($$this.showAssistantModelSheet, this.AssistantModelSheetBuilder(), {
+          height: SheetSize.LARGE,
+          dragBar: true,
+          showClose: true,
+          backgroundColor: $r('app.color.background'),
+          preferType: SheetType.BOTTOM,
+          title: { title: $r('app.string.assistant_default_model') }
+        })
+
     }
     .width('100%')
     .height('100%')
-    .hideTitleBar(true)
-    .hideBackButton(true)
-    .mode(NavigationMode.Stack)
   }
 
   @Builder
@@ -1543,7 +1543,13 @@ struct Index {
   }
 
   private shouldHideCompactTabsBar(): boolean {
-    return this.currentTabIndex === Index.TAB_SETTINGS && this.currentSettingsRouteName !== ''
+    if (this.currentTabIndex === Index.TAB_SETTINGS && this.currentSettingsRouteName !== '') {
+      return true
+    }
+    if (this.currentTabIndex === Index.TAB_CHAT && this.isChatTabShowingChatPage()) {
+      return true
+    }
+    return false
   }
 
   @Builder
@@ -1574,7 +1580,16 @@ struct Index {
           }
 
           if (this.currentTabIndex === Index.TAB_CHAT) {
-            this.ExpandedChatTab()
+            Column() {
+              this.ChatTab()
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .padding({
+              left: this.getExpandedPageHorizontalPadding(),
+              right: this.getExpandedPageHorizontalPadding(),
+              bottom: 12
+            })
           } else if (this.currentTabIndex === Index.TAB_ASSISTANTS) {
             this.ExpandedAssistantsTab()
           } else {
@@ -1952,7 +1967,7 @@ struct Index {
 
   @Builder
   ChatTab() {
-    HdsNavigation() {
+    HdsNavigation(this.chatTabNavStack) {
       this.ChatListPanel()
     }
     .width('100%')
@@ -1963,7 +1978,8 @@ struct Index {
     .titleMode(HdsNavigationTitleMode.MINI)
     .hideBackButton(true)
     .hideToolBar(true)
-    .mode(NavigationMode.Stack)
+    .mode(NavigationMode.Auto)
+    .navBarWidth(this.getExpandedChatListWidth())
     .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
   }
 
@@ -3323,20 +3339,6 @@ struct Index {
   }
 
   @Builder
-  private ChatListHeaderContent(applyTopInset: boolean = false) {
-    Column() {
-      if (applyTopInset) {
-        Column()
-          .width('100%')
-          .height(this.px2vp(this.topAvoidHeight))
-      }
-
-      this.ChatListHeaderMainRow()
-    }
-    .width('100%')
-  }
-
-  @Builder
   private ChatListHeaderMainRow() {
     if (!this.isMultiSelectMode) {
       Row() {
@@ -3549,12 +3551,7 @@ struct Index {
   @Builder
   private ChatListViewportContent() {
     Column() {
-      if (this.isExpandedLayout()) {
-        this.ChatListHeaderContent(false)
-        this.ChatListPanelContent(0)
-      } else {
-        this.ChatListPanelContent(this.getChatListTopSpacerHeight())
-      }
+      this.ChatListPanelContent(this.getChatListTopSpacerHeight())
     }
     .width('100%')
     .height('100%')
@@ -3650,77 +3647,6 @@ struct Index {
         .height('100%')
       }
     }
-  }
-
-  @Builder
-  ExpandedChatTab() {
-    Row({ space: 16 }) {
-      Column() {
-        this.ChatListPanel()
-      }
-      .width(this.getExpandedChatListWidth())
-      .height('100%')
-      .backgroundColor($r('app.color.background'))
-      .borderRadius(24)
-      .clip(true)
-      .border({
-        width: 1,
-        color: $r('app.color.divider')
-      })
-
-      Column() {
-        this.TabletChatDetailPane()
-      }
-      .layoutWeight(1)
-      .height('100%')
-      .backgroundColor($r('app.color.background'))
-      .borderRadius(24)
-      .clip(true)
-      .border({
-        width: 1,
-        color: $r('app.color.divider')
-      })
-    }
-    .width('100%')
-    .layoutWeight(1)
-    .padding({
-      left: this.getExpandedPageHorizontalPadding(),
-      right: this.getExpandedPageHorizontalPadding(),
-      bottom: 12
-    })
-  }
-
-  @Builder
-  TabletChatDetailPane() {
-    Navigation(this.tabletChatDetailPathStack) {
-      Stack() {
-        if (this.tabletChatDetailPathStack.size() === 0) {
-          this.TabletChatDetailEmptyState()
-        }
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor($r('app.color.background'))
-    }
-    .width('100%')
-    .height('100%')
-    .hideTitleBar(true)
-    .hideBackButton(true)
-    .mode(NavigationMode.Stack)
-  }
-
-  @Builder
-  TabletChatDetailEmptyState() {
-    IndexEmptyStateCard({
-      icon: $r('sys.symbol.ellipsis_message'),
-      title: $r('app.string.tablet_chat_detail_empty_title'),
-      description: $r('app.string.tablet_chat_detail_empty_desc'),
-      showButton: true,
-      buttonText: $r('app.string.new_chat'),
-      onButtonClick: (): void => {
-        this.openChatRoute({} as ChatPageRouteParams)
-      }
-    })
   }
 
   @Builder
