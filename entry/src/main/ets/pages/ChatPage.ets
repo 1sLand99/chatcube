@@ -1,12 +1,9 @@
-import { KeyboardAvoidMode, LengthMetrics } from '@kit.ArkUI'
+import { KeyboardAvoidMode } from '@kit.ArkUI'
 import { common } from '@kit.AbilityKit'
 import {
-  BlurStrategy,
   HdsNavDestination,
   HdsNavDestinationTitleMode,
-  HdsNavigationTitleBarOptions,
-  ScrollEffectType,
-  hdsMaterial
+  HdsNavigationTitleBarOptions
 } from '@kit.UIDesignKit'
 import {
   ChatMessage,
@@ -75,6 +72,7 @@ import { ChatSelectionFlow, ChatSelectionFlowDependencies } from './chat/ChatSel
 import { ChatPageLoadFlow, ChatPageLoadFlowDependencies, ChatPageLoadResult } from './chat/ChatPageLoadFlow'
 import { ChatTaskAlertFlow, ChatTaskAlertFlowDependencies } from './chat/ChatTaskAlertFlow'
 import { ChatScrollUiFlow, ChatScrollUiFlowDependencies } from './chat/ChatScrollUiFlow'
+import { buildHdsTopNavigationTitleBarOptions, HdsTopNavigationBlurOptions } from '../utils/HdsVisualEffectUtil'
 import {
   collectTailMessageIds,
   findMessageIndexById,
@@ -1957,42 +1955,6 @@ export struct ChatPage {
     return this.isDarkMode ? '#F5F7FA' : '#1F2329'
   }
 
-  private getTitleBarMaskExtraHeight(): number {
-    return 24
-  }
-
-  private getTitleBarScrollEffectType(): ScrollEffectType {
-    if (this.materialType === 0) {
-      return ScrollEffectType.GRADIENT_BLUR
-    }
-    return ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
-  }
-
-  private getTitleBarBlurEffectiveEndOffset(): number {
-    return this.windowWidthVp > this.windowHeightVp ? 20 : 28
-  }
-
-  private getTitleBarInitialBlurRadius(): number {
-    return this.materialType === 0 ? 0 : 8
-  }
-
-  private getTitleBarBlurRadius(): number {
-    if (this.materialType === 0) {
-      return 0
-    }
-    const isLandscape = this.windowWidthVp > this.windowHeightVp
-    if (this.materialLevel === 0) {
-      return isLandscape ? 20 : 26
-    }
-    if (this.materialLevel === 1) {
-      return isLandscape ? 18 : 22
-    }
-    if (this.materialLevel === 2) {
-      return isLandscape ? 14 : 18
-    }
-    return isLandscape ? 16 : 22
-  }
-
   private isExistingSessionSeeded(): boolean {
     const seededSessionId = this.routeParams?.sessionId ?? this.routeParamsSeed?.sessionId ?? ''
     return seededSessionId.trim() !== ''
@@ -2009,47 +1971,17 @@ export struct ChatPage {
   }
 
   private getTitleBarOptions(): HdsNavigationTitleBarOptions {
-    return {
-      padding: {
-        start: LengthMetrics.vp(16),
-        end: LengthMetrics.vp(16)
-      },
-      content: {
-        title: {
-          mainTitle: ' '
-        },
-        stackBuilder: (): void => this.ChatTitleStackBuilder()
-      },
-      style: {
-        scrollEffectOpts: {
-          enableScrollEffect: true,
-          scrollEffectType: this.getTitleBarScrollEffectType(),
-          blurEffectiveStartOffset: LengthMetrics.vp(0),
-          blurEffectiveEndOffset: LengthMetrics.vp(this.getTitleBarBlurEffectiveEndOffset())
-        },
-        originalStyle: {
-          backgroundStyle: {
-            backgroundColor: $r('app.color.top_navigation_blur_origin'),
-            maskExtraHeight: this.getTitleBarMaskExtraHeight(),
-            blurRadius: this.getTitleBarInitialBlurRadius()
-          }
-        },
-        scrollEffectStyle: {
-          backgroundStyle: {
-            backgroundColor: $r('app.color.top_navigation_blur_scrolled'),
-            maskExtraHeight: this.getTitleBarMaskExtraHeight(),
-            blurRadius: this.getTitleBarBlurRadius()
-          }
-        },
-        blurStrategy: BlurStrategy.ENABLE,
-        systemMaterialEffect: {
-          materialType: this.materialType as hdsMaterial.MaterialType,
-          materialLevel: this.materialLevel as hdsMaterial.MaterialLevel
-        }
-      },
-      avoidLayoutSafeArea: true,
-      enableComponentSafeArea: false
-    }
+    const options = new HdsTopNavigationBlurOptions()
+    options.startPaddingVp = 16
+    options.endPaddingVp = 16
+    options.materialType = this.materialType
+    options.materialLevel = this.materialLevel
+    options.windowWidthVp = this.windowWidthVp
+    options.windowHeightVp = this.windowHeightVp
+    options.maskExtraHeightVp = 24
+    options.blurEffectiveEndOffsetVp = this.windowWidthVp > this.windowHeightVp ? 20 : 28
+    options.stackBuilder = (): void => this.ChatTitleStackBuilder()
+    return buildHdsTopNavigationTitleBarOptions(options)
   }
 
   @Builder

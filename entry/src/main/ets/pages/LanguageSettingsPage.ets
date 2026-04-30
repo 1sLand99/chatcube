@@ -3,12 +3,17 @@ import { LayoutSizeClass } from '../config/LayoutProfile'
 import { AppLanguage } from '../services/PreferencesService'
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { IndexSettingsSheetContent } from '../components/index/IndexSettingsSheetContent'
-import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
 import { IndexSettingsSheetActionCallbacks } from './index/IndexSettingsSheetCoordinator'
 import { SettingsSheetType } from './index/IndexPageTypes'
 import { getSettingsPageContentMaxWidth, getSettingsPageCompactTabsTotalInset } from '../utils/SettingsPageLayoutHelper'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { getAppUiState } from '../state/AppUiState'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 let languageSettingsPathStack: NavPathStack | null = null
 
@@ -33,10 +38,17 @@ struct LanguageSettingsPage {
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
 
   @Local currentLanguage: AppLanguage = AppLanguage.SYSTEM
 
   private settingsManager = ServiceRegistry.settings()
+  private compactScroller: Scroller = new Scroller()
 
   private px2vp(px: number): number {
     return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
@@ -66,6 +78,16 @@ struct LanguageSettingsPage {
     }
   }
 
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
+  }
+
   private buildCallbacks(): IndexSettingsSheetActionCallbacks {
     const callbacks = new IndexSettingsSheetActionCallbacks()
     callbacks.onSelectLanguage = async (language: AppLanguage): Promise<void> => {
@@ -83,9 +105,15 @@ struct LanguageSettingsPage {
 
   @Builder
   private PageContent() {
-    Scroll() {
+    Scroll(this.compactScroller) {
       Row() {
         Column() {
+          if (!this.isDetailPaneMode()) {
+            Blank()
+              .width('100%')
+              .height(this.getCompactContentTopPadding())
+          }
+
           IndexSettingsSheetContent({
             settingsSheetType: SettingsSheetType.LANGUAGE,
             currentLanguage: this.currentLanguage,
@@ -124,6 +152,16 @@ struct LanguageSettingsPage {
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
+  @Builder
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.settings_language'),
+      onBack: () => {
+        this.handleBack()
+      }
+    })
+  }
+
   build() {
     Column() {
       if (this.isDetailPaneMode()) {
@@ -134,19 +172,19 @@ struct LanguageSettingsPage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          SettingsCompactPageHeader({
-            title: $r('app.string.settings_language'),
-            topAvoidHeight: this.topAvoidHeight,
-            onBack: () => {
-              this.handleBack()
-            }
-          })
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.compactScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')
@@ -172,4 +210,3 @@ export function LanguageSettingsPageBuilder(name: string, param: Object) {
     return true
   })
 }
-

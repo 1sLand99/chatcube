@@ -1,12 +1,19 @@
 import { AppStorageKeys } from '../config/AppStorageKeys'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
 import { LayoutSizeClass } from '../config/LayoutProfile'
 import { ALL_THEMES, ColorTheme, getThemeColors, ThemeColorConfig, ThemeInfo } from '../models/ThemeColors'
 import { ThemeMode } from '../services/PreferencesService'
 import { ServiceRegistry } from '../services/ServiceRegistry'
-import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
 import { getSettingsPageContentMaxWidth, getSettingsPageCompactTabsTotalInset } from '../utils/SettingsPageLayoutHelper'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { getAppUiState } from '../state/AppUiState'
+import {
+  buildHdsTopNavigationTitleBarOptions,
+  getHdsTopNavigationBlurEffectiveEndOffset,
+  getHdsTopNavigationMaskExtraHeight,
+  HdsTopNavigationBlurOptions
+} from '../utils/HdsVisualEffectUtil'
 
 let themeModeSettingsPathStack: NavPathStack | null = null
 
@@ -51,6 +58,7 @@ export struct ThemeAppearanceSettingsView {
   @Local lightColorMode: string = 'default'
 
   private settingsManager = ServiceRegistry.settings()
+  private compactScroller: Scroller = new Scroller()
 
   private px2vp(px: number): number {
     return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
@@ -77,6 +85,27 @@ export struct ThemeAppearanceSettingsView {
   private getScrollBottomPadding(): number {
     return 24 + getSettingsPageCompactTabsTotalInset(this.px2vp(this.bottomAvoidHeight),
       this.settingsDetailPresentationMode)
+  }
+
+  private getCompactTitleBarMaskExtraHeight(): number {
+    return getHdsTopNavigationMaskExtraHeight(this.windowWidthVp, this.windowHeightVp)
+  }
+
+  private getCompactContentTopPadding(): number {
+    return this.px2vp(this.topAvoidHeight) + 56 + this.getCompactTitleBarMaskExtraHeight()
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    const options = new HdsTopNavigationBlurOptions()
+    options.materialType = this.materialType
+    options.materialLevel = this.materialLevel
+    options.windowWidthVp = this.windowWidthVp
+    options.windowHeightVp = this.windowHeightVp
+    options.maskExtraHeightVp = this.getCompactTitleBarMaskExtraHeight()
+    options.blurEffectiveEndOffsetVp = getHdsTopNavigationBlurEffectiveEndOffset(this.windowWidthVp,
+      this.windowHeightVp)
+    options.stackBuilder = (): void => this.CompactTitleStackBuilder()
+    return buildHdsTopNavigationTitleBarOptions(options)
   }
 
   private getResolvedDarkMode(mode: ThemeMode = this.currentThemeMode): boolean {
@@ -568,9 +597,15 @@ export struct ThemeAppearanceSettingsView {
 
   @Builder
   private PageContent() {
-    Scroll() {
+    Scroll(this.compactScroller) {
       Row() {
         Column({ space: 22 }) {
+          if (!this.isDetailPaneMode()) {
+            Blank()
+              .width('100%')
+              .height(this.getCompactContentTopPadding())
+          }
+
           this.LivePreviewSection()
 
           this.SectionHeader($r('app.string.appearance_display_mode_title'),
@@ -714,6 +749,14 @@ export struct ThemeAppearanceSettingsView {
   }
 
   @Builder
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: this.compactTitle,
+      onBack: this.onCompactBack
+    })
+  }
+
+  @Builder
   private DetailPaneHeader() {
     Column() {
       Row() {
@@ -743,17 +786,19 @@ export struct ThemeAppearanceSettingsView {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          SettingsCompactPageHeader({
-            title: this.compactTitle,
-            topAvoidHeight: this.topAvoidHeight,
-            onBack: this.onCompactBack
-          })
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.compactScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')
@@ -802,4 +847,3 @@ export function ThemeModeSettingsPageBuilder(name: string, param: Object) {
     return true
   })
 }
-

@@ -1,4 +1,5 @@
 import { KeyboardAvoidMode } from '@kit.ArkUI'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
 import {
   ModelProvider,
   ModelInfo,
@@ -48,6 +49,10 @@ import {
   parseCustomHeaderEntries,
   validateCustomHeaderEntries
 } from '../utils/CustomHeaderUtils'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 @ObservedV2
 class ProviderHeaderEntry {
@@ -125,6 +130,18 @@ export struct ProviderDetailPanel {
   private get bottomAvoidHeight(): number {
     return getAppUiState().bottomAvoidHeight
   }
+  private get windowWidthVp(): number {
+    return getAppUiState().windowWidthVp
+  }
+  private get windowHeightVp(): number {
+    return getAppUiState().windowHeightVp
+  }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
@@ -165,6 +182,8 @@ export struct ProviderDetailPanel {
   @Local addModelIdText: string = ''
 
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
+  private pageConfigScroller: Scroller = new Scroller()
+  private pageModelListScroller: ListScroller = new ListScroller()
 
   // API 风格选项（仅用于自定义服务商）
   private apiStyleOptions: ApiStyleOption[] = getDefaultApiStyleOptions()
@@ -903,6 +922,16 @@ export struct ProviderDetailPanel {
     return this.px2vp(this.bottomAvoidHeight)
   }
 
+  private getStandaloneContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getStandaloneTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.StandaloneTitleStackBuilder())
+  }
+
   private getDetailPaneBottomBarHeight(): number {
     return getProviderDetailPaneBottomBarHeight(this.getBottomAvoidHeightVp())
   }
@@ -993,22 +1022,91 @@ export struct ProviderDetailPanel {
   }
 
   build() {
-    Column() {
-      // 自定义头部
-      this.SheetHeader()
+    if (this.isStandalonePagePresentation()) {
+      HdsNavigation() {
+        Column() {
+          Blank()
+            .width('100%')
+            .height(this.getStandaloneContentTopPadding())
 
-      if (this.isLoading) {
-        this.LoadingView()
-      } else if (this.provider === null) {
-        this.ErrorView()
+          this.PanelMainContent()
+          this.UnifiedSheetHost()
+        }
+        .width('100%')
+        .height('100%')
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.background'))
+      .titleBar(this.getStandaloneTitleBarOptions())
+      .bindToScrollable([this.pageConfigScroller, this.pageModelListScroller])
+      .titleMode(HdsNavigationTitleMode.MINI)
+      .hideBackButton(true)
+      .hideToolBar(true)
+      .mode(NavigationMode.Stack)
+      .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
+    } else {
+      Column() {
+        this.SheetHeader()
+        this.PanelMainContent()
+        this.UnifiedSheetHost()
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.presentationMode === ProviderDetailPresentationMode.SHEET ? Color.Transparent
+        : $r('app.color.background'))
+    }
+  }
+
+  @Builder
+  private PanelMainContent() {
+    if (this.isLoading) {
+      this.LoadingView()
+    } else if (this.provider === null) {
+      this.ErrorView()
+    } else {
+      this.ProviderHeaderCard()
+
+      if (this.isStandalonePagePresentation()) {
+        this.PageSectionTabs()
+
+        if (this.currentTabIndex === 0) {
+          Scroll(this.pageConfigScroller) {
+            Column() {
+              this.ApiConfigCard()
+
+              Column().height(this.getConfigContentBottomSpacerHeight())
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
+          .align(Alignment.Top)
+        } else {
+          Column() {
+            this.ModelsCard()
+          }
+          .width('100%')
+          .layoutWeight(1)
+        }
+      } else if (this.isDetailPanePresentation()) {
+        Stack({ alignContent: Alignment.BottomEnd }) {
+          Stack({ alignContent: Alignment.TopStart }) {
+            this.DetailPaneConfigContent()
+            this.DetailPaneModelsContent()
+          }
+          .width('100%')
+          .height('100%')
+
+          this.DetailPaneBottomTabs()
+        }
+        .width('100%')
+        .layoutWeight(1)
       } else {
-        // 供应商头部卡片（始终可见）
-        this.ProviderHeaderCard()
-
-        if (this.isStandalonePagePresentation()) {
-          this.PageSectionTabs()
-
-          if (this.currentTabIndex === 0) {
+        Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
+          TabContent() {
             Scroll() {
               Column() {
                 this.ApiConfigCard()
@@ -1018,95 +1116,55 @@ export struct ProviderDetailPanel {
               .width('100%')
             }
             .width('100%')
-            .layoutWeight(1)
+            .height('100%')
             .scrollBar(BarState.Off)
             .edgeEffect(EdgeEffect.Spring)
             .align(Alignment.Top)
-          } else {
+          }
+          .tabBar(this.ConfigTabBuilder())
+
+          TabContent() {
             Column() {
               this.ModelsCard()
             }
             .width('100%')
-            .layoutWeight(1)
-          }
-        } else if (this.isDetailPanePresentation()) {
-          Stack({ alignContent: Alignment.BottomEnd }) {
-            Stack({ alignContent: Alignment.TopStart }) {
-              this.DetailPaneConfigContent()
-              this.DetailPaneModelsContent()
-            }
-            .width('100%')
             .height('100%')
-
-            this.DetailPaneBottomTabs()
           }
-          .width('100%')
-          .layoutWeight(1)
-        } else {
-          // Tab 分区：配置 | 模型（原生悬浮 Tab 栏）
-          Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
-            TabContent() {
-              Scroll() {
-                Column() {
-                  this.ApiConfigCard()
-
-                  Column().height(this.getConfigContentBottomSpacerHeight())
-                }
-                .width('100%')
-              }
-              .width('100%')
-              .height('100%')
-              .scrollBar(BarState.Off)
-              .edgeEffect(EdgeEffect.Spring)
-              .align(Alignment.Top)
-            }
-            .tabBar(this.ConfigTabBuilder())
-
-            TabContent() {
-              Column() {
-                this.ModelsCard()
-              }
-              .width('100%')
-              .height('100%')
-            }
-            .tabBar(this.ModelsTabBuilder())
-          }
-          .layoutWeight(1)
-          .barOverlap(false)
-          .barBackgroundBlurStyle(BlurStyle.Thin)
-          .animationDuration(300)
-          .onChange((index: number) => {
-            this.currentTabIndex = index
-            if (index === 0) {
-              this.configTabEffectTrigger++
-            } else {
-              this.modelsTabEffectTrigger++
-            }
-          })
+          .tabBar(this.ModelsTabBuilder())
         }
-      }
-
-      // 单独的 Sheet 宿主，避免详情面板内容切换时误触发关闭
-      Column()
-        .width(0)
-        .height(0)
-        .bindSheet($$this.showSheet, this.UnifiedSheetBuilder(), {
-          height: SheetSize.LARGE,
-          showClose: false,
-          dragBar: true,
-          blurStyle: BlurStyle.Regular,
-          shouldDismiss: (dismissAction: SheetDismiss) => {
-            dismissAction.dismiss()
-          },
-          onDisappear: () => {
-            this.clearEditState()
+        .layoutWeight(1)
+        .barOverlap(false)
+        .barBackgroundBlurStyle(BlurStyle.Thin)
+        .animationDuration(300)
+        .onChange((index: number) => {
+          this.currentTabIndex = index
+          if (index === 0) {
+            this.configTabEffectTrigger++
+          } else {
+            this.modelsTabEffectTrigger++
           }
         })
+      }
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.presentationMode === ProviderDetailPresentationMode.SHEET ? Color.Transparent
-      : $r('app.color.background'))
+  }
+
+  @Builder
+  private UnifiedSheetHost() {
+    Column()
+      .width(0)
+      .height(0)
+      .bindSheet($$this.showSheet, this.UnifiedSheetBuilder(), {
+        height: SheetSize.LARGE,
+        showClose: false,
+        dragBar: true,
+        blurStyle: BlurStyle.Regular,
+        shouldDismiss: (dismissAction: SheetDismiss) => {
+          dismissAction.dismiss()
+        },
+        onDisappear: () => {
+          this.clearEditState()
+        }
+      })
   }
 
   @Builder
@@ -1263,6 +1321,73 @@ export struct ProviderDetailPanel {
       }
       this.currentTabIndex = index
     })
+  }
+
+  @Builder
+  StandaloneTitleStackBuilder() {
+    Row({ space: 8 }) {
+      Button() {
+        SymbolGlyph(this.headerLeadingSymbol())
+          .fontSize(18)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .type(ButtonType.Normal)
+      .stateEffect(false)
+      .width(40)
+      .height(40)
+      .padding(0)
+      .borderRadius(20)
+      .backgroundColor(Color.Transparent)
+      .onClick(() => {
+        this.onClose()
+      })
+
+      Column({ space: 2 }) {
+        Text($r('app.string.provider_detail_title'))
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+          .width('100%')
+        Text(this.currentTabIndex === 0 ? $r('app.string.provider_api_config') : $r('app.string.provider_models_manage'))
+          .fontSize(11)
+          .fontColor($r('app.color.text_secondary'))
+          .width('100%')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      if (!this.isCreateMode && this.provider !== null && !this.provider.isPreset) {
+        Button() {
+          SymbolGlyph($r('sys.symbol.clean'))
+            .fontSize(18)
+            .fontColor([$r('app.color.status_error')])
+        }
+        .type(ButtonType.Circle)
+        .width(36)
+        .height(36)
+        .backgroundColor($r('app.color.divider'))
+        .onClick(() => {
+          this.showDeleteConfirmDialog()
+        })
+      }
+
+      Button() {
+        SymbolGlyph(this.headerSaveSymbol())
+          .fontSize(18)
+          .fontColor([Color.White])
+      }
+      .type(ButtonType.Circle)
+      .width(36)
+      .height(36)
+      .backgroundColor(this.themePrimary)
+      .onClick(() => {
+        this.saveConfigAndClose()
+      })
+    }
+    .width('100%')
+    .height(56)
+    .padding({ left: 8, right: 12 })
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
@@ -2401,7 +2526,7 @@ ModelsCard() {
 
       // 模型分组列表
       if (this.modelRenderRows.length > 0) {
-        List() {
+        List({ scroller: this.pageModelListScroller }) {
           Repeat<ProviderModelRenderRow>(this.modelRenderRows)
             .each((ri: RepeatItem<ProviderModelRenderRow>) => {
               if (ri.item.type === ProviderModelRenderRowType.GROUP_HEADER) {

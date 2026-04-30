@@ -1,16 +1,14 @@
-import { curves, LengthMetrics } from '@kit.ArkUI'
+import { curves } from '@kit.ArkUI'
 import { ConfigurationConstant, common } from '@kit.AbilityKit'
 import { notificationManager } from '@kit.NotificationKit'
 import { motion } from '@kit.MultimodalAwarenessKit'
 import { BusinessError } from '@kit.BasicServicesKit'
 import {
-  BlurStrategy,
   HdsNavigation,
   HdsNavigationTitleBarOptions,
   HdsNavigationTitleMode,
   HdsTabs,
   HdsTabsFloatingStyle,
-  ScrollEffectType,
   hdsMaterial
 } from '@kit.UIDesignKit'
 import { ChatSession, ChatMessage, ModelProvider } from '../models/ChatModels'
@@ -77,6 +75,12 @@ import { ChatPageRouteParams } from './chat/ChatPageRouteTypes'
 import {
   IndexSettingsSheetActionCallbacks
 } from './index/IndexSettingsSheetCoordinator'
+import {
+  buildHdsTopNavigationTitleBarOptions,
+  getHdsTopNavigationBlurEffectiveEndOffset,
+  getHdsTopNavigationMaskExtraHeight,
+  HdsTopNavigationBlurOptions
+} from '../utils/HdsVisualEffectUtil'
 import {
   normalizeSystemPromptTemplate,
   SystemPromptTemplateDefaults
@@ -265,6 +269,7 @@ struct Index {
   private providerViewModel = ServiceRegistry.provider()
   private assistantListScroller: ListScroller = new ListScroller()
   private sessionListScroller: ListScroller = new ListScroller()
+  private settingsRootScroller: Scroller = new Scroller()
   private settingsCallback: SettingsChangeCallback | null = null
   private holdingHandSubscribed: boolean = false
   private handAdaptiveLoadSeq: number = 0
@@ -1040,6 +1045,21 @@ struct Index {
     // 顶部模糊蒙版会向下渐变 maskExtraHeight，列表第一项需让出这一段，
     // 否则会落在模糊带上（卡片时间被模糊、筛选汇总行无法点击）。
     return this.getCompactChatHeaderOverlayHeight() + this.getCompactChatTitleBarMaskExtraHeight()
+  }
+
+  private getCompactSettingsHeaderDefaultHeight(): number {
+    return this.px2vp(this.topAvoidHeight) + 56
+  }
+
+  private getCompactSettingsTitleBarMaskExtraHeight(): number {
+    return getHdsTopNavigationMaskExtraHeight(this.windowWidthVp, this.windowHeightVp)
+  }
+
+  private getSettingsListTopSpacerHeight(): number {
+    if (this.isSettingsSplitMode()) {
+      return 0
+    }
+    return this.getCompactSettingsHeaderDefaultHeight() + this.getCompactSettingsTitleBarMaskExtraHeight()
   }
 
   private readMeasuredAreaHeight(area: Area): number {
@@ -1948,83 +1968,20 @@ struct Index {
   }
 
   private getCompactChatTitleBarOptions(): HdsNavigationTitleBarOptions {
-    return {
-      padding: {
-        start: LengthMetrics.vp(0),
-        end: LengthMetrics.vp(0)
-      },
-      content: {
-        title: {
-          mainTitle: ' '
-        },
-        stackBuilder: (): void => this.CompactChatTitleStackBuilder()
-      },
-      style: {
-        scrollEffectOpts: {
-          enableScrollEffect: true,
-          scrollEffectType: this.getCompactChatTitleBarScrollEffectType(),
-          blurEffectiveStartOffset: LengthMetrics.vp(0),
-          blurEffectiveEndOffset: LengthMetrics.vp(this.getCompactChatTitleBarBlurEndOffset())
-        },
-        originalStyle: {
-          backgroundStyle: {
-            backgroundColor: $r('app.color.top_navigation_blur_origin'),
-            maskExtraHeight: this.getCompactChatTitleBarMaskExtraHeight(),
-            blurRadius: this.getCompactChatTitleBarInitialBlurRadius()
-          }
-        },
-        scrollEffectStyle: {
-          backgroundStyle: {
-            backgroundColor: $r('app.color.top_navigation_blur_scrolled'),
-            maskExtraHeight: this.getCompactChatTitleBarMaskExtraHeight(),
-            blurRadius: this.getCompactChatTitleBarBlurRadius()
-          }
-        },
-        blurStrategy: BlurStrategy.ENABLE,
-        systemMaterialEffect: {
-          materialType: this.materialType as hdsMaterial.MaterialType,
-          materialLevel: this.materialLevel as hdsMaterial.MaterialLevel
-        }
-      },
-      avoidLayoutSafeArea: true,
-      enableComponentSafeArea: false
-    }
+    const options = new HdsTopNavigationBlurOptions()
+    options.materialType = this.materialType
+    options.materialLevel = this.materialLevel
+    options.windowWidthVp = this.windowWidthVp
+    options.windowHeightVp = this.windowHeightVp
+    options.maskExtraHeightVp = this.getCompactChatTitleBarMaskExtraHeight()
+    options.blurEffectiveEndOffsetVp = getHdsTopNavigationBlurEffectiveEndOffset(this.windowWidthVp,
+      this.windowHeightVp)
+    options.stackBuilder = (): void => this.CompactChatTitleStackBuilder()
+    return buildHdsTopNavigationTitleBarOptions(options)
   }
 
   private getCompactChatTitleBarMaskExtraHeight(): number {
-    return this.windowWidthVp > this.windowHeightVp ? 16 : 20
-  }
-
-  private getCompactChatTitleBarScrollEffectType(): ScrollEffectType {
-    if (this.materialType === 0) {
-      return ScrollEffectType.GRADIENT_BLUR
-    }
-    return ScrollEffectType.IMMERSIVE_GRADIENT_BLUR
-  }
-
-  private getCompactChatTitleBarBlurEndOffset(): number {
-    return this.windowWidthVp > this.windowHeightVp ? 20 : 28
-  }
-
-  private getCompactChatTitleBarInitialBlurRadius(): number {
-    return this.materialType === 0 ? 0 : 8
-  }
-
-  private getCompactChatTitleBarBlurRadius(): number {
-    if (this.materialType === 0) {
-      return 0
-    }
-    const isLandscape = this.windowWidthVp > this.windowHeightVp
-    if (this.materialLevel === 0) {
-      return isLandscape ? 20 : 26
-    }
-    if (this.materialLevel === 1) {
-      return isLandscape ? 18 : 22
-    }
-    if (this.materialLevel === 2) {
-      return isLandscape ? 14 : 18
-    }
-    return isLandscape ? 16 : 22
+    return getHdsTopNavigationMaskExtraHeight(this.windowWidthVp, this.windowHeightVp)
   }
 
   @Builder
@@ -3874,8 +3831,14 @@ struct Index {
 
   @Builder
   private SettingsNavigationScrollableContent() {
-    Scroll() {
+    Scroll(this.settingsRootScroller) {
       Column() {
+        if (!this.isSettingsSplitMode()) {
+          Blank()
+            .width('100%')
+            .height(this.getSettingsListTopSpacerHeight())
+        }
+
         this.SettingsNavigationContent()
 
         if (!this.isSettingsSplitMode()) {
@@ -3893,32 +3856,37 @@ struct Index {
   }
 
   @Builder
-  private CompactSettingsHeader() {
-    Column() {
-      Column()
-        .width('100%')
-        .height(this.px2vp(this.topAvoidHeight))
-
-      Row() {
-        Text($r('app.string.tab_settings'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
-      }
-      .width('100%')
-      .height(56)
-      .padding({ left: 8, right: 8 })
-      .alignItems(VerticalAlign.Center)
+  private CompactSettingsTitleStackBuilder() {
+    Row() {
+      Text($r('app.string.tab_settings'))
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.text_primary'))
+        .layoutWeight(1)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .height(56)
+    .padding({ left: 8, right: 8 })
+    .alignItems(VerticalAlign.Center)
+    .renderGroup(false)
+  }
+
+  private getCompactSettingsTitleBarOptions(): HdsNavigationTitleBarOptions {
+    const options = new HdsTopNavigationBlurOptions()
+    options.materialType = this.materialType
+    options.materialLevel = this.materialLevel
+    options.windowWidthVp = this.windowWidthVp
+    options.windowHeightVp = this.windowHeightVp
+    options.maskExtraHeightVp = this.getCompactSettingsTitleBarMaskExtraHeight()
+    options.blurEffectiveEndOffsetVp = getHdsTopNavigationBlurEffectiveEndOffset(this.windowWidthVp,
+      this.windowHeightVp)
+    options.stackBuilder = (): void => this.CompactSettingsTitleStackBuilder()
+    return buildHdsTopNavigationTitleBarOptions(options)
   }
 
   @Builder
   private CompactSettingsRootContent() {
     Column() {
-      this.CompactSettingsHeader()
       Column() {
         this.SettingsNavigationScrollableContent()
       }
@@ -3957,19 +3925,21 @@ struct Index {
         this.ensureSettingsSplitLandingRoute()
       })
     } else {
-      Navigation(this.settingsNavPathStack) {
+      HdsNavigation(this.settingsNavPathStack) {
         this.CompactSettingsRootContent()
       }
       .width('100%')
       .height('100%')
       .backgroundColor($r('app.color.background'))
+      .titleBar(this.getCompactSettingsTitleBarOptions())
+      .bindToScrollable([this.settingsRootScroller])
+      .titleMode(HdsNavigationTitleMode.MINI)
       .ignoreLayoutSafeArea(
         [LayoutSafeAreaType.SYSTEM],
         this.shouldIgnoreCompactSettingsTopSafeArea() ? [LayoutSafeAreaEdge.TOP] : []
       )
       .mode(NavigationMode.Stack)
       .navBarWidth(this.windowWidthVp)
-      .hideTitleBar(true)
       .hideBackButton(true)
       .hideToolBar(true)
     }

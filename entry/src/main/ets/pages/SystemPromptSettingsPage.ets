@@ -5,6 +5,12 @@ import { getSettingsPageContentMaxWidth, getSettingsPageCompactTabsTotalInset } 
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { getAppUiState } from '../state/AppUiState'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 let systemPromptSettingsPathStack: NavPathStack | null = null
 
@@ -31,6 +37,12 @@ struct SystemPromptSettingsPage {
   }
   private get themePrimary(): string {
     return getAppUiState().themePrimary
+  }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
   }
 
   @Local customSystemPrompt: string = ''
@@ -95,10 +107,26 @@ struct SystemPromptSettingsPage {
     }
   }
 
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
+  }
+
   @Builder
   private PageContent() {
     Row() {
       Column({ space: 12 }) {
+        if (!this.isDetailPaneMode()) {
+          Blank()
+            .width('100%')
+            .height(this.getCompactContentTopPadding())
+        }
+
         Text($r('app.string.system_prompt_hint'))
           .fontSize(12)
           .fontColor($r('app.color.text_secondary'))
@@ -199,46 +227,13 @@ struct SystemPromptSettingsPage {
   }
 
   @Builder
-  private CompactPageHeader() {
-    Column() {
-      Column()
-        .width('100%')
-        .height(px2vp(this.topAvoidHeight))
-
-      Row({ space: 4 }) {
-        Button() {
-          SymbolGlyph($r('sys.symbol.chevron_left'))
-            .fontSize(20)
-            .fontColor([$r('app.color.text_primary')])
-        }
-        .type(ButtonType.Normal)
-        .stateEffect(false)
-        .width(40)
-        .height(40)
-        .borderRadius(20)
-        .backgroundColor(Color.Transparent)
-        .onClick(() => {
-          this.handleBack()
-        })
-
-        Text($r('app.string.system_prompt_edit_title'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
-          .margin({ left: 4 })
-
-        Column()
-          .width(40)
-          .height(40)
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.system_prompt_edit_title'),
+      onBack: () => {
+        this.handleBack()
       }
-      .width('100%')
-      .height(56)
-      .padding({ left: 8, right: 8 })
-      .alignItems(VerticalAlign.Center)
-    }
-    .width('100%')
-    .backgroundColor($r('app.color.background'))
+    })
   }
 
   build() {
@@ -251,13 +246,18 @@ struct SystemPromptSettingsPage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          this.CompactPageHeader()
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')

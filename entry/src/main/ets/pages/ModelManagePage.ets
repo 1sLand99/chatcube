@@ -11,7 +11,17 @@ import { ProviderIcon, resolveProviderTextIconDisplayMode } from '../components/
 import { ServiceRegistry } from '../services/ServiceRegistry'
 import { ModelCapabilityMatcher } from '../services/ModelCapabilityMatcher'
 import { IconDownloadCache } from '../services/IconDownloadCache'
-import { HdsNavigationMenuItemOptions } from '@kit.UIDesignKit'
+import {
+  HdsNavigation,
+  HdsNavigationMenuItemOptions,
+  HdsNavigationTitleBarOptions,
+  HdsNavigationTitleMode
+} from '@kit.UIDesignKit'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding,
+  getHdsTopNavigationMaskExtraHeight
+} from '../utils/HdsVisualEffectUtil'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { LayoutSizeClass } from '../config/LayoutProfile'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
@@ -65,9 +75,20 @@ struct ModelManagePage {
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
   private hasLoaded: boolean = false
   private providerViewModel: ProviderViewModel = ServiceRegistry.provider()
   private layoutObserverDisposer: (() => void) | null = null
+  private providerListScroller: ListScroller = new ListScroller()
+
+  private px2vp(px: number): number {
+    return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
+  }
 
   private showManageToast(message: string | Resource, duration: number = 2000): void {
     showToast(this.getUIContext(), message, duration)
@@ -118,6 +139,20 @@ struct ModelManagePage {
   private isExpandedLayout(): boolean {
     return isSettingsPageExpandedLayout(this.layoutSizeClass, this.settingsDetailPresentationMode, this.windowWidthVp,
       this.windowHeightVp)
+  }
+
+  private getCompactTitleBarMaskExtraHeight(): number {
+    return getHdsTopNavigationMaskExtraHeight(this.windowWidthVp, this.windowHeightVp)
+  }
+
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
   }
 
   private hasExpandedDetailSelection(): boolean {
@@ -405,13 +440,19 @@ struct ModelManagePage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          this.CompactPageHeader()
+        HdsNavigation() {
           this.CompactManageBody()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.providerListScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')
@@ -466,11 +507,67 @@ struct ModelManagePage {
   }
 
   @Builder
+  private CompactTitleStackBuilder() {
+    Row({ space: 6 }) {
+      Button() {
+        SymbolGlyph($r('sys.symbol.chevron_left'))
+          .fontSize(20)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .type(ButtonType.Normal)
+      .stateEffect(false)
+      .width(40)
+      .height(40)
+      .borderRadius(20)
+      .backgroundColor(Color.Transparent)
+      .onClick(() => {
+        this.handleBack()
+      })
+
+      Text($r('app.string.model_manage_title'))
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.text_primary'))
+        .layoutWeight(1)
+
+      Button() {
+        SymbolGlyph($r('sys.symbol.wand_and_stars'))
+          .fontSize(18)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .type(ButtonType.Circle)
+      .width(36)
+      .height(36)
+      .backgroundColor($r('app.color.divider'))
+      .onClick(() => {
+        this.matchAllIcons()
+      })
+
+      Button() {
+        SymbolGlyph($r('sys.symbol.plus_circle'))
+          .fontSize(18)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .type(ButtonType.Circle)
+      .width(36)
+      .height(36)
+      .backgroundColor($r('app.color.divider'))
+      .onClick(() => {
+        this.openCreateProvider()
+      })
+    }
+    .width('100%')
+    .height(56)
+    .padding({ left: 8, right: 12 })
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
   private CompactPageHeader() {
     Column() {
       Column()
         .width('100%')
-        .height(px2vp(this.topAvoidHeight))
+        .height(this.px2vp(this.topAvoidHeight))
 
       Row({ space: 6 }) {
         Button() {
@@ -524,9 +621,17 @@ struct ModelManagePage {
       .height(56)
       .padding({ left: 8, right: 12 })
       .alignItems(VerticalAlign.Center)
+
+      Column()
+        .width('100%')
+        .height(this.getCompactTitleBarMaskExtraHeight())
+        .backgroundColor($r('app.color.top_navigation_blur_origin'))
+        .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
     }
     .width('100%')
-    .backgroundColor($r('app.color.background'))
+    .backgroundColor($r('app.color.top_navigation_blur_scrolled'))
+    .backgroundBlurStyle(BlurStyle.COMPONENT_THIN)
+    .renderGroup(true)
   }
 
   @Builder
@@ -541,48 +646,143 @@ struct ModelManagePage {
 
   @Builder
   ProviderListPane(isExpandedPane: boolean) {
+    if (!isExpandedPane && !this.isEmbeddedSettingsDetailPane()) {
+      List({ space: 8, scroller: this.providerListScroller }) {
+        ListItem() {
+          Column()
+            .width('100%')
+            .height(this.getCompactContentTopPadding())
+        }
+        .focusable(false)
+        .selectable(false)
+
+        ListItem() {
+          this.ProviderStatusTabs(false)
+        }
+        .focusable(false)
+        .selectable(false)
+
+        ListItem() {
+          this.ProviderSearchBar(false)
+        }
+        .focusable(false)
+        .selectable(false)
+
+        if (this.isLoading) {
+          ListItem() {
+            this.LoadingView()
+          }
+        } else {
+          Repeat<ModelProvider>(this.getProviderListDataSource())
+            .each((obj: RepeatItem<ModelProvider>) => {
+              ListItem({ style: ListItemStyle.NONE }) {
+                ProviderCardItem({
+                  provider: obj.item,
+                  searchKeywords: this.searchKeywords,
+                  active: !this.detailCreateMode && this.selectedProviderId === obj.item.id,
+                  onCardClick: () => {
+                    this.openProviderDetail(obj.item.id)
+                  },
+                  onToggleEnabled: () => {
+                    this.toggleProviderEnabled(obj.item)
+                  }
+                })
+              }
+              .margin({ left: 16, right: 16 })
+              .borderRadius(16)
+              .clip(true)
+            })
+            .key((item: ModelProvider) => {
+              return item.id
+            })
+            .virtualScroll({ totalCount: this.getProviderListDataSource().length })
+            .onMove((from: number, to: number) => {
+              if (this.searchKeywords.trim() !== '') {
+                return
+              }
+              this.allProviders = reorderProvidersWithinTab(this.allProviders, this.currentTabKey, from, to)
+              this.saveOrder()
+            })
+
+          if (this.searchKeywords.trim() !== '' && this.getFilteredProviders().length === 0) {
+            ListItem() {
+              Column() {
+                SymbolGlyph($r('sys.symbol.magnifyingglass'))
+                  .fontSize(48)
+                  .fontColor([$r('app.color.text_tertiary')])
+
+                Text($r('app.string.provider_models_not_found'))
+                  .fontSize(16)
+                  .fontColor($r('app.color.text_secondary'))
+                  .margin({ top: 16 })
+
+                Text($r('app.string.search_try_other_keywords'))
+                  .fontSize(14)
+                  .fontColor($r('app.color.text_tertiary'))
+                  .margin({ top: 4 })
+              }
+              .width('100%')
+              .padding({ top: 60, bottom: 60 })
+              .justifyContent(FlexAlign.Center)
+            }
+          }
+
+          ListItem() {
+            Column() {
+              Button() {
+                Row() {
+                  SymbolGlyph($r('sys.symbol.plus_circle'))
+                    .fontSize(22)
+                    .fontColor([this.themePrimary])
+
+                  Text($r('app.string.add_custom_provider'))
+                    .fontSize(15)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(this.themePrimary)
+                    .margin({ left: 8 })
+                }
+              }
+              .width('100%')
+              .height(56)
+              .backgroundColor($r('app.color.surface'))
+              .borderRadius(24)
+              .onClick(() => {
+                this.openCreateProvider()
+              })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 8 })
+          }
+        }
+
+        ListItem() {
+          Column().height(100)
+        }
+        .focusable(false)
+        .selectable(false)
+      }
+      .width('100%')
+      .height('100%')
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
+      .cachedCount(this.getProviderListCachedCount())
+      .backgroundColor($r('app.color.background'))
+    } else {
+      this.ProviderListPaneContent(isExpandedPane)
+    }
+  }
+
+  @Builder
+  private ProviderListPaneContent(isExpandedPane: boolean) {
     Column() {
       this.ProviderStatusTabs(isExpandedPane)
 
-      Row() {
-        Row({ space: 8 }) {
-          SymbolGlyph($r('sys.symbol.magnifyingglass'))
-            .fontSize(16)
-            .fontColor([$r('app.color.text_tertiary')])
-
-          TextInput({ text: this.searchKeywords, placeholder: $r('app.string.filter_models_placeholder') })
-            .layoutWeight(1)
-            .fontSize(14)
-            .fontColor($r('app.color.text_primary'))
-            .placeholderColor($r('app.color.text_tertiary'))
-            .backgroundColor(Color.Transparent)
-            .onChange((value: string) => {
-              this.searchKeywords = value
-            })
-        }
-        .width('100%')
-        .height(40)
-        .padding({ left: 12, right: 12 })
-        .backgroundColor($r('app.color.background'))
-        .borderRadius(20)
-        .border({
-          width: 1,
-          color: $r('app.color.divider')
-        })
-        .alignItems(VerticalAlign.Center)
-      }
-      .width('100%')
-      .padding({
-        left: 16,
-        right: 16,
-        top: isExpandedPane ? 16 : 0,
-        bottom: 8
-      })
+      this.ProviderSearchBar(isExpandedPane)
 
       if (this.isLoading) {
         this.LoadingView()
       } else {
-        List({ space: 8 }) {
+        List({ space: 8, scroller: this.providerListScroller }) {
           Repeat<ModelProvider>(this.getProviderListDataSource())
             .each((obj: RepeatItem<ModelProvider>) => {
               ListItem({ style: ListItemStyle.NONE }) {
@@ -678,6 +878,44 @@ struct ModelManagePage {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.background'))
+  }
+
+  @Builder
+  private ProviderSearchBar(isExpandedPane: boolean) {
+    Row() {
+      Row({ space: 8 }) {
+        SymbolGlyph($r('sys.symbol.magnifyingglass'))
+          .fontSize(16)
+          .fontColor([$r('app.color.text_tertiary')])
+
+        TextInput({ text: this.searchKeywords, placeholder: $r('app.string.filter_models_placeholder') })
+          .layoutWeight(1)
+          .fontSize(14)
+          .fontColor($r('app.color.text_primary'))
+          .placeholderColor($r('app.color.text_tertiary'))
+          .backgroundColor(Color.Transparent)
+          .onChange((value: string) => {
+            this.searchKeywords = value
+          })
+      }
+      .width('100%')
+      .height(40)
+      .padding({ left: 12, right: 12 })
+      .backgroundColor($r('app.color.background'))
+      .borderRadius(20)
+      .border({
+        width: 1,
+        color: $r('app.color.divider')
+      })
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .padding({
+      left: 16,
+      right: 16,
+      top: isExpandedPane ? 16 : 0,
+      bottom: 8
+    })
   }
 
   @Builder

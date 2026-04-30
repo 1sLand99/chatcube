@@ -2,11 +2,17 @@ import { picker, fileIo } from '@kit.CoreFileKit'
 import { getImportExportService, ImportOptions, ImportPreview } from '../services/ImportExportService'
 import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/ToastUtil'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
 import {
   getSettingsPageCompactTabsOverlayInset,
   getSettingsPageContentMaxWidth
 } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 let importDataPathStack: NavPathStack | null = null
 
@@ -35,6 +41,12 @@ struct ImportDataPage {
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
 
   @Local selectedFilePath: string = ''
   @Local preview: ImportPreview | null = null
@@ -44,6 +56,7 @@ struct ImportDataPage {
   @Local isImporting: boolean = false
   @Local importProgress: number = 0
   @Local showPreview: boolean = false
+  private compactScroller: Scroller = new Scroller()
 
   private px2vp(px: number): number {
     return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
@@ -87,6 +100,16 @@ struct ImportDataPage {
     if (importDataPathStack !== null && importDataPathStack.size() > 0) {
       importDataPathStack.pop()
     }
+  }
+
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
   }
 
   async selectFile(): Promise<void> {
@@ -241,7 +264,11 @@ struct ImportDataPage {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
-        .padding({ left: 16, right: 16 })
+        .padding({
+          left: 16,
+          right: 16,
+          top: this.isDetailPaneMode() ? 0 : this.getCompactContentTopPadding()
+        })
       } else if (!this.showPreview) {
         Row() {
           Column() {
@@ -273,11 +300,21 @@ struct ImportDataPage {
         }
         .width('100%')
         .height('100%')
-        .padding({ left: 16, right: 16 })
+        .padding({
+          left: 16,
+          right: 16,
+          top: this.isDetailPaneMode() ? 0 : this.getCompactContentTopPadding()
+        })
       } else {
-        Scroll() {
+        Scroll(this.compactScroller) {
           Row() {
             Column() {
+              if (!this.isDetailPaneMode()) {
+                Blank()
+                  .width('100%')
+                  .height(this.getCompactContentTopPadding())
+              }
+
               this.SectionTitle($r('app.string.import_preview'))
 
               Column() {
@@ -417,46 +454,13 @@ struct ImportDataPage {
   }
 
   @Builder
-  private CompactPageHeader() {
-    Column() {
-      Column()
-        .width('100%')
-        .height(this.px2vp(this.topAvoidHeight))
-
-      Row({ space: 4 }) {
-        Button() {
-          SymbolGlyph($r('sys.symbol.chevron_left'))
-            .fontSize(20)
-            .fontColor([$r('app.color.text_primary')])
-        }
-        .type(ButtonType.Normal)
-        .stateEffect(false)
-        .width(40)
-        .height(40)
-        .borderRadius(20)
-        .backgroundColor(Color.Transparent)
-        .onClick(() => {
-          this.handleBack()
-        })
-
-        Text($r('app.string.import_title'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
-          .margin({ left: 4 })
-
-        Column()
-          .width(40)
-          .height(40)
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.import_title'),
+      onBack: () => {
+        this.handleBack()
       }
-      .width('100%')
-      .height(56)
-      .padding({ left: 8, right: 8 })
-      .alignItems(VerticalAlign.Center)
-    }
-    .width('100%')
-    .backgroundColor($r('app.color.background'))
+    })
   }
 
   build() {
@@ -469,13 +473,19 @@ struct ImportDataPage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          this.CompactPageHeader()
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.compactScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')

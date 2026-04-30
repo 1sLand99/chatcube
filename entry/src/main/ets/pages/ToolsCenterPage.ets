@@ -1,10 +1,15 @@
 import { ToolsCenterPanel } from '../components/ToolsCenterPanel'
-import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { LayoutSizeClass } from '../config/LayoutProfile'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import { getSettingsPageContentMaxWidth, getSettingsPageCompactTabsTotalInset } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 let toolsCenterPagePathStack: NavPathStack | null = null
 
@@ -29,6 +34,13 @@ struct ToolsCenterPage {
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
+  private toolsCenterScroller: Scroller = new Scroller()
 
   private px2vp(px: number): number {
     return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
@@ -54,13 +66,25 @@ struct ToolsCenterPage {
     }
   }
 
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
+  }
+
   @Builder
   private PageContent() {
     Row() {
       Column() {
         ToolsCenterPanel({
           showHeader: false,
-          contentBottomPadding: this.getContentBottomPadding()
+          contentBottomPadding: this.getContentBottomPadding(),
+          contentTopPadding: this.isDetailPaneMode() ? 0 : this.getCompactContentTopPadding(),
+          contentScroller: this.toolsCenterScroller
         })
       }
       .width('100%')
@@ -94,6 +118,16 @@ struct ToolsCenterPage {
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
+  @Builder
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.tools_center_title'),
+      onBack: () => {
+        this.handleBack()
+      }
+    })
+  }
+
   build() {
     Column() {
       if (this.isDetailPaneMode()) {
@@ -104,19 +138,19 @@ struct ToolsCenterPage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          SettingsCompactPageHeader({
-            title: $r('app.string.tools_center_title'),
-            topAvoidHeight: this.topAvoidHeight,
-            onBack: () => {
-              this.handleBack()
-            }
-          })
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.toolsCenterScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')

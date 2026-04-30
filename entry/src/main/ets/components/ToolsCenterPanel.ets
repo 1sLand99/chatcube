@@ -35,6 +35,8 @@ class McpHeaderEntry {
 export struct ToolsCenterPanel {
   @Param showHeader: boolean = true
   @Param contentBottomPadding: number = 24
+  @Param contentTopPadding: number = 0
+  @Param contentScroller: Scroller = new Scroller()
   @Local builtinTools: ToolConfig[] = []
   @Local searchServiceEnabled: boolean = false
   @Local searchEngine: SearchEngine = SearchEngine.BING
@@ -1710,9 +1712,16 @@ export struct ToolsCenterPanel {
           .width('100%')
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
+          .padding({ top: this.contentTopPadding })
         } else {
-          Scroll() {
+          Scroll(this.contentScroller) {
             Column({ space: 20 }) {
+              if (this.contentTopPadding > 0) {
+                Blank()
+                  .width('100%')
+                  .height(this.contentTopPadding)
+              }
+
               SearchServiceCardItem({
                 searchEnabled: this.searchServiceEnabled,
                 searchEngineDisplayValue: this.searchEngineDisplayValue,

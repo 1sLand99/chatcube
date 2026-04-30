@@ -4,7 +4,8 @@ import { ServiceRegistry } from '../services/ServiceRegistry'
 import { AssistantService } from '../services/AssistantService'
 import { ProviderViewModel } from '../viewmodels/ProviderViewModel'
 import { ModelSelectorContent } from '../components/ModelSelector'
-import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
 import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentation'
 import {
   AssistantAvatarView,
@@ -20,6 +21,10 @@ import { AppStorageKeys } from '../config/AppStorageKeys'
 import { getAppUiState, observeAppUiState } from '../state/AppUiState'
 import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
 import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 let assistantManagePathStack: NavPathStack | null = null
 
@@ -66,6 +71,14 @@ struct AssistantManagePage {
     return getAppUiState().themePrimary
   }
 
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
+
   @Computed
   get assistantAvatarRefreshAt(): number {
     return getAppUiState().assistantAvatarRefreshAt
@@ -105,6 +118,7 @@ struct AssistantManagePage {
   private assistantAvatarObserverDisposer: (() => void) | null = null
   private handledAssistantAvatarRefreshAt: number = 0
   private assistantLoadSeq: number = 0
+  private compactScroller: Scroller = new Scroller()
 
   aboutToAppear(): void {
     this.registerAssistantAvatarObserver()
@@ -155,6 +169,16 @@ struct AssistantManagePage {
     if (assistantManagePathStack !== null && assistantManagePathStack.size() > 0) {
       assistantManagePathStack.pop()
     }
+  }
+
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
   }
 
   private async loadData(): Promise<void> {
@@ -447,9 +471,15 @@ struct AssistantManagePage {
 
   @Builder
   private PageContent() {
-    Scroll() {
+    Scroll(this.compactScroller) {
       Row() {
         Column({ space: 16 }) {
+          if (!this.isDetailPaneMode()) {
+            Blank()
+              .width('100%')
+              .height(this.getCompactContentTopPadding())
+          }
+
           if (!this.isDetailPaneMode()) {
             Column() {
               Row() {
@@ -495,6 +525,16 @@ struct AssistantManagePage {
     .layoutWeight(1)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.Spring)
+  }
+
+  @Builder
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.assistant_manage_title'),
+      onBack: () => {
+        this.handleBack()
+      }
+    })
   }
 
   @Builder
@@ -1011,14 +1051,19 @@ struct AssistantManagePage {
         this.DetailPaneHeader()
         this.PageContent()
       } else {
-        SettingsCompactPageHeader({
-          title: $r('app.string.assistant_manage_title'),
-          topAvoidHeight: this.topAvoidHeight,
-          onBack: () => {
-            this.handleBack()
-          }
-        })
-        this.PageContent()
+        HdsNavigation() {
+          this.PageContent()
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.compactScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
 
       Column()

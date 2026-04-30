@@ -1,7 +1,8 @@
 import { Want, common } from '@kit.AbilityKit'
 import { bundleManager } from '@kit.AbilityKit'
 import { hilog } from '@kit.PerformanceAnalysisKit'
-import { SettingsCompactPageHeader } from '../components/settings/SettingsCompactPageHeader'
+import { HdsNavigation, HdsNavigationTitleBarOptions, HdsNavigationTitleMode } from '@kit.UIDesignKit'
+import { SettingsCompactTitleBarContent } from '../components/settings/SettingsCompactPageHeader'
 import { showToast } from '../utils/ToastUtil'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { LayoutSizeClass } from '../config/LayoutProfile'
@@ -9,6 +10,10 @@ import { SettingsPagePresentationMode } from '../config/SettingsDetailPresentati
 import { getSettingsPageContentMaxWidth } from '../utils/SettingsPageLayoutHelper'
 import { getAppUiState } from '../state/AppUiState'
 import { saveRawfileImageToAlbum } from '../utils/RawfileImageSaveUtil'
+import {
+  buildHdsTopNavigationTitleBarOptionsForPage,
+  getHdsTopNavigationContentTopPadding
+} from '../utils/HdsVisualEffectUtil'
 
 const TAG = 'AboutPage'
 const GITHUB_URL = 'https://github.com/LongLiveY96/chatcube'
@@ -42,10 +47,21 @@ struct AboutPage {
   private get settingsDetailPresentationMode(): string {
     return getAppUiState().settingsDetailPresentationMode
   }
+  private get materialType(): number {
+    return getAppUiState().materialType
+  }
+  private get materialLevel(): number {
+    return getAppUiState().materialLevel
+  }
   @Local showQqGroupSheet: boolean = false
   @Local isSaving: boolean = false
   @Local isOpeningGroup: boolean = false
   @Local versionName: string = ''
+  private compactScroller: Scroller = new Scroller()
+
+  private px2vp(px: number): number {
+    return px / (this.getUIContext().getHostContext()?.resourceManager.getDeviceCapabilitySync().screenDensity ?? 3) * 160
+  }
 
   aboutToAppear(): void {
     try {
@@ -76,11 +92,27 @@ struct AboutPage {
     }
   }
 
+  private getCompactContentTopPadding(): number {
+    return getHdsTopNavigationContentTopPadding(this.px2vp(this.topAvoidHeight), this.windowWidthVp,
+      this.windowHeightVp)
+  }
+
+  private getCompactTitleBarOptions(): HdsNavigationTitleBarOptions {
+    return buildHdsTopNavigationTitleBarOptionsForPage(this.materialType, this.materialLevel, this.windowWidthVp,
+      this.windowHeightVp, (): void => this.CompactTitleStackBuilder())
+  }
+
   @Builder
   private PageContent() {
-    Scroll() {
+    Scroll(this.compactScroller) {
       Row() {
         Column() {
+          if (!this.isDetailPaneMode()) {
+            Blank()
+              .width('100%')
+              .height(this.getCompactContentTopPadding())
+          }
+
           // Header: App icon + name + version + slogan
           Column({ space: 8 }) {
             Image($r('app.media.app_icon'))
@@ -240,6 +272,16 @@ struct AboutPage {
     .border({ width: { bottom: 1 }, color: $r('app.color.divider') })
   }
 
+  @Builder
+  private CompactTitleStackBuilder() {
+    SettingsCompactTitleBarContent({
+      title: $r('app.string.settings_about'),
+      onBack: () => {
+        this.handleBack()
+      }
+    })
+  }
+
   build() {
     Column() {
       if (this.isDetailPaneMode()) {
@@ -250,19 +292,19 @@ struct AboutPage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
-          SettingsCompactPageHeader({
-            title: $r('app.string.settings_about'),
-            topAvoidHeight: this.topAvoidHeight,
-            onBack: () => {
-              this.handleBack()
-            }
-          })
+        HdsNavigation() {
           this.PageContent()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor($r('app.color.background'))
+        .titleBar(this.getCompactTitleBarOptions())
+        .bindToScrollable([this.compactScroller])
+        .titleMode(HdsNavigationTitleMode.MINI)
+        .hideBackButton(true)
+        .hideToolBar(true)
+        .mode(NavigationMode.Stack)
+        .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       }
     }
     .width('100%')
