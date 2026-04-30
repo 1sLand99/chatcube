@@ -31,6 +31,12 @@ import { SettingsPagePresentationMode } from '../main/ets/config/SettingsDetailP
 import { SessionFilterType, SessionGroupData } from '../main/ets/pages/index/IndexPageTypes'
 import { buildSessionGroupRenderKey, buildSessionRenderKeyForIndex } from '../main/ets/pages/index/IndexSessionGroupHelper'
 import {
+  INDEX_TAB_CHAT,
+  INDEX_TAB_SETTINGS,
+  shouldHideCompactTabsBarForIndex,
+  shouldHideCompactTabsHostForIndex
+} from '../main/ets/pages/index/IndexTabsVisibilityHelper'
+import {
   getCompactTabsBarHeightForIndex,
   getSettingsPageCompactTabsOverlayInset,
   getSettingsPageCompactTabsTotalInset
@@ -351,6 +357,17 @@ export default function refactorGuardTest() {
       expect(getSettingsPageCompactTabsOverlayInset(18, SettingsPagePresentationMode.DETAIL_PANE)).assertEqual(0)
       expect(getSettingsPageCompactTabsTotalInset(18, SettingsPagePresentationMode.PAGE)).assertEqual(0)
       expect(getSettingsPageCompactTabsTotalInset(18, SettingsPagePresentationMode.DETAIL_PANE)).assertEqual(0)
+    })
+
+    it('compact_chat_detail_should_hide_hds_tabs_bar_without_reparenting_host', 0, () => {
+      expect(shouldHideCompactTabsBarForIndex(INDEX_TAB_CHAT, '', true)).assertEqual(true)
+      expect(shouldHideCompactTabsHostForIndex(INDEX_TAB_CHAT, false)).assertEqual(false)
+      expect(shouldHideCompactTabsHostForIndex(INDEX_TAB_CHAT, true)).assertEqual(true)
+    })
+
+    it('compact_settings_drill_down_should_hide_hds_tabs_bar_without_reparenting_host', 0, () => {
+      expect(shouldHideCompactTabsBarForIndex(INDEX_TAB_SETTINGS, 'ModelManagePage', false)).assertEqual(true)
+      expect(shouldHideCompactTabsHostForIndex(INDEX_TAB_SETTINGS, false)).assertEqual(false)
     })
 
     it('resolveProviderTextIconDisplayMode_should_neutralize_disabled_provider_icons', 0, () => {

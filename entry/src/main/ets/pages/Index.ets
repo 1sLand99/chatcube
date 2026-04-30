@@ -69,6 +69,13 @@ import {
   shouldPlaceFabOnLeftForIndex
 } from './index/IndexHandAdaptiveHelper'
 import {
+  INDEX_TAB_ASSISTANTS,
+  INDEX_TAB_CHAT,
+  INDEX_TAB_SETTINGS,
+  shouldHideCompactTabsBarForIndex,
+  shouldHideCompactTabsHostForIndex
+} from './index/IndexTabsVisibilityHelper'
+import {
   getSettingsSheetTitleText
 } from './index/IndexSettingsTextHelper'
 import { ChatPageRouteParams } from './chat/ChatPageRouteTypes'
@@ -97,9 +104,9 @@ import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 struct Index {
   private static readonly COMPACT_TABS_BAR_HEIGHT: number = 56
   private static readonly COMPACT_TABS_FLOATING_SIDE_MARGIN: number = 16
-  private static readonly TAB_ASSISTANTS: number = 0
-  private static readonly TAB_CHAT: number = 1
-  private static readonly TAB_SETTINGS: number = 2
+  private static readonly TAB_ASSISTANTS: number = INDEX_TAB_ASSISTANTS
+  private static readonly TAB_CHAT: number = INDEX_TAB_CHAT
+  private static readonly TAB_SETTINGS: number = INDEX_TAB_SETTINGS
   @Local currentTabIndex: number = Index.TAB_CHAT
   @Local sessions: ChatSession[] = []
   @Local isLoading: boolean = false
@@ -149,6 +156,7 @@ struct Index {
   @Local assistantFormDefaultModelName: string = ''
   @Local assistantFormTemperatureEnabled: boolean = false
   @Local assistantFormTemperature: number = 0.7
+  @Local currentChatRouteName: string = ''
   @Local chatTabTopSessionId: string = ''
   private get activeChatSessionId(): string {
     return getAppUiState().activeChatSessionId
@@ -432,6 +440,7 @@ struct Index {
   }
 
   private openChatRouteAfterSearchReset(params: ChatPageRouteParams): void {
+    this.currentChatRouteName = Index.CHAT_PAGE_ROUTE
     if (this.isChatSplitLayout() && this.chatTabNavStack.size() > 0) {
       this.chatTabNavStack.replacePath({ name: Index.CHAT_PAGE_ROUTE, param: params as ChatPageRouteParams })
       return
@@ -451,11 +460,17 @@ struct Index {
     const stackSize = this.chatTabNavStack.size()
     if (wantsPlaceholder) {
       if (stackSize === 0) {
+        this.currentChatRouteName = Index.CHAT_DETAIL_EMPTY_ROUTE
         this.chatTabNavStack.pushPath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
       }
       return
     }
+    if (stackSize === 0) {
+      this.currentChatRouteName = ''
+      return
+    }
     if (stackSize === 1 && this.isChatTabTopPlaceholder()) {
+      this.currentChatRouteName = ''
       this.chatTabNavStack.clear(false)
     }
   }
@@ -469,13 +484,8 @@ struct Index {
     return names[size - 1] === Index.CHAT_DETAIL_EMPTY_ROUTE
   }
 
-  private isChatTabShowingChatPage(): boolean {
-    const size = this.chatTabNavStack.size()
-    if (size === 0) {
-      return false
-    }
-    const names = this.chatTabNavStack.getAllPathName()
-    return names[size - 1] === Index.CHAT_PAGE_ROUTE
+  private isChatDetailRouteActive(): boolean {
+    return this.currentChatRouteName === Index.CHAT_PAGE_ROUTE
   }
 
   private openSettingsDestination(routeName: SettingsRouteName, param: Object | null = null): void {
@@ -577,6 +587,7 @@ struct Index {
         operation: NavigationOperation, isAnimated: boolean): void => {
         const size = this.chatTabNavStack.size()
         if (to === 'navBar' || size <= 0) {
+          this.currentChatRouteName = ''
           this.chatTabTopSessionId = ''
           this.refreshSessionListProjection()
           this.loadSessions()
@@ -585,6 +596,7 @@ struct Index {
         }
         const names = this.chatTabNavStack.getAllPathName()
         const topName = names[size - 1]
+        this.currentChatRouteName = topName
         if (topName === Index.CHAT_PAGE_ROUTE) {
           const topParam = this.chatTabNavStack.getParamByIndex(size - 1) as ChatPageRouteParams | undefined
           this.chatTabTopSessionId = topParam?.sessionId ?? ''
@@ -684,7 +696,8 @@ struct Index {
       return true
     }
 
-    if (this.currentTabIndex === Index.TAB_CHAT && this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
+    if (this.currentTabIndex === Index.TAB_CHAT && this.isChatSplitLayout() && this.isChatDetailRouteActive()) {
+      this.currentChatRouteName = Index.CHAT_DETAIL_EMPTY_ROUTE
       this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
       return true
     }
@@ -897,7 +910,8 @@ struct Index {
       this.searchText = ''
       this.isSearchExpanded = false
     }
-    if (previousAssistantId !== this.currentAssistantId && this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
+    if (previousAssistantId !== this.currentAssistantId && this.isChatSplitLayout() && this.isChatDetailRouteActive()) {
+      this.currentChatRouteName = Index.CHAT_DETAIL_EMPTY_ROUTE
       this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
     }
     this.refreshSessionListProjection()
@@ -1165,7 +1179,7 @@ struct Index {
   }
 
   private shouldHandleInAppTaskAlert(): boolean {
-    if (this.isChatTabShowingChatPage()) {
+    if (this.isChatDetailRouteActive()) {
       return false
     }
     return true
@@ -1216,7 +1230,7 @@ struct Index {
 
   async loadSessions(): Promise<void> {
     // pop 动画期间完全跳过，由 setInterception.didShow 在动画完成后统一触发
-    if (!this.isChatSplitLayout() && this.isChatTabShowingChatPage()) {
+    if (!this.isChatSplitLayout() && this.isChatDetailRouteActive()) {
       return
     }
     this.sessionLoadSeq = this.sessionLoadSeq + 1
@@ -1293,8 +1307,10 @@ struct Index {
     this.selectedSessionIds = this.selectedSessionIds.filter((selectedId: string): boolean => selectedId !== sessionId)
     if (this.chatTabTopSessionId === sessionId) {
       if (this.isChatSplitLayout()) {
+        this.currentChatRouteName = Index.CHAT_DETAIL_EMPTY_ROUTE
         this.chatTabNavStack.replacePath({ name: Index.CHAT_DETAIL_EMPTY_ROUTE })
       } else {
+        this.currentChatRouteName = ''
         this.chatTabNavStack.clear(false)
       }
     }
@@ -1541,21 +1557,12 @@ struct Index {
   }
 
   private shouldHideCompactTabsHost(): boolean {
-    // 多选工具栏会占据底部交互区，继续复用原先“直接隐藏整个 tabs 宿主”的策略。
-    if (this.currentTabIndex === Index.TAB_CHAT && this.isMultiSelectMode) {
-      return true
-    }
-    return false
+    return shouldHideCompactTabsHostForIndex(this.currentTabIndex, this.isMultiSelectMode)
   }
 
   private shouldHideCompactTabsBar(): boolean {
-    if (this.currentTabIndex === Index.TAB_SETTINGS && this.currentSettingsRouteName !== '') {
-      return true
-    }
-    if (this.currentTabIndex === Index.TAB_CHAT && this.isChatTabShowingChatPage()) {
-      return true
-    }
-    return false
+    return shouldHideCompactTabsBarForIndex(this.currentTabIndex, this.currentSettingsRouteName,
+      this.isChatDetailRouteActive())
   }
 
   @Builder
