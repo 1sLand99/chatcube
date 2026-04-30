@@ -1,3 +1,5 @@
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
+
 export const DEFAULT_ASSISTANT_ID: string = 'default'
 
 @ObservedV2
@@ -22,7 +24,7 @@ export class Assistant {
     this.id = id
     this.name = name
     this.avatarSymbol = 'AI'
-    this.color = '#4E6F9E'
+    this.color = DEFAULT_PRIMARY_COLOR
     this.systemPrompt = ''
     this.defaultProviderId = ''
     this.defaultModelId = ''
@@ -39,7 +41,7 @@ export class Assistant {
 export function createDefaultAssistant(): Assistant {
   const assistant = new Assistant(DEFAULT_ASSISTANT_ID, '默认助手')
   assistant.avatarSymbol = 'AI'
-  assistant.color = '#4E6F9E'
+  assistant.color = DEFAULT_PRIMARY_COLOR
   assistant.isDefault = true
   assistant.sortOrder = 0
   return assistant

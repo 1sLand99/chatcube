@@ -4,6 +4,7 @@
  */
 
 import { ProviderType, ApiStyle, OpenAITransport } from '../models/ChatModels'
+import { DEFAULT_PRIMARY_COLOR } from './ThemeDefaults'
 
 // 预设供应商配置接口
 export interface PresetProviderConfig {
@@ -259,7 +260,7 @@ export function getPresetProviderBrandColor(providerId: string): string {
   if (preset !== null) {
     return preset.brandColorHex
   }
-  return '#4E6F9E' // 默认主题色
+  return DEFAULT_PRIMARY_COLOR
 }
 
 /**

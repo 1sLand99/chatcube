@@ -7,6 +7,7 @@ import { AssistantService } from '../../services/AssistantService'
 import { ChatPageRouteParams } from './ChatPageRouteTypes'
 import { Assistant, DEFAULT_ASSISTANT_ID } from '../../models/AssistantModels'
 import { normalizeStoredChatReasoningLevel } from './ChatReasoningStateHelper'
+import { DEFAULT_PRIMARY_COLOR } from '../../config/ThemeDefaults'
 
 export class ChatPageLoadResult {
   webSearchEnabled: boolean = false
@@ -25,7 +26,7 @@ export class ChatPageLoadResult {
   isNewEmptySession: boolean = false
   assistantId: string = DEFAULT_ASSISTANT_ID
   assistantAvatarSymbol: string = 'AI'
-  assistantColor: string = '#4E6F9E'
+  assistantColor: string = DEFAULT_PRIMARY_COLOR
 }
 
 export interface ChatPageLoadFlowDependencies {
@@ -120,7 +121,7 @@ export class ChatPageLoadFlow {
   private applyAssistantSnapshot(result: ChatPageLoadResult, assistant: Assistant): void {
     result.assistantId = assistant.id !== '' ? assistant.id : DEFAULT_ASSISTANT_ID
     result.assistantAvatarSymbol = assistant.avatarSymbol !== '' ? assistant.avatarSymbol : 'AI'
-    result.assistantColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
+    result.assistantColor = assistant.color !== '' ? assistant.color : DEFAULT_PRIMARY_COLOR
   }
 
   private cloneDraftAttachments(attachments: MessageAttachment[]): MessageAttachment[] {

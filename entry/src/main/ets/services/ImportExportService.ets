@@ -31,6 +31,7 @@ import { AttachmentStorageService } from './AttachmentStorageService'
 import { getPreferencesService, PreferenceKeys } from './PreferencesService'
 import { getThemeService } from './ThemeService'
 import { getSettingsManager } from '../viewmodels/SettingsManager'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 import { getAppStateManager } from '../viewmodels/AppStateManager'
 import { getProviderViewModel } from '../viewmodels/ProviderViewModel'
 import { buildProviderImportOrder } from '../config/ProviderOrderUtils'
@@ -1131,7 +1132,7 @@ export class ImportExportService {
         assistantData.name
       )
       assistant.avatarSymbol = await this.resolveImportedAssistantAvatarSymbol(assistantData, tempDir)
-      assistant.color = assistantData.color !== '' ? assistantData.color : '#4E6F9E'
+      assistant.color = assistantData.color !== '' ? assistantData.color : DEFAULT_PRIMARY_COLOR
       assistant.systemPrompt = assistantData.systemPrompt || ''
       assistant.defaultProviderId = assistantData.defaultProviderId || ''
       assistant.defaultModelId = assistantData.defaultModelId || ''

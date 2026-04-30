@@ -5,10 +5,11 @@ import resourceManager from '@ohos.resourceManager'
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { ColorTheme, ThemeColorConfig, getThemeColors } from '../models/ThemeColors'
 import { getPreferencesService, PreferenceKeys } from '../services/PreferencesService'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 
 const FORM_IDS_PREF_KEY = 'entry_form_ids_json'
 const PREFERENCES_NAME = 'chatbox_preferences'
-const DEFAULT_THEME_PRIMARY = '#4E6F9E'
+const DEFAULT_THEME_PRIMARY = DEFAULT_PRIMARY_COLOR
 const LIGHT_FORM_TEXT_COLOR = '#24211C'
 const DARK_FORM_TEXT_COLOR = '#F3EFE6'
 

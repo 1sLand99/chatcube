@@ -19,6 +19,7 @@ import { showSnackBar, SnackBarDisplayOptions, SnackBarTone } from '../utils/Toa
 import { AppStorageKeys } from '../config/AppStorageKeys'
 import { getAppUiState, observeAppUiState } from '../state/AppUiState'
 import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 
 let assistantManagePathStack: NavPathStack | null = null
 
@@ -87,7 +88,7 @@ struct AssistantManagePage {
   @Local editingIsDefault: boolean = false
   @Local formName: string = ''
   @Local formAvatarSymbol: string = 'AI'
-  @Local formColor: string = '#4E6F9E'
+  @Local formColor: string = DEFAULT_PRIMARY_COLOR
   @Local formSystemPrompt: string = ''
   @Local formDefaultProviderId: string = ''
   @Local formDefaultModelId: string = ''
@@ -184,7 +185,7 @@ struct AssistantManagePage {
     this.editingIsDefault = assistant.id === DEFAULT_ASSISTANT_ID || assistant.isDefault
     this.formName = assistant.name
     this.formAvatarSymbol = this.normalizeAvatarSymbol(assistant.avatarSymbol)
-    this.formColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
+    this.formColor = assistant.color !== '' ? assistant.color : DEFAULT_PRIMARY_COLOR
     this.formSystemPrompt = assistant.systemPrompt
     this.formDefaultProviderId = assistant.defaultProviderId
     this.formDefaultModelId = assistant.defaultModelId
@@ -201,7 +202,7 @@ struct AssistantManagePage {
     this.editingIsDefault = false
     this.formName = ''
     this.formAvatarSymbol = 'AI'
-    this.formColor = '#4E6F9E'
+    this.formColor = DEFAULT_PRIMARY_COLOR
     this.formSystemPrompt = ''
     this.formDefaultProviderId = ''
     this.formDefaultModelId = ''

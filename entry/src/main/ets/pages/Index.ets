@@ -86,6 +86,7 @@ import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/A
 import { tryHandleProviderDetailInternalBack } from '../components/ProviderDetailSheet'
 import { tryHandleModelManageInternalBack } from './ModelManagePage'
 import { TRANSPARENT_BG_COLOR } from '../utils/IconGeneratorUtils'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 
 @Entry
 @ComponentV2
@@ -122,7 +123,7 @@ struct Index {
   @Local assistants: Assistant[] = []
   @Local currentAssistantName: string = '默认助手'
   @Local currentAssistantAvatarSymbol: string = 'AI'
-  @Local currentAssistantColor: string = '#4E6F9E'
+  @Local currentAssistantColor: string = DEFAULT_PRIMARY_COLOR
   @Local assistantProviders: ModelProvider[] = []
   @Local currentAssistantId: string = DEFAULT_ASSISTANT_ID
   @Local showAssistantSwitchSheet: boolean = false
@@ -137,7 +138,7 @@ struct Index {
   @Local editingAssistantIsDefault: boolean = false
   @Local assistantFormName: string = ''
   @Local assistantFormAvatarSymbol: string = 'AI'
-  @Local assistantFormColor: string = '#4E6F9E'
+  @Local assistantFormColor: string = DEFAULT_PRIMARY_COLOR
   @Local assistantFormSystemPrompt: string = ''
   @Local assistantFormDefaultProviderId: string = ''
   @Local assistantFormDefaultModelId: string = ''
@@ -2184,7 +2185,7 @@ struct Index {
     this.editingAssistantIsDefault = false
     this.assistantFormName = ''
     this.assistantFormAvatarSymbol = 'AI'
-    this.assistantFormColor = '#4E6F9E'
+    this.assistantFormColor = DEFAULT_PRIMARY_COLOR
     this.assistantFormSystemPrompt = ''
     this.assistantFormDefaultProviderId = ''
     this.assistantFormDefaultModelId = ''
@@ -2200,7 +2201,7 @@ struct Index {
     this.editingAssistantIsDefault = assistant.id === DEFAULT_ASSISTANT_ID || assistant.isDefault
     this.assistantFormName = assistant.name
     this.assistantFormAvatarSymbol = this.normalizeAssistantAvatarSymbol(assistant.avatarSymbol)
-    this.assistantFormColor = assistant.color !== '' ? assistant.color : '#4E6F9E'
+    this.assistantFormColor = assistant.color !== '' ? assistant.color : DEFAULT_PRIMARY_COLOR
     this.assistantFormSystemPrompt = assistant.systemPrompt
     this.assistantFormDefaultProviderId = assistant.defaultProviderId
     this.assistantFormDefaultModelId = assistant.defaultModelId

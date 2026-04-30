@@ -2,6 +2,7 @@ import { Assistant, DEFAULT_ASSISTANT_ID } from '../models/AssistantModels'
 import { getDatabaseService, DatabaseService } from './DatabaseService'
 import { getPreferencesService, PreferencesService } from './PreferencesService'
 import { AppStorageKeys } from '../config/AppStorageKeys'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 import { getAppUiState, setAppUiStateValue } from '../state/AppUiState'
 
 export class AssistantRuntimeConfig {
@@ -35,7 +36,7 @@ export class AssistantService {
   private normalizeAssistant(assistant: Assistant): Assistant {
     assistant.name = assistant.name.trim() !== '' ? assistant.name.trim() : '未命名助手'
     assistant.avatarSymbol = assistant.avatarSymbol.trim() !== '' ? assistant.avatarSymbol.trim() : 'AI'
-    assistant.color = assistant.color.trim() !== '' ? assistant.color.trim() : '#4E6F9E'
+    assistant.color = assistant.color.trim() !== '' ? assistant.color.trim() : DEFAULT_PRIMARY_COLOR
     if (assistant.id === DEFAULT_ASSISTANT_ID) {
       assistant.isDefault = true
     }

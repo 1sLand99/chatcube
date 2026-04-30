@@ -87,6 +87,7 @@ import { getChatContentMaxWidth, LayoutSizeClass } from '../config/LayoutProfile
 import { getAppUiState, observeAppUiState, setAppUiStateValue } from '../state/AppUiState'
 import { applyModelDraft } from '../utils/ModelDraftUtils'
 import { ToolPreviewEntry, buildToolArgumentsPreview } from '../utils/ToolPayloadSummaryUtils'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 import { pickLocalizedText } from '../utils/LocalizedTextUtils'
 import { normalizeAssistantAvatarValue } from '../components/AssistantAvatar'
 
@@ -124,7 +125,7 @@ export struct ChatPage {
   @Local currentModelId: string = ''
   @Local currentAssistantId: string = DEFAULT_ASSISTANT_ID
   @Local currentAssistantAvatarSymbol: string = 'AI'
-  @Local currentAssistantColor: string = '#4E6F9E'
+  @Local currentAssistantColor: string = DEFAULT_PRIMARY_COLOR
   @Local assistantAvatarRenderTick: number = 0
   @Local isModelSelectorVisible: boolean = false
   @Local modelSheetActivePanel: string = 'selector'
@@ -582,7 +583,7 @@ export struct ChatPage {
   private applyAssistantSnapshot(assistantId: string, avatarSymbol: string, color: string): void {
     this.currentAssistantId = assistantId.trim() !== '' ? assistantId.trim() : DEFAULT_ASSISTANT_ID
     this.currentAssistantAvatarSymbol = normalizeAssistantAvatarValue(avatarSymbol)
-    this.currentAssistantColor = color.trim() !== '' ? color.trim() : '#4E6F9E'
+    this.currentAssistantColor = color.trim() !== '' ? color.trim() : DEFAULT_PRIMARY_COLOR
     this.bumpAssistantAvatarRenderTick()
   }
 
@@ -610,7 +611,7 @@ export struct ChatPage {
       return
     }
     if (assistant === null) {
-      this.applyAssistantSnapshot(DEFAULT_ASSISTANT_ID, 'AI', '#4E6F9E')
+      this.applyAssistantSnapshot(DEFAULT_ASSISTANT_ID, 'AI', DEFAULT_PRIMARY_COLOR)
       return
     }
     this.applyAssistantSnapshot(assistant.id, assistant.avatarSymbol, assistant.color)

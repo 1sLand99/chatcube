@@ -13,6 +13,7 @@ import {
   SearchReference
 } from '../models/ChatModels'
 import { Assistant, DEFAULT_ASSISTANT_ID, createDefaultAssistant } from '../models/AssistantModels'
+import { DEFAULT_PRIMARY_COLOR } from '../config/ThemeDefaults'
 import { generateDefaultTextIcon } from '../utils/IconGeneratorUtils'
 import { isPresetProvider, getPresetProviderById } from '../config/PresetProviders'
 import { AppError, AppErrorCode, toErrorDetail } from '../models/AppError'
@@ -623,7 +624,7 @@ export class DatabaseService {
 	      this.safeGetString(resultSet, 'name')
 	    )
 	    assistant.avatarSymbol = this.safeGetString(resultSet, 'avatar_symbol', 'AI')
-	    assistant.color = this.safeGetString(resultSet, 'color', '#4E6F9E')
+	    assistant.color = this.safeGetString(resultSet, 'color', DEFAULT_PRIMARY_COLOR)
 	    assistant.systemPrompt = this.safeGetString(resultSet, 'system_prompt')
 	    assistant.defaultProviderId = this.safeGetString(resultSet, 'default_provider_id')
 	    assistant.defaultModelId = this.safeGetString(resultSet, 'default_model_id')
